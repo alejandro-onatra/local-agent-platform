@@ -1,0 +1,75 @@
+{
+  "uid": "workflow-kpis",
+  "title": "Workflow and business KPIs",
+  "schemaVersion": 39,
+  "version": 1,
+  "tags": [
+    "agent-platform",
+    "pedagogical"
+  ],
+  "editable": false,
+  "timezone": "browser",
+  "refresh": "15s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "type": "text",
+      "title": "Instrumentación pendiente",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 5
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "Aún no existe un workflow de negocio con resultados etiquetados. Se incorporarán completados/fallidos, tiempo hasta resolución, espera de aprobación y cumplimiento del resultado esperado cuando el runtime emita esos eventos. Sin KPI ficticio ni extrapolación desde tests sintéticos."
+      },
+      "id": 1
+    },
+    {
+      "type": "timeseries",
+      "title": "Disponibilidad de scrape del Collector",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{job=\"otel-collector\"}",
+          "legendFormat": "{{service_name}} {{span_name}} {{gen_ai_token_type}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "id": 2
+    }
+  ],
+  "links": [
+    {
+      "title": "Vista general de la plataforma",
+      "type": "link",
+      "url": "/d/platform-overview",
+      "keepTime": true,
+      "targetBlank": false
+    }
+  ]
+}

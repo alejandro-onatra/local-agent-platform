@@ -1,0 +1,20 @@
+# Local evaluation in Prometheus only. No notifications or external destinations.
+groups:
+- name: platform-health
+  rules:
+  - alert: PlatformEndpointUnavailable
+    expr: probe_success{job="platform-health"} == 0
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: 'Endpoint de {{ $labels.service }} no responde correctamente'
+      description: 'Fallo HTTP sostenido durante 2 minutos. Revisar disponibilidad y logs; no prueba un fallo de inferencia.'
+  - alert: ObservabilityScrapeUnavailable
+    expr: up{job=~"otel-collector|otel-internal|blackbox|prometheus|platform-health"} == 0
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: 'Prometheus no puede leer {{ $labels.job }} / {{ $labels.instance }}'
+      description: 'Sin observación durante 2 minutos. Una sonda ausente no demuestra que la aplicación esté sana.'

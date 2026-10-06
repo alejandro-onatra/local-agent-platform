@@ -1,0 +1,18 @@
+{
+  "resolved_at": "2026-10-05",
+  "version": "1.24.0",
+  "image": "ghcr.io/openhands/agent-canvas@sha256:65b9dd60572a8f489d157998637d9aa58ccbc454878eeef62152d67399e962ac",
+  "source_revision": "7dc6805406ea3c76cb4a3ce407c3c72d481b0ac6",
+  "agent_server": "1.49.6",
+  "automation": "1.15.1",
+  "compressed_image_bytes": 1397965601,
+  "ui_url": "http://127.0.0.1:8000/canvas",
+  "llm_model": "openai/qwen3:8b",
+  "llm_base_url": "http://ollama:11434/v1",
+  "proxy": {
+    "image": "nginx@sha256:8f84ed99befc3891b8f329c5c202785278a2cfb7c25107d57fb2a134a3117433",
+    "resolved_tag": "stable-alpine",
+    "resolved_at": "2026-10-05",
+    "version": "1.30.5"
+  }
+}

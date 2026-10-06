@@ -1,0 +1,253 @@
+version: '3'
+
+# Explicit task calls in cmds run sequentially. Avoid deps for ordered host setup.
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list
+
+  env:plan:
+    desc: Validate repository and preview host setup
+    cmds:
+      - task: repo:check
+      - task: docker:plan
+
+  env:setup:
+    desc: Prepare host GPU/Docker baseline (sudo required; may restart Docker)
+    cmds:
+      - task: repo:check
+      - task: gpu:check
+      - task: docker:install
+
+  env:check:
+    desc: Check repository, host GPU and GPU inside Docker
+    cmds:
+      - task: repo:check
+      - task: gpu:check
+      - task: docker:check
+
+  repo:check:
+    desc: Validate repository structure and shell syntax
+    cmds:
+      - bash scripts/repo/check-repo.sh
+
+  gpu:check:
+    desc: Inspect host GPU without changing drivers
+    cmds:
+      - bash scripts/host/check-gpu.sh
+
+  docker:plan:
+    desc: Preview pinned Docker and Toolkit installation
+    cmds:
+      - bash scripts/host/install-docker-gpu.sh --plan
+
+  docker:install:
+    desc: Install pinned Docker and Toolkit on host (sudo required)
+    cmds:
+      - bash scripts/host/install-docker-gpu.sh --apply
+
+  docker:check:
+    desc: Check Docker, Compose and GPU inside container
+    cmds:
+      - bash scripts/host/check-docker-gpu.sh
+
+  llm:plan:
+    desc: Show pinned Ollama/model configuration and validate Compose
+    cmds:
+      - bash scripts/llm/plan.sh
+
+  llm:setup:
+    desc: Start local Ollama, download model and test inference on GPU
+    cmds:
+      - task: repo:check
+      - task: llm:plan
+      - task: llm:up
+      - task: llm:pull
+      - task: llm:check
+
+  llm:up:
+    desc: Start Ollama and wait for health/version check
+    cmds:
+      - bash scripts/llm/up.sh
+
+  llm:pull:
+    desc: Download Qwen3 8B and verify its manifest digest
+    cmds:
+      - bash scripts/llm/pull-model.sh
+
+  llm:check:
+    desc: Verify model, inference, GPU residency, tool call and API compatibility
+    cmds:
+      - bash scripts/llm/check.sh
+
+  llm:status:
+    desc: Show service and loaded model state
+    cmds:
+      - bash scripts/llm/status.sh
+
+  llm:logs:
+    desc: Show last 80 Ollama log lines for local diagnosis
+    cmds:
+      - bash scripts/llm/logs.sh
+
+  llm:down:
+    desc: Stop Ollama while retaining model weights
+    cmds:
+      - bash scripts/llm/down.sh
+
+  repo:test:
+    desc: Test failure detection in local LLM validation
+    cmds:
+      - bash scripts/repo/check-llm-tests.sh
+
+  dev:check:
+    desc: Check host baseline and local LLM inference
+    cmds:
+      - task: env:check
+      - task: llm:check
+
+  openhands:plan:
+    desc: Validate pinned OpenHands Compose configuration
+    cmds:
+      - bash scripts/openhands/plan.sh
+
+  openhands:up:
+    desc: Start local OpenHands and check UI and internal LLM connection
+    cmds:
+      - bash scripts/openhands/up.sh
+
+  openhands:check:
+    desc: Check OpenHands UI and container-to-Ollama connection
+    cmds:
+      - bash scripts/openhands/check.sh
+
+  openhands:status:
+    desc: Show OpenHands container status
+    cmds:
+      - bash scripts/openhands/status.sh
+
+  openhands:logs:
+    desc: Show recent OpenHands logs locally
+    cmds:
+      - bash scripts/openhands/logs.sh
+
+  openhands:down:
+    desc: Stop OpenHands preserving state, workspace and Ollama
+    cmds:
+      - bash scripts/openhands/down.sh
+
+  openhands:setup:
+    desc: Validate local inference and start OpenHands
+    cmds:
+      - task: repo:check
+      - task: llm:up
+      - task: llm:check
+      - task: openhands:up
+
+  openhands:demo:check:
+    desc: Verify agent-generated demo files, arithmetic and tests inside the container
+    cmds:
+      - bash scripts/openhands/check-demo.sh
+
+  openhands:profile:check:
+    desc: Inspect selected LLM and agent settings without exposing secrets
+    cmds:
+      - bash scripts/openhands/profile-check.sh
+
+  openhands:usage:check:
+    desc: Inspect effective conversation route and token/cache totals without content
+    requires:
+      vars: [CONVERSATION_ID]
+    env:
+      OH_CONVERSATION_ID: '{{.CONVERSATION_ID}}'
+    cmds:
+      - bash scripts/openhands/usage-check.sh
+
+  openhands:bugfix:prepare:
+    desc: Create a separate buggy exercise and verify expected failures
+    cmds:
+      - bash scripts/openhands/bugfix-prepare.sh
+
+  openhands:bugfix:baseline:
+    desc: Verify the three expected failures before agent repair
+    cmds:
+      - bash scripts/openhands/bugfix-baseline.sh
+
+  openhands:bugfix:check:
+    desc: Verify original tests and independent acceptance after agent repair
+    cmds:
+      - bash scripts/openhands/bugfix-check.sh
+
+  observability:plan:
+    desc: Validate pinned observability configuration
+    cmds:
+      - bash scripts/observability/plan.sh
+
+  observability:up:
+    desc: Start local LiteLLM and observability backends
+    cmds:
+      - bash scripts/observability/up.sh
+
+  observability:check:
+    desc: Check health, model routing and sensitive-content canaries
+    cmds:
+      - bash scripts/observability/check.sh
+
+  observability:logs:configure:
+    desc: Tail selected Docker logs through sanitized OTel filelog
+    cmds:
+      - bash scripts/observability/configure-logs.sh
+
+  observability:status:
+    desc: Show observability service state
+    cmds:
+      - bash scripts/observability/status.sh
+
+  observability:logs:
+    desc: Show recent observability service logs locally
+    cmds:
+      - bash scripts/observability/logs.sh
+
+  observability:stop:
+    desc: Stop observability services retaining all data
+    cmds:
+      - bash scripts/observability/stop.sh
+
+  observability:tracing:on:
+    desc: Enable native OpenHands tracing for synthetic exercises
+    cmds:
+      - bash scripts/observability/native-tracing.sh on
+
+  observability:tracing:off:
+    desc: Disable native OpenHands tracing
+    cmds:
+      - bash scripts/observability/native-tracing.sh off
+
+  observability:setup:
+    desc: Start existing agent and add the observability stack
+    cmds:
+      - task: repo:check
+      - task: openhands:up
+      - task: observability:up
+      - task: observability:check
+
+  observability:validate:
+    desc: Validate configs with pinned container binaries without starting backends
+    cmds:
+      - bash scripts/observability/validate.sh
+
+  observability:test:
+    desc: Check private credential persistence and proxy-only authentication
+    cmds:
+      - bash scripts/repo/check-observability-tests.sh
+
+  observability:cache:test:
+    desc: Verify authenticated native cache scraping and privacy with the pinned Collector
+    cmds:
+      - bash scripts/observability/test-cache.sh
+
+  observability:cache:check:
+    desc: Compare two real proxy calls with provider cached-token counters
+    cmds:
+      - bash scripts/observability/check-cache.sh

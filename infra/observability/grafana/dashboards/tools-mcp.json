@@ -1,0 +1,67 @@
+{
+  "uid": "tools-mcp",
+  "title": "Tools and MCP",
+  "schemaVersion": 39,
+  "version": 1,
+  "tags": [
+    "agent-platform",
+    "pedagogical"
+  ],
+  "editable": false,
+  "timezone": "browser",
+  "refresh": "15s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "type": "text",
+      "title": "Cobertura",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 5
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "No hay servidores MCP configurados. Con tracing nativo, los nombres de operaciones fuera de la lista permitida se agrupan como operation; no se exportan argumentos ni resultados. Los errores file_editor solo se clasifican como tool_validation_error en logs. Falta mapear spans nativos a tool.call sin contenido."
+      },
+      "id": 1
+    },
+    {
+      "type": "logs",
+      "title": "Errores de validación de herramientas (logs)",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{service_name=\"openhands\"} | event_category=\"tool_validation_error\""
+        }
+      ],
+      "options": {
+        "showTime": true
+      },
+      "id": 2
+    }
+  ],
+  "links": [
+    {
+      "title": "Vista general de la plataforma",
+      "type": "link",
+      "url": "/d/platform-overview",
+      "keepTime": true,
+      "targetBlank": false
+    }
+  ]
+}

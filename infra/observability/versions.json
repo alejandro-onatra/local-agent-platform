@@ -1,0 +1,69 @@
+{
+  "verified_utc": "2026-10-05",
+  "platform": "linux/amd64",
+  "components": {
+    "collector": {
+      "tag": "0.162.0",
+      "image": "otel/opentelemetry-collector-contrib@sha256:340885ab6f46822374f00c58c067396b53b8d612559842e8821585567579d9e3",
+      "download_bytes": 112744572,
+      "user": "10001:10001",
+      "entrypoint": [
+        "/otelcol-contrib"
+      ]
+    },
+    "prometheus": {
+      "tag": "v3.15.0",
+      "image": "prom/prometheus@sha256:86b17a25c2db1d16a61b16b3c8f336679eb19e26333d03e808da387206e40faa",
+      "download_bytes": 114035258,
+      "user": "nobody",
+      "entrypoint": [
+        "/bin/prometheus"
+      ]
+    },
+    "loki": {
+      "tag": "3.7.8",
+      "image": "grafana/loki@sha256:81a6802ec4bd1b88c564494f06376889ed022998a188826190d26d2754ac2aae",
+      "download_bytes": 48003511,
+      "user": "10001",
+      "entrypoint": [
+        "/usr/bin/loki"
+      ]
+    },
+    "tempo": {
+      "tag": "3.1.0",
+      "image": "grafana/tempo@sha256:19dca9c0b1801209424a757cd5970d6ffd7cfc9a7f4966c2a6795fbe29b495a8",
+      "download_bytes": 40855706,
+      "user": "10001:10001",
+      "entrypoint": [
+        "/tempo"
+      ]
+    },
+    "grafana": {
+      "tag": "13.2.3",
+      "image": "grafana/grafana@sha256:d84563330dc9d2fd2bc096d0fb96021b5319c75bf6ed555566709998e823dec4",
+      "download_bytes": 482260940,
+      "user": "472",
+      "entrypoint": [
+        "/run.sh"
+      ]
+    },
+    "litellm": {
+      "tag": "v1.104.0",
+      "image": "ghcr.io/berriai/litellm@sha256:5ce1ebf7f26ed82501b598e0ebecd4fe63d0e61817178427d4df86f2a16729ec",
+      "download_bytes": 401698251,
+      "user": "root",
+      "entrypoint": [
+        "docker/prod_entrypoint.sh"
+      ]
+    },
+    "blackbox": {
+      "tag": "v0.28.0",
+      "image": "prom/blackbox-exporter@sha256:43027b43fb785b7c5adc53bd3b5dbc1a258270a2e8aff24f477b45c4e38dac68",
+      "download_bytes": 17573251,
+      "user": "65534:65534 (Compose override)",
+      "entrypoint": [
+        "/bin/blackbox_exporter"
+      ]
+    }
+  }
+}

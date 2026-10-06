@@ -1,0 +1,75 @@
+{
+  "uid": "model-quality",
+  "title": "Model quality and escalations",
+  "schemaVersion": 39,
+  "version": 1,
+  "tags": [
+    "agent-platform",
+    "pedagogical"
+  ],
+  "editable": false,
+  "timezone": "browser",
+  "refresh": "15s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "type": "text",
+      "title": "Evaluación pendiente",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 5
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "Los tokens y la velocidad no miden calidad. La demo y el bugfix fueron aceptados mediante tests externos; el bugfix requirió intervención humana. Falta emitir resultados evaluados, intentos y escalaciones. No hay porcentajes de éxito automáticos todavía."
+      },
+      "id": 1
+    },
+    {
+      "type": "timeseries",
+      "title": "Errores técnicos del proxy",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(agent_calls_total{service_name=\"litellm-proxy\",status_code=\"STATUS_CODE_ERROR\"}[5m]))",
+          "legendFormat": "{{service_name}} {{span_name}} {{gen_ai_token_type}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "id": 2
+    }
+  ],
+  "links": [
+    {
+      "title": "Vista general de la plataforma",
+      "type": "link",
+      "url": "/d/platform-overview",
+      "keepTime": true,
+      "targetBlank": false
+    }
+  ]
+}

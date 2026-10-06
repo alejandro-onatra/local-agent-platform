@@ -1,0 +1,80 @@
+global:
+  scrape_interval: 15s
+scrape_configs:
+- job_name: otel-collector
+  static_configs:
+  - targets:
+    - collector:8889
+- job_name: prometheus
+  static_configs:
+  - targets:
+    - localhost:9090
+- job_name: blackbox
+  static_configs:
+  - targets:
+    - blackbox:9115
+- job_name: platform-health
+  metrics_path: /probe
+  scrape_timeout: 5s
+  params:
+    module:
+    - http_health
+  static_configs:
+  - targets:
+    - http://openhands:8000/canvas
+    labels:
+      service: openhands
+  - targets:
+    - http://openhands-proxy:8080/canvas
+    labels:
+      service: openhands-proxy
+  - targets:
+    - http://ollama:11434/api/version
+    labels:
+      service: ollama
+  - targets:
+    - http://litellm:4000/health/liveliness
+    labels:
+      service: litellm-proxy
+  - targets:
+    - http://collector:13133/
+    labels:
+      service: collector
+  - targets:
+    - http://prometheus:9090/-/ready
+    labels:
+      service: prometheus
+  - targets:
+    - http://tempo:3200/ready
+    labels:
+      service: tempo
+  - targets:
+    - http://loki:3100/ready
+    labels:
+      service: loki
+  - targets:
+    - http://grafana:3000/api/health
+    labels:
+      service: grafana
+  relabel_configs:
+  - source_labels:
+    - __address__
+    target_label: __param_target
+  - source_labels:
+    - __param_target
+    target_label: instance
+  - target_label: __address__
+    replacement: blackbox:9115
+- job_name: otel-internal
+  static_configs:
+  - targets:
+    - collector:8888
+  metric_relabel_configs:
+  - source_labels:
+    - __name__
+    regex: otelcol_(receiver_(accepted|refused)_(spans|metric_points|log_records)|exporter_(sent|send_failed|enqueue_failed)_(spans|metric_points|log_records)|exporter_queue_(size|capacity)|process_memory_rss)
+    action: keep
+  - regex: service_instance_id
+    action: labeldrop
+rule_files:
+- /etc/prometheus/alerts.yaml

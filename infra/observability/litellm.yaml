@@ -1,0 +1,36 @@
+model_list:
+- model_name: qwen3:8b
+  litellm_params:
+    model: openai/qwen3:8b
+    api_base: http://ollama:11434/v1
+    api_key: local-only
+    timeout: 180
+litellm_settings:
+  callbacks:
+  - otel
+  - prometheus
+  # The native Prometheus callback handles OpenAI/Ollama cached_tokens.
+  prometheus_metrics_config:
+  - group: local_prompt_cache
+    metrics:
+    - litellm_input_cached_tokens_metric
+    - litellm_input_cache_creation_tokens_metric
+    include_labels:
+    - model
+  require_auth_for_metrics_endpoint: true
+  turn_off_message_logging: true
+  set_verbose: false
+  json_logs: true
+  num_retries: 0
+  request_timeout: 180
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  disable_spend_logs: true
+callback_settings:
+  otel:
+    attributes:
+      include_list:
+      - gen_ai.operation.name
+      - gen_ai.request.model
+      - gen_ai.system
+      - gen_ai.framework

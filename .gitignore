@@ -1,0 +1,28 @@
+# Secrets and machine-specific configuration
+.env
+.env.*
+!.env.example
+mise.local.toml
+*.pem
+*.key
+
+# Local outputs and model weights
+artifacts/
+models/
+*.gguf
+*.safetensors
+
+# Development caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+node_modules/
+.DS_Store
+
+# Task execution cache
+.task/
+
+# Local IDE configuration
+.idea/

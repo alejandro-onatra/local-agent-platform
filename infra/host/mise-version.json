@@ -1,0 +1,7 @@
+{
+  "version": "2026.10.2",
+  "platform": "linux-x64",
+  "url": "https://github.com/jdx/mise/releases/download/v2026.10.2/mise-v2026.10.2-linux-x64.tar.gz",
+  "sha256": "79a2bf0ffc9b8a9a6391344e875b3c3679c15053fda3e8728ddf1790d63db788",
+  "binary_sha256": "8f5f6660336f572830e33cd9b378d3131e529a0d4c4f0c553776be90a1ba302a"
+}

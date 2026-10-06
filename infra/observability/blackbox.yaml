@@ -1,0 +1,10 @@
+# Internal, unauthenticated health endpoints only; never send proxy/admin keys.
+modules:
+  http_health:
+    prober: http
+    timeout: 3s
+    http:
+      method: GET
+      preferred_ip_protocol: ip4
+      ip_protocol_fallback: false
+      follow_redirects: false

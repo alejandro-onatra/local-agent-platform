@@ -1,0 +1,44 @@
+rule_files:
+- ../../infra/observability/alerts.yaml
+evaluation_interval: 30s
+tests:
+- name: PlatformEndpointUnavailable delay and recovery
+  interval: 30s
+  input_series:
+  - series: probe_success{job="platform-health",instance="http://service/health",service="litellm-proxy"}
+    values: 1 0 0 0 0 0 1 1
+  promql_expr_test:
+  - expr: ALERTS{alertname="PlatformEndpointUnavailable",alertstate="firing"}
+    eval_time: 2m
+    exp_samples: []
+  - expr: ALERTS{alertname="PlatformEndpointUnavailable",alertstate="firing"}
+    eval_time: 2m30s
+    exp_samples:
+    - labels: '{__name__="ALERTS",alertname="PlatformEndpointUnavailable",alertstate="firing",instance="http://service/health",job="platform-health",service="litellm-proxy",severity="warning"}'
+      value: 1
+  - expr: ALERTS{alertname="PlatformEndpointUnavailable",alertstate="firing"}
+    eval_time: 3m
+    exp_samples: []
+  - expr: ALERTS{alertname="ObservabilityScrapeUnavailable"}
+    eval_time: 2m30s
+    exp_samples: []
+- name: ObservabilityScrapeUnavailable delay and recovery
+  interval: 30s
+  input_series:
+  - series: up{job="blackbox",instance="blackbox:9115"}
+    values: 1 0 0 0 0 0 1 1
+  promql_expr_test:
+  - expr: ALERTS{alertname="ObservabilityScrapeUnavailable",alertstate="firing"}
+    eval_time: 2m
+    exp_samples: []
+  - expr: ALERTS{alertname="ObservabilityScrapeUnavailable",alertstate="firing"}
+    eval_time: 2m30s
+    exp_samples:
+    - labels: '{__name__="ALERTS",alertname="ObservabilityScrapeUnavailable",alertstate="firing",instance="blackbox:9115",job="blackbox",severity="warning"}'
+      value: 1
+  - expr: ALERTS{alertname="ObservabilityScrapeUnavailable",alertstate="firing"}
+    eval_time: 3m
+    exp_samples: []
+  - expr: ALERTS{alertname="PlatformEndpointUnavailable"}
+    eval_time: 2m30s
+    exp_samples: []

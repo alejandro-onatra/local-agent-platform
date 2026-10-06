@@ -1,0 +1,6 @@
+# mise owns development tool versions and environment activation.
+# Taskfile.yml owns task orchestration; scripts/ owns implementation.
+# Host packages and image digests are pinned in infra/host/versions.json.
+
+[tools]
+task = "3.54.0"

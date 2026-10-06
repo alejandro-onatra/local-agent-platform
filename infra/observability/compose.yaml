@@ -1,0 +1,209 @@
+name: agent-platform-observability
+services:
+  collector:
+    environment:
+      LITELLM_MASTER_KEY: ${OBS_LITELLM_MASTER_KEY:?Run scripts/observability/up.sh}
+    image: otel/opentelemetry-collector-contrib@sha256:340885ab6f46822374f00c58c067396b53b8d612559842e8821585567579d9e3
+    platform: linux/amd64
+    restart: 'no'
+    networks:
+    - data
+    mem_limit: 384m
+    cpus: 1
+    pids_limit: 256
+    cap_drop: &id001
+    - ALL
+    security_opt: &id002
+    - no-new-privileges:true
+    logging: &id003
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    command:
+    - --config=/etc/otel/config.yaml
+    volumes:
+    - ${OBS_COLLECTOR_CONFIG:-./collector.json}:/etc/otel/config.yaml:ro
+    read_only: true
+  prometheus:
+    image: prom/prometheus@sha256:86b17a25c2db1d16a61b16b3c8f336679eb19e26333d03e808da387206e40faa
+    platform: linux/amd64
+    restart: 'no'
+    networks:
+    - data
+    mem_limit: 384m
+    cpus: 1
+    pids_limit: 256
+    cap_drop:
+    - ALL
+    security_opt:
+    - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    command:
+    - --config.file=/etc/prometheus/prometheus.yaml
+    - --storage.tsdb.path=/prometheus
+    - --storage.tsdb.retention.time=7d
+    - --storage.tsdb.retention.size=1GB
+    volumes:
+    - ./prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
+    - prometheus-data:/prometheus
+    - ./alerts.yaml:/etc/prometheus/alerts.yaml:ro
+  loki:
+    image: grafana/loki@sha256:81a6802ec4bd1b88c564494f06376889ed022998a188826190d26d2754ac2aae
+    platform: linux/amd64
+    restart: 'no'
+    networks:
+    - data
+    mem_limit: 384m
+    cpus: 1
+    pids_limit: 256
+    cap_drop:
+    - ALL
+    security_opt:
+    - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    command:
+    - -config.file=/etc/loki/config.yaml
+    volumes:
+    - ./loki.yaml:/etc/loki/config.yaml:ro
+    - loki-data:/loki
+  tempo:
+    image: grafana/tempo@sha256:19dca9c0b1801209424a757cd5970d6ffd7cfc9a7f4966c2a6795fbe29b495a8
+    platform: linux/amd64
+    restart: 'no'
+    networks:
+    - data
+    mem_limit: 512m
+    cpus: 1
+    pids_limit: 256
+    cap_drop:
+    - ALL
+    security_opt:
+    - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    command:
+    - --config.file=/etc/tempo/config.yaml
+    - --backend-scheduler.provider.work.compaction.block-retention=168h
+    volumes:
+    - ./tempo.yaml:/etc/tempo/config.yaml:ro
+    - tempo-data:/var/tempo
+  grafana:
+    image: grafana/grafana@sha256:d84563330dc9d2fd2bc096d0fb96021b5319c75bf6ed555566709998e823dec4
+    platform: linux/amd64
+    restart: 'no'
+    networks:
+    - default
+    - data
+    mem_limit: 384m
+    cpus: 1
+    pids_limit: 256
+    cap_drop:
+    - ALL
+    security_opt:
+    - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    ports:
+    - 127.0.0.1:3000:3000
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${OBS_GRAFANA_PASSWORD:?Run scripts/observability/up.sh}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_AUTH_ANONYMOUS_ENABLED: 'false'
+      GF_ANALYTICS_REPORTING_ENABLED: 'false'
+      GF_ANALYTICS_CHECK_FOR_UPDATES: 'false'
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: 'false'
+      GF_SECURITY_DISABLE_GRAVATAR: 'true'
+    volumes:
+    - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    - grafana-data:/var/lib/grafana
+  litellm:
+    image: ghcr.io/berriai/litellm@sha256:5ce1ebf7f26ed82501b598e0ebecd4fe63d0e61817178427d4df86f2a16729ec
+    platform: linux/amd64
+    restart: 'no'
+    networks:
+    - data
+    - agent-link
+    mem_limit: 768m
+    cpus: 2
+    pids_limit: 256
+    cap_drop:
+    - ALL
+    security_opt:
+    - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+    command:
+    - --config
+    - /app/config.yaml
+    - --port
+    - '4000'
+    - --num_workers
+    - '1'
+    environment:
+      LITELLM_MASTER_KEY: ${OBS_LITELLM_MASTER_KEY:?Run scripts/observability/up.sh}
+      OTEL_SERVICE_NAME: litellm-proxy
+      OTEL_METRICS_EXEMPLAR_FILTER: always_off
+      OTEL_EXPORTER: otlp_http
+      OTEL_ENDPOINT: http://collector:4318/v1/traces
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      LITELLM_OTEL_INTEGRATION_ENABLE_METRICS: 'true'
+      LITELLM_OTEL_INTEGRATION_ENABLE_EVENTS: 'false'
+      OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: NO_CONTENT
+      USE_OTEL_LITELLM_REQUEST_SPAN: 'true'
+      LITELLM_LOCAL_MODEL_COST_MAP: 'true'
+      DO_NOT_TRACK: '1'
+    volumes:
+    - ./litellm.yaml:/app/config.yaml:ro
+    tmpfs:
+    - /tmp:rw,nosuid,nodev,size=64m,mode=1777
+  blackbox:
+    platform: linux/amd64
+    restart: 'no'
+    networks:
+    - data
+    - agent-link
+    cpus: 0.25
+    pids_limit: 256
+    cap_drop: *id001
+    security_opt: *id002
+    logging: *id003
+    read_only: true
+    image: prom/blackbox-exporter@sha256:43027b43fb785b7c5adc53bd3b5dbc1a258270a2e8aff24f477b45c4e38dac68
+    user: 65534:65534
+    mem_limit: 64m
+    command:
+    - --config.file=/etc/blackbox/config.yaml
+    volumes:
+    - ./blackbox.yaml:/etc/blackbox/config.yaml:ro
+networks:
+  data:
+    internal: true
+  agent-link:
+    external: true
+    name: agent-platform-local_agent-link
+volumes:
+  prometheus-data: {}
+  loki-data: {}
+  tempo-data: {}
+  grafana-data: {}

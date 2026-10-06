@@ -1,0 +1,16 @@
+{
+  "resolved_at": "2026-10-04",
+  "ollama": {
+    "version": "0.35.1",
+    "image": "ollama/ollama@sha256:17e945f1aa6e505707eeb621e3f36847d0a4a063d4778f7007645acccfb8bd4f",
+    "architecture": "linux/amd64"
+  },
+  "model": {
+    "name": "qwen3:8b",
+    "digest": "sha256:500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "download_bytes": 5225387677,
+    "context_length": 32768,
+    "num_predict": 128
+  },
+  "base_url": "http://127.0.0.1:11434"
+}
