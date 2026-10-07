@@ -1,34 +1,34 @@
-# Plan de trabajo — Plataforma local agnóstica de agentes
+# Implementation Plan — Model-Agnostic Local Agent Platform
 
-Fecha: 4 de octubre de 2026
-Estado al 6 de octubre de 2026: GPU, Docker, Ollama/Qwen3 y dos ejercicios de OpenHands validados en el host; el bugfix requirió guía humana. Pila de observabilidad desplegada y vista general más seis dashboards especializados provisionados; las nueve sondas, callback LLM, ingestión y canarias de privacidad pasaron en el host; falta validar la primera conversación observada de OpenHands. La plataforma agnóstica completa y sus políticas siguen pendientes.
+Date: October 4, 2026
+Status as of October 6, 2026: GPU, Docker, Ollama/Qwen3 and two OpenHands exercises validated on the host; the bugfix required human guidance. Observability stack deployed and general overview plus six specialized dashboards provisioned; the nine probes, callback LLM, ingestion and privacy canaries passed on the host; validation of the first observed OpenHands conversation is pending. The complete agnostic platform and its policies remain pending.
 
-## 1. Objetivo
+## 1. Objective
 
-Construir una plataforma de agentes reproducible en Linux, inicialmente con Docker Compose, que permita sustituir el runtime, los modelos, el motor de decisiones y las herramientas sin rediseñar toda la aplicación. La seguridad, la auditoría y la observabilidad formarán parte del diseño desde el primer flujo ejecutable.
+Build a reproducible agent platform on Linux, initially with Docker Compose, that allows replacing the runtime, models, decision engine and tools without redesigning the entire application. Security, auditing and observability will form part of the design from the first executable flow.
 
-El primer hito será una implementación local que ejecute un workflow de extremo a extremo, aplique políticas antes de usar herramientas, solicite aprobación cuando corresponda, persista su estado y genere métricas, trazas y eventos visibles en Grafana.
+The first milestone will be a local implementation that executes an end-to-end workflow, applies policies before using tools, requests approval when appropriate, persists its state and generates metrics, traces and events visible in Grafana.
 
-Este documento recoge lo planteado en «Proyecto IA Local #1». Las afirmaciones del chat sobre productos, licencias, rendimiento y calibración de motores de decisiones se verificarán antes de elegir dependencias.
+This document collects the content from «IA Local Project #1». Statements from the chat about products, licenses, performance and calibration of decision engines will be verified before choosing dependencies.
 
-## 2. Principios y alcance
+## 2. Principles and Scope
 
-- **Agnóstico de modelos:** adapters para OpenAI, Anthropic y modelos locales; el workflow no dependerá de sus SDK ni de sus formatos particulares.
-- **Runtime desacoplado:** un orchestrator coordinará los componentes mediante contratos. OpenHands podrá integrarse más adelante como runtime, sin convertirse en una dependencia obligatoria.
-- **Decisiones intercambiables:** `DecisionProvider` permitirá reglas locales, clasificadores y modelos. Jev será opcional y nunca necesario para arrancar.
-- **Prioridad local y abierta:** empezar con reglas deterministas y evaluar alternativas abiertas sobre datos representativos antes de adoptarlas.
-- **Seguridad fuera del modelo:** una capa de autorización controlará herramientas, alcance, destino y aprobaciones. Las respuestas del modelo no otorgarán permisos.
-- **Privacidad por defecto:** no guardar prompts, respuestas, argumentos de herramientas, PII ni secretos en telemetría. Cualquier almacenamiento de contenido requerirá un diseño explícito de acceso y retención.
-- **Reproducibilidad:** versiones fijadas, configuración declarativa, datos sintéticos, comandos documentados y tests significativos.
-- **Evolución a enterprise:** mantener contratos y servicios portables; abordar Kubernetes, identidad corporativa y alta disponibilidad cuando el MVP esté validado.
+- **Model Agnosticism:** adapters for OpenAI, Anthropic and local models; the workflow will not depend on their SDKs or particular formats.
+- **Decoupled Runtime:** an orchestrator will coordinate components through contracts. OpenHands can be integrated later as runtime, without becoming a mandatory dependency.
+- **Interchangeable Decisions:** `DecisionProvider` will allow local rules, classifiers and models. Jev will be optional and never necessary to start.
+- **Local and Open Priority:** start with deterministic rules and evaluate open alternatives on representative data before adopting them.
+- **Security Outside the Model:** a layer of authorization will control tools, scope, destination and approvals. Model responses will not grant permissions.
+- **Privacy by Default:** do not save prompts, responses, tool arguments, PII or secrets in telemetry. Any storage of content will require an explicit access and retention design.
+- **Reproducibility:** pinned versions, declarative configuration, synthetic data, documented commands and significant tests.
+- **Evolution to Enterprise:** maintain portable contracts and services; address Kubernetes, corporate identity and high availability when the MVP is validated.
 
-No forman parte del MVP una plataforma multiusuario de producción, un agente con acceso arbitrario al sistema ni automatizaciones sobre cuentas externas reales.
+A production multi-user platform, an agent with arbitrary system access, and automations over real external accounts are not part of the MVP.
 
-## 3. Arquitectura objetivo
+## 3. Target Architecture
 
 ```mermaid
 flowchart TD
-    Entry[CLI / API de workflows] --> Runtime[Runtime / Orchestrator]
+    Entry[Workflow CLI / API] --> Runtime[Runtime / Orchestrator]
     Runtime --> State[StateStore]
     Runtime --> Decisions[DecisionProvider]
     Runtime --> Router[ModelRouter]
@@ -37,206 +37,206 @@ flowchart TD
     Router --> Local[Local adapter]
     Runtime --> Guard[Policy / Approval layer]
     Guard --> Tools[Tool gateway / MCP]
-    Guard --> Audit[Auditoría persistente]
-    Runtime --> OTel[Collector OTel local]
+    Guard --> Audit[Persistent audit]
+    Runtime --> OTel[Local OTel Collector]
     Guard --> OTel
     Tools --> OTel
-    OTel --> Prometheus[Prometheus: métricas]
-    OTel --> Tempo[Tempo: trazas]
-    OTel --> Loki[Loki: eventos y logs]
+    OTel --> Prometheus[Prometheus: metrics]
+    OTel --> Tempo[Tempo: traces]
+    OTel --> Loki[Loki: events and logs]
     Prometheus --> Grafana[Grafana]
     Tempo --> Grafana
     Loki --> Grafana
 ```
 
-La auditoría persistente conservará las decisiones y aprobaciones necesarias para reconstruir una ejecución. Loki permitirá consultarlas operativamente, pero no será la única fuente de auditoría. Un `DecisionProvider` elegirá entre opciones del workflow; la autorización seguirá siendo responsabilidad de la capa de seguridad.
+Persistent auditing will retain the necessary decisions and approvals to reconstruct an execution. Loki will allow operational querying, but will not be the only source of auditing. A `DecisionProvider` will choose among workflow options; the authorization will remain the responsibility of the security layer.
 
-## 4. Fases
+## 4. Phases
 
-### Fase 0 — Acordar el primer caso de uso y las restricciones
+### Phase 0 — Agree on the first use case and constraints
 
-**Trabajo**
+**Work**
 
-- Definir el contrato del primer workflow: entrada, salida, decisiones, herramientas y resultado esperado.
-- Propuesta inicial: triage de mensajes sintéticos desde archivos locales, con clasificación, resumen y derivación a revisión humana. La integración con correo real llegará después.
-- Identificar hardware Linux disponible, capacidad de ejecutar Docker, disponibilidad de GPU y límites de memoria/disco.
-- Acordar si se permitirán proveedores cloud, un presupuesto máximo y las categorías de datos que podrán salir del equipo.
-- Definir actores, límites de confianza y acciones que exigirán aprobación.
+- Define the contract of the first workflow: input, output, decisions, tools and expected result.
+- Initial proposal: synthetic message triage from local files, with classification, summary and routing to human review. Integration with real email will come later.
+- Identify available Linux hardware, capacity to run Docker, availability of GPU and memory/disk limits.
+- Agree on whether cloud providers will be allowed, a maximum budget and the data categories that can leave the device.
+- Define actors, trust limits and actions that will require approval.
 
-**Entregables:** especificación del MVP, ejemplos sintéticos y modelo de amenazas inicial.
+**Deliverables:** MVP specification, synthetic examples and initial threat model.
 
-**Criterio de cierre:** el workflow tiene resultados verificables, permisos acotados y límites de coste y datos definidos. Puede desarrollarse inicialmente sin GPU ni claves cloud.
+**Closure Criteria:** The workflow has verifiable results, limited permissions and defined cost and data limits. It can be developed initially without GPU or cloud keys.
 
-### Fase 1 — Arquitectura, contratos y repositorio
+### Phase 1 — Architecture, Contracts and Repository
 
-**Trabajo**
+**Work**
 
-- Crear un repositorio de trabajo separado del material sincronizado bajo `sources/`, que se mantendrá como referencia de solo lectura.
-- Documentar decisiones de arquitectura y responsabilidades de cada componente.
-- Definir interfaces `Runtime`, `ModelProvider`, `ModelRouter`, `DecisionProvider`, `StateStore`, `ToolGateway`, `PolicyEngine` y `ApprovalStore`.
-- Normalizar solicitudes y resultados: identificadores de ejecución, errores, uso de tokens, capacidades, decisiones y estados.
-- Diseñar la máquina de estados: pendiente, ejecutando, esperando aprobación, completado, fallido y cancelado.
-- Definir timeouts, cancelación, reintentos limitados e idempotencia de acciones con efectos externos.
+- Create a separate work repository from the synchronized material under `sources/`, which will be maintained as a read-only reference.
+- Document architectural decisions and responsibilities of each component.
+- Define interfaces `Runtime`, `ModelProvider`, `ModelRouter`, `DecisionProvider`, `StateStore`, `ToolGateway`, `PolicyEngine` and `ApprovalStore`.
+- Normalize requests and results: execution identifiers, errors, token usage, capabilities, decisions and states.
+- Design the state machine: pending, executing, waiting for approval, completed, failed and canceled.
+- Define timeouts, cancellation, limited retries and idempotency of actions with external effects.
 
-**Entregables:** estructura inicial, contratos, diagramas y registros de decisiones de arquitectura.
+**Deliverables:** Initial structure, contracts, diagrams and architectural decision records.
 
-**Criterio de cierre:** un runtime y adapters simulados ejecutan el mismo contrato sin importar SDKs de proveedores en la lógica del workflow.
+**Closure Criteria:** A runtime and simulated adapters execute the same contract regardless of provider SDKs in the workflow logic.
 
-### Fase 2 — Entorno local y contrato de observabilidad
+### Phase 2 — Local environment and observability contract
 
-**Trabajo**
+**Work**
 
-- Preparar Docker Compose con OTel Collector, Prometheus, Tempo, Loki y Grafana. En el laboratorio existente, añadir LiteLLM Proxy mediante su callback OTel; reutilizar tracing nativo de OpenHands y filelog antes de plantear adaptadores propios. PostgreSQL llegará con el state store, cuando exista el runtime.
-- Documentar cobertura efectiva, riesgos de captura en origen, propagación de contexto pendiente y métricas futuras; ver [observabilidad](observability.md), [ADR 001](architecture/adr-001-observability.md) y [diagramas](architecture/observability_diagrams.md).
-- Añadir persistencia, health checks, versiones fijadas y un archivo de ejemplo de configuración sin credenciales.
-- Exponer en localhost solo los puertos necesarios; mantener los backends en redes internas y separar el acceso saliente a proveedores.
-- Definir métricas, atributos y eventos de baja cardinalidad antes de instrumentar los componentes.
-- Crear spans `agent.run`, `decision.route`, `llm.request`, `policy.evaluate` y `tool.call`.
-- Emitir métricas, trazas y logs mediante OpenTelemetry. Configurar batching, límites de memoria y una segunda barrera de filtrado en el Collector.
-- Evitar contenido sensible en origen y comprobar que también se excluye del estado persistente cuando no sea necesario.
-- Definir retención inicial y procedimientos de arranque, parada y eliminación explícita de datos locales.
+- Prepare Docker Compose with OTel Collector, Prometheus, Tempo, Loki, and Grafana. In the existing local platform, add LiteLLM Proxy via its OTel callback; reuse native OpenHands tracing and filelog before proposing custom adapters. PostgreSQL will come with the state store, when the runtime exists.
+- Document effective coverage, risks of capture at source, pending context propagation, and future metrics; see [observability](observability.md), [ADR 001](architecture/adr-001-observability.md) and [diagrams](architecture/observability_diagrams.md).
+- Add persistence, health checks, pinned versions, and an example configuration file without credentials.
+- Expose only necessary ports in localhost; keep backends in internal networks and separate outgoing access to providers.
+- Define metrics, attributes, and events of low cardinality before instrumenting the components.
+- Create spans `agent.run`, `decision.route`, `llm.request`, `policy.evaluate`, and `tool.call`.
+- Emit metrics, traces, and logs via OpenTelemetry. Configure batching, memory limits, and a second filtering barrier in the Collector.
+- Avoid sensitive content at source and check that it is also excluded from the persistent state when not necessary.
+- Define initial retention and procedures for startup, shutdown, and explicit deletion of local data.
 
-**Entregables:** Compose, configuraciones de observabilidad y contrato de telemetría documentado.
+**Deliverables:** Compose, observability configurations, and documented telemetry contract.
 
-**Criterio de cierre:** una ejecución sintética llega a los tres backends y puede localizarse por su identificador de traza. Los identificadores de ejecución no aparecen como etiquetas de métricas.
+**Closure criterion:** a synthetic execution reaches the three backends and can be located by its trace identifier. The execution identifiers do not appear as metric labels.
 
-### Fase 3 — Providers de modelos y routing básico
+### Phase 3 — Model providers and basic routing
 
-**Trabajo**
+**Work**
 
-- Implementar adapters para OpenAI, Anthropic y un servidor local, escogiendo inicialmente una opción entre Ollama, vLLM o llama.cpp tras verificar recursos y compatibilidad.
-- Mantener un provider simulado para desarrollo y tests sin red ni coste.
-- Normalizar respuestas, consumo de tokens, errores y capacidades; hacer explícitas las funciones no soportadas por cada provider.
-- Incorporar timeouts, reintentos acotados y tratamiento de errores transitorios y límites de API.
-- Crear un router basado en configuración, capacidades, sensibilidad de datos y presupuesto.
-- Registrar coste estimado solo cuando existan tarifas configuradas; mostrar coste desconocido si faltan datos. Separar coste de API de coste operativo local.
-- Impedir fallback cloud cuando la política de datos no lo permita.
+- Implement adapters for OpenAI, Anthropic, and a local server, choosing initially an option between Ollama, vLLM, or llama.cpp after verifying resources and compatibility.
+- Maintain a simulated provider for development and tests without network or cost.
+- Normalize responses, token consumption, errors, and capabilities; make explicit the functions not supported by each provider.
+- Incorporate timeouts, bounded retries, and handling of transient errors and API limits.
+- Create a router based on configuration, capabilities, data sensitivity, and budget.
+- Register estimated cost only when tariffs are configured; show unknown cost if data is missing. Separate API cost from local operational cost.
+- Prevent fallback to cloud when the data policy does not allow it.
 
-**Entregables:** adapters, configuración del catálogo de modelos y router inicial.
+**Deliverables:** adapters, model catalog configuration, and initial router.
 
-**Criterio de cierre:** el mismo workflow funciona con el provider simulado y uno local. Los adapters cloud pasan tests de contrato con respuestas simuladas; su validación real requerirá credenciales y presupuesto autorizados.
+**Closure criterion:** the same workflow functions with the simulated provider and a local one. The cloud adapters pass contract tests with simulated responses; their real validation will require authorized credentials and budget.
 
-### Fase 4 — DecisionProvider local e intercambiable
+### Phase 4 — Local and interchangeable DecisionProvider
 
-**Trabajo**
+**Work**
 
-- Implementar primero un motor de reglas local, determinista y explicable para el caso de uso inicial.
-- Definir salida tipada: opción válida, motivo acotado, abstención y confianza opcional. No presentar una puntuación del modelo como probabilidad calibrada sin evaluación.
-- Implementar una segunda estrategia intercambiable, por ejemplo un clasificador local o un pequeño modelo con salida estructurada validada.
-- Verificar candidatos mencionados en el chat, incluidos Laya, Kev y otras alternativas, revisando existencia, licencia, mantenimiento, hardware y calidad antes de seleccionar alguno.
-- Medir exactitud, falsos positivos/negativos, latencia, coste y tasa de abstención. Medir calibración solo si la estrategia produce probabilidades evaluables.
-- Definir escalación a otro modelo o a revisión humana con límites explícitos.
+- Implement first a local, deterministic, and explainable rule-based engine for the initial use case.
+- Define typed output: valid option, bounded reason, abstention, and optional confidence. Do not present a model score as a calibrated probability without evaluation.
+- Implement a second interchangeable strategy, for example a local classifier or a small model with structured output validated.
+- Verify mentioned candidates in the chat, including Laya, Kev, and other alternatives, reviewing existence, license, maintenance, hardware, and quality before selecting any.
+- Measure accuracy, false positives/negatives, latency, cost, and abstention rate. Measure calibration only if the strategy produces evaluable probabilities.
+- Define escalation to another model or human review with explicit limits.
 
-**Entregables:** dos implementaciones del contrato y un conjunto de evaluación sintético etiquetado.
+**Deliverables:** two implementations of the contract and a labeled synthetic evaluation set.
 
-**Criterio de cierre:** se cambia de motor por configuración; una salida inválida o insuficiente no desencadena una acción y queda registrada como abstención o escalación.
+**Closure criterion:** the engine changes by configuration; an invalid or insufficient output does not trigger an action and is recorded as abstention or scaling.
 
-### Fase 5 — Estado, auditoría y reanudación
+### Phase 5 — State, audit, and resumption
 
-**Trabajo**
+**Work**
 
-- Implementar el state store con PostgreSQL y migraciones versionadas.
-- Persistir ejecuciones, pasos, referencias a resultados, decisiones, aprobaciones y claves de idempotencia.
-- Guardar solo contenido necesario, con retención y acceso definidos; nunca claves de API.
-- Añadir auditoría con actor, acción, política/version, resultado, fecha e identificadores de correlación, evitando argumentos sensibles.
-- Diseñar recuperación tras interrupciones y separación entre reintento seguro y acción de resultado incierto.
-- Posponer Redis y almacenamiento vectorial hasta que una necesidad concreta los justifique.
+- Implement the state store with PostgreSQL and versioned migrations.
+- Persist executions, steps, references to results, decisions, approvals, and idempotency keys.
+- Save only necessary content, with defined retention and access; never API keys.
+- Add audit with actor, action, policy/version, result, date, and correlation identifiers, avoiding sensitive arguments.
+- Design recovery after interruptions and separation between safe retry and result uncertain action.
+- Postpone Redis and vector storage until a concrete need justifies them.
 
-**Entregables:** esquema, migraciones, implementación del store y procedimiento de backup/restauración local.
+**Deliverables:** schema, migrations, store implementation, and local backup/restoration procedure.
 
-**Criterio de cierre:** una ejecución pendiente de aprobación sobrevive a un reinicio. Los tests comprueban que reanudar no duplica una acción y que los estados terminales son coherentes.
+**Closure criterion:** a pending execution awaiting approval survives a restart. Tests verify that resuming does not duplicate an action and that terminal states are consistent.
 
-### Fase 6 — Herramientas, MCP, políticas y aprobaciones
+### Phase 6 — Tools, MCP, policies, and approvals
 
-**Trabajo**
+**Work**
 
-- Crear un catálogo de herramientas con esquemas, capacidades, destinos permitidos y nivel de riesgo definido por configuración de confianza.
-- Implementar primero una herramienta local de lectura y una escritura acotada sobre un directorio de trabajo.
-- Añadir un cliente MCP compatible con la versión elegida del protocolo, conectado a un servidor local controlado; probar negociación, llamadas, errores y desconexión.
-- Aplicar denegación por defecto y autorización antes de cada llamada, tanto para herramientas locales como MCP.
-- Vincular las aprobaciones a una acción concreta, sus argumentos, el actor, la versión de política y una caducidad; validar de nuevo antes de ejecutar y evitar reutilización.
-- Separar datos no confiables, instrucciones del workflow y permisos para limitar ataques de prompt injection.
-- Diseñar aislamiento de workers sin acceso al socket de Docker, con filesystem y red acotados. Un contenedor, por sí solo, no será considerado un sandbox suficiente.
-- Emitir eventos de permiso, denegación, aprobación, expiración y fallo de herramienta.
+- Create a tool catalog with schemas, capabilities, allowed destinations, and risk level defined by trust configuration.
+- Implement first a local read tool and a limited write over a working directory.
+- Add an MCP client compatible with the chosen protocol version, connected to a local server under control; test negotiation, calls, errors, and disconnection.
+- Apply default denial and authorization before each call, both for local tools and MCP.
+- Link approvals to a specific action, its arguments, the actor, policy version, and expiration; validate again before execution and avoid reuse.
+- Separate unreliable data, workflow instructions, and permissions to limit prompt injection attacks.
+- Design worker isolation without access to Docker socket, with limited filesystem and network. A container, by itself, will not be considered a sufficient sandbox.
+- Emit permission, denial, approval, expiration, and tool failure events.
 
-**Entregables:** tool gateway, integración MCP local, políticas declarativas y mecanismo CLI/API de aprobación.
+**Deliverables:** tool gateway, local MCP integration, declarative policies, and CLI/API approval mechanism.
 
-**Criterio de cierre:** los tests demuestran que una acción denegada no se ejecuta, que una modificación invalida la aprobación y que el modelo no puede elevar sus propios permisos.
+**Closure criterion:** tests demonstrate that a denied action does not execute, that a modification invalidates the approval, and that the model cannot elevate its own permissions.
 
-### Fase 7 — Primer workflow completo
+### Phase 7 — First complete workflow
 
-**Trabajo**
+**Work**
 
-- Integrar runtime, routing, decisiones, estado, herramientas y controles de seguridad.
-- Ejecutar el triage sintético: leer mensaje, decidir, generar resumen si corresponde y registrar el resultado o esperar aprobación.
-- Implementar límites por ejecución de pasos, tiempo, tokens y coste estimado, con cancelación controlada.
-- Emitir resultados del workflow y registrar calidad mediante etiquetas verificadas o feedback humano, evitando confundir éxito técnico con corrección del resultado.
-- Probar éxito, abstención, denegación, aprobación, expiración, fallo de provider, timeout y reinicio.
+- Integrate runtime, routing, decisions, state, tools, and security controls.
+- Execute synthetic triage: read message, decide, generate summary if applicable, and record the result or wait for approval.
+- Implement limits per step execution, time, tokens, and estimated cost, with controlled cancellation.
+- Emit workflow results and record quality through verified tags or human feedback, avoiding confusing technical success with result correctness.
+- Test success, abstention, denial, approval, expiration, provider failure, timeout, and restart.
 
-**Entregables:** workflow reproducible, fixtures de demo y comando de ejecución.
+**Deliverables:** reproducible workflow, demo fixtures, and execution command.
 
-**Criterio de cierre:** el flujo completo puede ejecutarse sin servicios cloud y reconstruirse a partir del estado, la auditoría y su traza.
+**Closure criterion:** the complete flow can execute without cloud services and be reconstructed from the state, audit, and its trace.
 
-### Fase 8 — Dashboards Grafana provisionados
+### Phase 8 — Provisioned Grafana dashboards
 
-Los dashboards y datasources se cargarán automáticamente desde archivos versionados. Cada panel tendrá una fuente real, unidades claras y una descripción; la ausencia de datos no se presentará como cero.
+The dashboards and data sources will be automatically loaded from versioned files. Each panel will have a real source, clear units, and a description; the absence of data will not be presented as zero.
 
-| Dashboard | Contenido inicial |
+| Dashboard | Initial Content |
 | --- | --- |
-| Agent operations | Ejecuciones, éxito/fallo, duración p50/p95/p99, actividad, espera de aprobación, timeouts y reintentos. |
-| LLM cost / routing | Tokens, coste estimado en el intervalo seleccionado, costes desconocidos, latencia, distribución por provider/modelo, fallbacks y coste por tarea completada. |
-| Model quality / escalations | Evaluaciones etiquetadas, errores por categoría, abstenciones, escalaciones y correcciones humanas; calibración cuando haya datos suficientes. |
-| Security | Decisiones de políticas, denegaciones, aprobaciones pendientes/concedidas/expiradas y motivos acotados, sin PII ni identidades como etiquetas de alta cardinalidad. |
-| Tools / MCP | Llamadas, duración, errores, timeouts y disponibilidad del servidor MCP a partir de comprobaciones reales. |
-| Workflow / business KPIs | Entradas procesadas, resultados verificados, revisión humana y correcciones. Tiempo ahorrado solo como estimación con método explícito. |
+| Agent operations | Executions, success/failure, duration p50/p95/p99, activity, approval wait, timeouts, and retries. |
+| LLM cost / routing | Tokens, estimated cost in the selected interval, unknown costs, latency, distribution by provider/model, fallbacks, and cost per completed task. |
+| Model quality / escalations | Labeled evaluations, errors by category, abstentions, escalations, and human corrections; calibration when there is sufficient data. |
+| Security | Policy decisions, denials, pending/approved/expired approvals, and limited reasons, without PII or identities as high cardinality labels. |
+| Tools / MCP | Calls, duration, errors, timeouts, and MCP server availability from real checks. |
+| Workflow / business KPIs | Processed inputs, verified results, human review, and corrections. Time saved only as an estimate with an explicit method. |
 
-**Trabajo adicional**
+**Additional work**
 
-- Correlacionar métricas, trazas y eventos donde lo soporte la instrumentación.
-- Añadir variables de workflow/provider/modelo sin permitir etiquetas de texto libre.
-- Definir alertas iniciales para fallos, latencia, pérdida de telemetría y acumulación de aprobaciones. Las notificaciones externas se configurarán más adelante.
-- Producir una demo controlada que alimente los paneles y permita comparar sus resultados con el estado persistido.
+- Correlate metrics, traces, and events where supported by instrumentation.
+- Add workflow/provider/model variables without allowing free-text labels.
+- Define initial alerts for failures, latency, telemetry loss, and accumulation of approvals. External notifications will be configured later.
+- Produce a controlled demo that feeds the panels and allows comparing their results with the persisted state.
 
-**Entregables:** vista general y seis dashboards especializados JSON, provisioning, reglas de alerta y catálogo de métricas.
+**Deliverables:** overview view and six specialized JSON dashboards, provisioning, alert rules, and metric catalog.
 
-**Criterio de cierre:** los siete dashboards aparecen al arrancar Grafana y sus consultas devuelven los resultados esperados para la demo, incluido el tratamiento de denominadores cero y datos ausentes.
+**Closure criterion:** the seven dashboards appear on Grafana startup and their queries return the expected demo results, including treatment of zero denominators and missing data.
 
-### Fase 9 — Validación, endurecimiento y documentación del MVP
+### Phase 9 — Validation, hardening, and documentation of the MVP
 
-**Trabajo**
+**Work**
 
-- Ejecutar tests de contratos, seguridad, recuperación y workflow; añadir integración real de servicios Compose.
-- Validar configuración Compose y de los backends, salud, persistencia y provisioning.
-- Inyectar fallos de provider, MCP y Collector; comprobar que la pérdida de telemetría no elimina la auditoría persistente.
-- Introducir PII y secretos sintéticos para comprobar que no aparecen en logs, trazas, métricas o campos de estado que deban excluirlos.
-- Revisar credenciales, permisos, dependencias, exposición de puertos y límites de recursos.
-- Documentar instalación Linux, configuración, modelos locales, demo, políticas, aprobaciones, backup, troubleshooting y limitaciones.
-- Configurar CI sin secretos para tests y validaciones estáticas; reservar los tests con APIs reales para una ejecución explícita.
+- Execute contract, security, recovery, and workflow tests; add real integration of Compose services.
+- Validate Compose configuration and backend settings, health, persistence, and provisioning.
+- Inject provider, MCP, and Collector failures; check that telemetry loss does not eliminate persistent audit.
+- Introduce synthetic PII and secrets to verify that they do not appear in logs, traces, metrics, or state fields that should exclude them.
+- Review credentials, permissions, dependencies, port exposure, and resource limits.
+- Document Linux installation, configuration, local models, demo, policies, approvals, backup, troubleshooting, and limitations.
+- Configure CI without secrets for tests and static validations; reserve real API tests for explicit execution.
 
-**Entregables:** informe de validación, guía de operación y registro de limitaciones.
+**Deliverables:** validation report, operations guide, and limitations registry.
 
-**Criterio de cierre:** otra persona puede reproducir el MVP desde la documentación y ejecutar los checks. Cualquier validación que el entorno no permita se registra como pendiente, sin declararla aprobada.
+**Closure criterion:** another person can reproduce the MVP from the documentation and execute the checks. Any validation that the environment does not allow is registered as pending, without declaring it approved.
 
-### Fase 10 — Integraciones reales y evolución a Kubernetes / enterprise
+### Phase 10 — Real integrations and evolution to Kubernetes / enterprise
 
-Esta fase comenzará después de validar el MVP local.
+This phase will begin after validating the local MVP.
 
-**Trabajo**
+**Work**
 
-- Elegir una primera integración externa y definir sus permisos, datos y aprobaciones antes de activar acciones reales.
-- Evaluar OpenHands u otro runtime mediante los contratos existentes y comparar su utilidad sobre el workflow.
-- Incorporar clasificadores especializados o motores locales de decisión que superen la evaluación acordada.
-- Preparar despliegue Kubernetes: workloads, servicios, probes, límites, volúmenes, secretos y NetworkPolicies.
-- Evolucionar a collectors agent/gateway, autenticación entre servicios, TLS, identidad OIDC, RBAC y aislamiento por usuario/tenant.
-- Diseñar alta disponibilidad, recuperación, auditoría resistente a alteraciones y retención por requisitos reales.
-- Considerar motores de políticas como OPA o Cedar y almacenamiento adicional únicamente cuando aporten una capacidad necesaria.
-- Validar licencias y costes operativos, evaluar carga y fijar objetivos de disponibilidad y latencia antes de producción.
+- Choose a first external integration and define its permissions, data, and approvals before activating real actions.
+- Evaluate OpenHands or another runtime through existing contracts and compare its utility over the workflow.
+- Incorporate specialized classifiers or local decision engines that surpass the agreed evaluation.
+- Prepare Kubernetes deployment: workloads, services, probes, limits, volumes, secrets, and NetworkPolicies.
+- Evolve to agent/gateway collectors, service-to-service authentication, TLS, OIDC identity, RBAC, and user/tenant isolation.
+- Design high availability, recovery, tamper-resistant auditing, and retention according to real requirements.
+- Consider policy engines like OPA or Cedar and additional storage only when they provide a necessary capability.
+- Validate licenses and operational costs, assess load, and set availability and latency targets before production.
 
-**Entregables:** plan de migración, despliegue de prueba y requisitos de producción.
+**Deliverables:** migration plan, test deployment, and production requirements.
 
-**Criterio de cierre:** el mismo workflow y los mismos contratos funcionan en el entorno nuevo; seguridad, aislamiento y recuperación tienen evidencia de validación propia.
+**Closure criterion:** the same workflow and the same contracts function in the new environment; security, isolation, and recovery have their own validation evidence.
 
-## 5. Estructura propuesta del repositorio
+## 5. Proposed repository structure
 
 ```text
 agent-platform/
@@ -290,74 +290,74 @@ agent-platform/
     └── kubernetes-roadmap.md
 ```
 
-Los paquetes representan límites lógicos, no un compromiso de crear un microservicio por componente. El MVP mantendrá pocos procesos para simplificar su operación. El lenguaje y las dependencias se escogerán en la fase 1 según los contratos y las integraciones necesarias.
+The packages represent logical boundaries, not a commitment to create a microservice per component. The MVP will maintain few processes to simplify its operation. The language and dependencies will be chosen in the phase 1 according to the contracts and the necessary integrations.
 
-## 6. Orden de ejecución e hitos
+## 6. Execution order and milestones
 
-1. **Diseño aprobado:** fases 0–1, con caso de uso, límites y contratos definidos.
-2. **Base local observable:** fase 2, con Compose y telemetría sintética funcionando.
-3. **Componentes intercambiables:** fases 3–5, con modelos, decisiones y persistencia probados. El diseño de seguridad de la fase 6 se tendrá en cuenta desde la fase 1.
-4. **Flujo protegido de extremo a extremo:** fases 6–7, con aprobaciones y recuperación.
-5. **MVP reproducible:** fases 8–9, con siete dashboards y documentación validada.
-6. **Ampliación posterior:** fase 10, guiada por necesidades y resultados del MVP.
+1. **Approved design:** phases 0–1, with use case, boundaries, and contracts defined.
+2. **Local observable base:** phase 2, with Compose and synthetic telemetry functioning.
+3. **Interchangeable components:** phases 3–5, with models, decisions, and persistence tested. The security design of phase 6 will be considered from phase 1.
+4. **End-to-end protected flow:** phases 6–7, with approvals and recovery.
+5. **Reproducible MVP:** phases 8–9, with seven dashboards and validated documentation.
+6. **Post-expansion:** phase 10, guided by needs and MVP results.
 
-La seguridad se implementará antes de habilitar herramientas con efectos; la instrumentación se añadirá a cada componente conforme se construya. Los dashboards se completarán cuando sus métricas tengan productores reales.
+Security will be implemented before enabling tools with effects; instrumentation will be added to each component as it is built. The dashboards will be completed when their metrics have real producers.
 
-No se fijan plazos todavía: dependen del hardware disponible, del runtime elegido y de las integraciones. Al cerrar la fase 1 se podrá estimar cada hito con mayor precisión.
+No deadlines are set yet: they depend on available hardware, chosen runtime, and integrations. Once phase 1 is closed, each milestone can be estimated with greater precision.
 
-## 7. Definición de terminado del primer MVP
+## 7. Definition of completion of the first MVP
 
-- Arranca en Linux con un procedimiento Compose documentado y versiones fijadas.
-- Ejecuta el workflow sintético sin Jev, GPU obligatoria ni claves cloud.
-- Permite sustituir un provider de modelos y un DecisionProvider por configuración.
-- Persiste ejecuciones y aprobaciones, y reanuda sin duplicar las acciones verificadas en tests.
-- Autoriza todas las herramientas mediante políticas y bloquea acciones sin aprobación válida.
-- Exporta métricas, trazas y eventos a través del Collector local.
-- Provisiona la vista general y los seis dashboards especializados y muestra datos verificables de la demo.
-- Excluye contenido sensible de la telemetría y supera los tests con PII/secretos sintéticos.
-- Incluye tests, comandos de validación, guía de operación y limitaciones conocidas.
-- Mantiene documentada la ruta hacia Kubernetes sin exigirlo para operar localmente.
+- Starts on Linux with a documented Compose procedure and pinned versions.
+- Executes the synthetic workflow without Jev, mandatory GPU, or cloud keys.
+- Allows substitution of a model provider and a DecisionProvider via configuration.
+- Persists executions and approvals, and resumes without duplicating verified actions in tests.
+- Authorizes all tools through policies and blocks actions without valid approval.
+- Exports metrics, traces, and events through the local Collector.
+- Provides the overview and six specialized dashboards and shows verifiable data from the demo.
+- Excludes sensitive content from telemetry and passes tests with synthetic PII/secrets.
+- Includes tests, validation commands, operation guide, and known limitations.
+- Maintains documentation of the path toward Kubernetes without requiring it for local operation.
 
-## 8. Situación inicial
+## 8. Initial situation
 
-La carpeta de trabajo contiene las instrucciones del proyecto y este plan; no hay implementación todavía. Python está disponible en el entorno revisado y Docker no está instalado. El arranque y las pruebas completas de Compose deberán hacerse en un host Linux con Docker disponible. Esta limitación no impide empezar por contratos, estructura, tests y configuraciones.
+The work folder contains the project instructions and this plan; there is no implementation yet. Python is available in the reviewed environment and Docker is not installed. The startup and full testing of Compose must be done on a Linux host with Docker available. This limitation does not prevent starting with contracts, structure, tests, and configurations.
 
-**Siguiente trabajo previsto:** ejecutar las fases 0 y 1, concretar el workflow sintético y crear el repositorio inicial siguiendo este plan.
+**Next planned work:** execute phases 0 and 1, concretize the synthetic workflow, and create the initial repository following this plan.
 
-## Herramientas de trabajo acordadas
+## Agreed work tools
 
-- `mise.toml` y `mise.lock`: versiones y entorno de herramientas de desarrollo.
-- `Taskfile.yml`: coordinación de tareas y secuencias de preparación/comprobación.
-- `scripts/bootstrap/`, `scripts/host/`, `scripts/repo/`, `scripts/llm/` y `scripts/openhands/`: implementación de comandos por responsabilidad.
-- `infra/`: configuración declarativa y versiones de infraestructura.
-- `docs/`: documentación detallada y diagnósticos revisados.
+- `mise.toml` and `mise.lock`: versions and development tool environment.
+- `Taskfile.yml`: task coordination and preparation/check sequences.
+- `scripts/bootstrap/`, `scripts/host/`, `scripts/repo/`, `scripts/llm/`, and `scripts/openhands/`: command implementation by responsibility.
+- `infra/`: declarative configuration and infrastructure versions.
+- `docs/`: detailed documentation and reviewed diagnostics.
 
-El primer entorno GPU/Docker está validado en el host. La migración de tareas mise a go-task pasó la validación de plan y sintaxis; su comprobación GPU completa se ejecutará en el host. Ver [entorno](environment.md).
+The first GPU/Docker environment is validated on the host. The migration of tasks mise to go-task passed the plan and syntax validation; its full GPU check will be executed on the host. See [environment](environment.md).
 
-## Avance de observabilidad — 5 de octubre de 2026
+## Observability progress — October 5, 2026
 
-La propuesta se concreta con integraciones existentes, sin adaptador propio de conversaciones: LiteLLM → OTLP → Collector; filelog para los logs Docker seleccionados; tracing nativo de OpenHands como paso optativo y sintético. Se prepararon Compose con digests, filtros, fuentes Grafana, una vista general y seis dashboards especializados y tareas en `scripts/observability/`. mise conserva la gestión del entorno y go-task coordina.
+The proposal is concretized with existing integrations, without a proprietary conversation adapter: LiteLLM → OTLP → Collector; filelog for selected Docker logs; native OpenHands tracing as an optional and synthetic step. Compose with digests, filters, Grafana sources, an overview, six specialized dashboards, and tasks in `scripts/observability/`. mise retains environment management and go-task coordinates.
 
-Se validan configuraciones con los binarios fijados y una prueba del Collector que intenta filtrar contenido sensible. La ejecución Docker de la pila, la ruta real del nuevo perfil y la correlación de spans siguen pendientes de comprobar en el host. Los paneles de calidad, políticas/MCP y negocio explicitan lo que aún no está instrumentado; no se declara cerrada la fase 2.
+Configurations are validated with pinned binaries and a Collector test that attempts to filter sensitive content. Docker execution of the stack, the real path of the new profile, and span correlation remain pending verification on the host. Quality panels, policies/MCP, and business explicitly state what is still not instrumented; the phase 2 is not declared closed.
 
-El principio de no capturar contenido en origen se aplica al proxy LLM. El tracing nativo del SDK puede capturar entradas/resultados antes del Collector; por eso no se activa en el arranque normal. Antes de usar datos personales hay que resolver esa diferencia y revisar estado/logs locales, además de los backends.
+The principle of not capturing content at the source is applied to the LLM proxy. Native SDK tracing can capture inputs/results before the Collector; that is why it is not activated on normal startup. Before using personal data, this difference must be resolved and local state/logs, as well as backends, must be reviewed.
 
-La vista general añade nueve sondas HTTP con Blackbox Exporter, métricas internas del Collector y dos alertas locales comprobadas con escenarios de activación/recuperación. Las métricas de GPU/host, calidad, políticas y negocio continúan pendientes. Ver [dashboards](dashboards.md).
+The overview adds nine HTTP probes with Blackbox Exporter, internal metrics of the Collector and two local alerts verified with activation/recovery scenarios. GPU/host metrics, quality, policies and business metrics continue pending. See [dashboards](dashboards.md).
 
-Aceptación del 6 de octubre: `observability:up` y `observability:check` completaron con éxito en el host. Confirmadas nueve sondas sanas, respuesta del modelo autenticada, traza/métricas nativas LLM y canarias sanitizadas; Grafana muestra datos reales. Pendiente conversación OpenHands por LiteLLM y correlación completa del agente. Evidencia: [diagnóstico](diagnostics/observability-2026-10-06.md).
+Acceptance of October 6: `observability:up` and `observability:check` successfully completed on the host. Nine healthy probes confirmed, model response authenticated, native LLM trace/metrics and sanitized canaries; Grafana shows real-time data. Pending OpenHands conversation via LiteLLM and full agent correlation. Evidence: [diagnosis](diagnostics/observability-2026-10-06.md).
 
-Dashboards actualizados con golden signals de alcance explícito y totales de solicitudes/errores/tokens: acumulados actuales y estimaciones por período. Tasas conservadas. Recarga y 43 consultas verificadas en Grafana; saturación de GPU/servidor LLM e histórico durable de uso siguen pendientes.
+Dashboards updated with explicit reach golden signals and totals of requests/errors/tokens: current accumulated and estimates per period. Rates preserved. Reload and 43 queries verified in Grafana; GPU/LLM server saturation and durable usage history remain pending.
 
-### Ajuste de observabilidad de caché — 6 de octubre de 2026
+### Cache observability tuning — October 6, 2026
 
-Se comprobó reutilización real de prefijo en Ollama y se prepararon paneles de cache-read/write mediante el callback Prometheus nativo LiteLLM y receiver autenticado del Collector. Configuración, privacidad y ausencia de doble suma verificadas aisladamente. Aplicado al host: `observability:cache:check` pasó el 6 de octubre a las 09:57 Europe/Berlin, con 1.623 tokens reutilizados cotejados. Pendiente confirmar una nueva llamada de la conversación reportada después de volver a seleccionar su perfil. No se considera resuelto el cotejo histórico OpenHands/proxy hasta disponer de esa evidencia. Detalle en `docs/diagnostics/tokens-2026-10-06.md`.
+Real reutilization of prefix in Ollama was verified and cache-read/write panels were prepared via the native LiteLLM Prometheus callback and authenticated Collector receiver. Configuration, privacy and absence of double summation verified separately. Applied to the host: `observability:cache:check` passed October 6 at 09:57 Europe/Berlin, with 1,623 tokens reutilized verified. Pending confirmation of a new conversation call reported after reselecting its profile. The historical OpenHands/proxy verification is not considered resolved until that evidence is available. Details in `docs/diagnostics/tokens-2026-10-06.md`.
 
-Migración de configuración, 6 de octubre: fuentes Collector/manifiestos de versiones en YAML; entorno Python/PyYAML fijado con mise, venv y hashes. Los dashboards y artefactos generados conservan JSON. Próximo cierre del laboratorio: confirmar uso real de una conversación OpenHands por el proxy (incluido streaming), antes de ampliar el runtime y el primer workflow de triage sintético.
+Configuration migration, October 6: Collector/manifests sources in YAML; Python/PyYAML environment pinned with mise, venv and hashes. The dashboards and generated artifacts retain JSON. Next platform local closure: confirm real use of an OpenHands conversation by the proxy (including streaming), before expanding the runtime and the first synthetic triage workflow.
 
-Hallazgo de ruta: el diagnóstico del host confirmó `direct Ollama` en la conversación afectada. Preparadas reparación por API y prueba de streaming, con tests de validación. La reparación por API fue aplicada con éxito en el host: conversación/default por LiteLLM y streaming activo. La prueba SSE cotejó exactamente 23 tokens de entrada y 8 de salida; después Grafana mostró entrada 16.646, salida 2.243 y tres llamadas adicionales, incluyendo la prueba. El fallo de ruta queda cerrado. La correlación detallada por conversación sigue pendiente; el siguiente paso del plan es el primer workflow sintético con decisiones y aprobación explícitas.
-
-
-7 de octubre de 2026: corregida la separación de responsabilidades del ambiente. mise declara instalación y validación del entorno, Task declara operación de servicios/tests de código y scripts categorizados contienen la implementación. Esta reorganización no reinstala Docker ni reinicia servicios.
+Path finding: the host diagnosis confirmed `direct Ollama` in the affected conversation. Repair via API and streaming test prepared with validation tests. The API repair was successfully applied on the host: conversation/default via LiteLLM and streaming active. The SSE test verified exactly 23 input tokens and 8 output tokens; afterward Grafana showed input 16,646, output 2,243 and three additional calls, including the test. The path failure is closed. Detailed conversation correlation remains pending; the next step in the plan is the first synthetic workflow with decisions and explicit approvals.
 
 
-Dependencias Python centralizadas en pyproject.toml/uv.lock con uv fijado por mise. Se conserva la separación ambiente/operación y los nombres de documentos en minúsculas.
+October 7, 2026: fixed the separation of responsibilities of the environment. mise declares installation and validation of the environment, Task declares operation of services/test code and categorized scripts contain the implementation. This reorganization does not reinstall Docker nor restart services.
+
+
+Python dependencies centralized in pyproject.toml/uv.lock with uv pinned by mise. The separation of environment/operation and document names in lowercase are preserved.

@@ -1,11 +1,11 @@
-# Seguridad reproducible del repositorio
+# Reproducible Repository Security
 
-## Implementado: control de secretos
+## Implemented: Secret Control
 
-Gitleaks 8.30.1 está fijado en `mise.toml` y su descarga/checksum en `mise.lock`.
-Las reglas oficiales incluidas en ese binario se extienden con `.gitleaks.toml`
-para detectar la master key local de LiteLLM. No usamos supresiones por comentario,
-`.gitleaksignore` ni baseline de hallazgos aceptados.
+Gitleaks 8.30.1 is pinned in `mise.toml` and its download/checksum is in `mise.lock`.
+The official rules included in that binary are extended with `.gitleaks.toml`
+to detect the local master key of LiteLLM. We do not use comment suppressions,
+`.gitleaksignore` nor accepted findings baseline.
 
 ```bash
 mise install --locked
@@ -13,52 +13,51 @@ mise exec -- task security:secrets
 mise exec -- task security:test
 ```
 
-La tarea revisa archivos versionados y nuevos no ignorados, contenido staged y
-el historial de todas las referencias Git disponibles localmente. Rechaza clones
-shallow, symlinks y rutas publicables inesperadas de credenciales, pesos y artefactos.
-No revisa secretos ignorados que permanecen fuera de Git; no lee las credenciales
-locales almacenadas fuera del repositorio. Tampoco abre archivos comprimidos.
+The task reviews versioned files and new unignored files, staged content and
+the history of all locally available Git references. It rejects shallow clones,
+symlinks and unexpected publishable paths of credentials, weights and artifacts.
+It does not review ignored secrets that remain outside of Git; it does not read the local
+credentials stored outside the repository. It also does not open compressed files.
 
-El script genera una clave canaria en un directorio temporal para comprobar que
-el detector realmente la encuentra y redacta. Nunca la agrega al repositorio.
-Las pruebas en `tests/security/` comprueban bloqueo de secretos nuevos, staged
-y borrados del historial, rechazo de symlinks y exclusión de un secreto runtime
-ignorado. Solo crean repositorios temporales.
+The script generates a canary key in a temporary directory to check that
+the detector actually finds and redacts it. It never adds the key to the repository.
+The tests in `tests/security/` check blocking of new, staged and deleted secrets from history,
+rejection of symlinks and exclusion of an ignored runtime secret. They only create temporary repositories.
 
-Si hay hallazgos, la tarea falla. Muestra únicamente archivo, línea, regla y commit;
-los reportes numéricos y hashes quedan en `artifacts/security/`, excluido de Git.
-Errores del scanner fallan el control; no se interpretan como ausencia de secretos.
+If findings are found, the task fails. It shows only file, line, rule and commit;
+numerical reports and hashes remain in `artifacts/security/`, excluded from Git.
+Scanner errors fail the control; they are not interpreted as absence of secrets.
 
-Cada reporte registra commit, hash de los archivos analizados, configuración,
-versión y hash del binario. Las reglas no consultan una API o un modelo. Para
-repetir un resultado se necesitan exactamente esos mismos insumos. El gate local
-se ejecuta explícitamente antes de publicar; todavía no está impuesto por CI o
-protección de ramas. No garantiza encontrar secretos de cualquier formato.
+Each report records commit, hash of analyzed files, configuration,
+version and hash of the binary. The rules do not consult an API or a model. To
+repeat a result, exactly those same inputs are needed. The gate can be run explicitly and is included in the installed pre-commit hook.
+Enable the hook per checkout with `mise run repo:hooks:install`; see
+[Git commit validation](git_hooks.md). CI and branch protection do not enforce it yet. It does not guarantee finding secrets of any format.
 
-## Siguientes controles propuestos, todavía sin instalar ni ejecutar
+## Proposed Controls, Still Not Installed or Executed
 
-| Control | Herramienta y evidencia |
+| Control | Tool and Evidence |
 | --- | --- |
-| Código Python | Semgrep con reglas locales versionadas, sin `--config auto`; casos positivos/negativos de cada regla |
-| Dependencias Python | OSV-Scanner sobre `uv.lock`; fijar scanner y snapshot/fecha de la base de vulnerabilidades |
-| Imágenes de contenedores | Trivy sobre los digests existentes; fijar scanner y base de vulnerabilidades |
-| Configuración de infraestructura | Trivy config para formatos soportados; tests propios para nuestras políticas de Compose/Collector |
-| Controles de aplicación | Matriz versionada OWASP ASVS 5.0.0 y pruebas de autenticación, permisos, aislamiento, redacción y auditoría |
-| Publicación | Gate CI con scanners fijados y branch protection; no habilitado aún |
+| Python Code | Semgrep with locally versioned rules, without `--config auto`; positive/negative cases of each rule |
+| Python Dependencies | OSV-Scanner over `uv.lock`; pin the scanner and snapshot/date of the vulnerability database |
+| Container Images | Trivy over existing digests; pin the scanner and vulnerability database |
+| Infrastructure Configuration | Trivy config for supported formats; custom tests for our policies of Compose/Collector |
+| Application Controls | Versioned OWASP ASVS 5.0.0 matrix and tests for authentication, permissions, isolation, redaction and auditing |
+| Publishing | CI gate with pinned scanners and branch protection; not enabled yet |
 
-Un hash o una versión de scanner no fija la base de vulnerabilidades. Debemos
-conservar su snapshot/digest y fecha para reproducir SCA; refrescarla deliberadamente
-para conocer vulnerabilidades nuevas. El mismo principio aplica a las reglas SAST.
+A hash or a scanner version does not fix the vulnerability database. We must
+preserve its snapshot/digest and date to reproduce SCA; refresh it deliberately
+to know about new vulnerabilities. The same principle applies to SAST rules.
 
-OWASP Top 10 orienta riesgos; ASVS contiene requisitos verificables. Cada requisito
-aplicable debe tener ID/version, evidencia, test, resultado y límites. Un scanner
-sin hallazgos no significa que todo OWASP pase. La autorización efectiva, la
-exposición de servicios y el comportamiento de un agente requieren pruebas dinámicas.
+OWASP Top 10 guides risks; ASVS contains verifiable requirements. Each applicable requirement
+must have ID/version, evidence, test, result and limits. A scanner
+without findings does not mean that all OWASP passes. The effective authorization, the
+exposure of services and the behavior of an agent require dynamic testing.
 
-Si aparece una credencial real: detener la publicación, revocarla/rotarla y tratar
-su historial. Borrar el archivo actual no elimina el secreto de commits anteriores.
+If a real credential appears: stop the publishing, revoke it/rotate it and handle
+its history. Deleting the current file does not remove the secret from previous commits.
 
-Fuentes primarias: [Gitleaks](https://github.com/gitleaks/gitleaks),
+Primary sources: [Gitleaks](https://github.com/gitleaks/gitleaks),
 [Semgrep](https://docs.semgrep.dev/running-rules),
 [OSV-Scanner: uv.lock](https://google.github.io/osv-scanner/supported-languages-and-lockfiles/),
 [Trivy](https://trivy.dev/docs/latest/),

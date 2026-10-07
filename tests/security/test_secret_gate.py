@@ -16,6 +16,7 @@ class SecretGateTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="secret-gate-test-")
         self.addCleanup(self.temp.cleanup)
         self.repo = Path(self.temp.name)
+        self.env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         for name in ("mise.toml", ".gitleaks.toml", "scripts/security/check-secrets.py"):
             target = self.repo / name
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -28,12 +29,12 @@ class SecretGateTests(unittest.TestCase):
 
     def git(self, *args):
         subprocess.run(["git", "-c", "user.name=Security test", "-c",
-                        "user.email=test@example.invalid", *args], cwd=self.repo,
+                        "user.email=test@example.invalid", *args], cwd=self.repo, env=self.env,
                        check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     def run_gate(self, expected_code):
         result = subprocess.run([sys.executable, "scripts/security/check-secrets.py"],
-                                cwd=self.repo, text=True, capture_output=True, timeout=180)
+                                cwd=self.repo, env=self.env, text=True, capture_output=True, timeout=180)
         # Never include captured output in failed assertions: could expose a regression.
         self.assertNotIn(self.canary, result.stdout + result.stderr, "Canary exposed")
         self.assertEqual(result.returncode, expected_code, "Unexpected gate exit status")

@@ -1,53 +1,53 @@
-# Segunda prueba: reparar un bug con tests existentes
+# Second test: fixing a bug with existing tests
 
-## Objetivo
+## Objective
 
-Evaluar que OpenHands use resultados de tests para diagnosticar y corregir un bug. El modelo no cambia. Mantener un agente, perfil local fijo y subagentes desactivados. Este ejercicio usa importes monetarios sintéticos como problema de programación; no es un sistema financiero ni calcula transacciones reales.
+Evaluate that OpenHands uses test results to diagnose and correct a bug. The model does not change. Maintain an agent, fixed local profile, and disabled subagents. This exercise uses synthetic monetary values as a programming problem; it is not a financial system and does not calculate real transactions.
 
-Los fixtures originales están en `exercises/bugfix/`. La tarea de preparación copia dos archivos a `artifacts/openhands/projects/bugfix`, que el agente ve como `/projects/bugfix`. No se modifica la demo anterior ni se concede acceso al repositorio completo.
+The original fixtures are in `exercises/bugfix/`. The preparation task copies two files to `artifacts/openhands/projects/bugfix`, which the agent sees as `/projects/bugfix`. The previous demo is not modified, and access to the full repository is not granted.
 
-## Preparar y comprobar fallo previo
+## Prepare and check previous failure
 
-Desde el host, con OpenHands arrancado:
+From the host, with OpenHands running:
 
 ```bash
 mise exec -- task openhands:bugfix:prepare
 ```
 
-El resultado esperado incluye tres tests fallidos y dos correctos. La tarea devuelve éxito únicamente si esos tres fallos concretos aparecen, sin errores de importación ni tests omitidos. Es una baseline deliberadamente defectuosa. No entregar la reparación al agente antes de observar la baseline.
+The expected result includes three failed tests and two correct ones. The task returns success only if those three specific failures appear, without import errors or missed tests. It is a deliberately defective baseline. Do not deliver the repair to the agent before observing the baseline.
 
-La preparación se niega a sobrescribir una carpeta existente. Si quedó creada pero el contenedor no estaba disponible, arrancar OpenHands y ejecutar `task openhands:bugfix:baseline`. No borrar ni reiniciar el ejercicio una vez reparado.
+The preparation refuses to overwrite an existing folder. If it was created but the container was not available, start OpenHands and run `task openhands:bugfix:baseline`. Do not delete or restart the exercise once repaired.
 
-## Tarea para OpenHands
+## Task for OpenHands
 
-Crear una conversación nueva con el perfil local activo. Pegar:
+Create a new conversation with the active local profile. Paste:
 
-> Trabaja únicamente en /projects/bugfix. Ejecuta pwd y los tests con python -m unittest -v. Hay un bug en discounts.py: discounted_total(subtotal, discount_percent) debe aplicar un descuento porcentual entre 0 y 100, devolver Decimal redondeado a dos decimales con ROUND_HALF_UP y rechazar entradas inválidas. Usa los fallos para diagnosticar el problema y modifica únicamente discounts.py. No cambies test_discounts.py ni omitas tests. Ejecuta de nuevo los tests y resume causa, cambio y resultados antes/después. No descargues dependencias ni accedas a Internet. Indica explícitamente /projects/bugfix como directorio en las acciones de terminal.
+> Work only in /projects/bugfix. Run pwd and the tests with python -m unittest -v. There is a bug in discounts.py: discounted_total(subtotal, discount_percent) must apply a percentage discount between 0 and 100, return a Decimal rounded to two decimal places with ROUND_HALF_UP, and reject invalid inputs. Use the failures to diagnose the problem and modify only discounts.py. Do not change test_discounts.py or skip tests. Run the tests again and summarize cause, change, and results before/after. Do not download dependencies or access the Internet. Explicitly indicate /projects/bugfix as the directory in terminal actions.
 
-La interfaz puede elegir otra carpeta inicial; la primera acción debe confirmar la ruta real de terminal y pasar explícitamente al workspace indicado. No aceptar únicamente una explicación sin eventos de herramientas.
+The interface may choose another initial folder; the first action must confirm the actual terminal path and explicitly switch to the indicated workspace. Do not accept an explanation without tool events.
 
-## Comprobar reparación
+## Check repair
 
-Al terminar:
+Upon completion:
 
 ```bash
 mise exec -- task openhands:bugfix:check
 ```
 
-La aceptación compara byte a byte los tests del workspace con los originales del repositorio, ejecuta los cinco casos y verifica adicionalmente descuento fraccionario, cero, redondeo y tipo Decimal. Todo el código del ejercicio se ejecuta dentro del contenedor, no en el host. El checker no corrige la solución.
+The acceptance compares byte by byte the tests in the workspace with the original ones in the repository, runs the five cases, and verifies additional fractional discount, zero, rounding, and Decimal type. All code of the exercise runs inside the container, not on the host. The checker does not correct the solution.
 
-El resultado esperado es cinco tests originales exitosos y cuatro comprobaciones adicionales exitosas. Esto reduce el riesgo de aceptar una reparación que solo encaje con los ejemplos dados. No demuestra seguridad completa ni que el agente no haya escrito otros archivos: revisar también sus eventos y cambios.
+The expected result is five original tests passing and four additional checks passing. This reduces the risk of accepting a repair that only fits the given examples. It does not demonstrate full security or that the agent has not written other files: review its events and changes as well.
 
-## Registro
+## Record
 
-Compartir baseline, aceptación y resumen final del agente. Registrar tiempo aproximado, intentos y errores de herramientas si están disponibles. El ejercicio está preparado; la ejecución real con OpenHands queda pendiente. Las pruebas locales del fixture confirman el fallo inicial y que una reparación de referencia en una copia temporal cumple la aceptación; esa reparación no se entrega al workspace del usuario.
+Share baseline, acceptance, and final summary of the agent. Record approximate time, attempts, and tool errors if available. The exercise is prepared; the actual execution with OpenHands is pending. Local fixture tests confirm the initial failure and that a reference repair in a temporary copy meets the acceptance; that repair is not delivered to the user's workspace.
 
-## Resultado compartido — 5 de octubre de 2026
+## Shared result — October 5, 2026
 
-El usuario ejecutó `task openhands:bugfix:check`: los cinco tests originales pasaron, sin modificaciones según la comparación previa del script, y las cuatro comprobaciones adicionales de tipo Decimal, descuento y redondeo también pasaron. Esto valida la reparación funcional presente en el workspace. No se volvió a ejecutar desde Work.
+The user executed `task openhands:bugfix:check`: the five original tests passed, without modifications according to the previous script comparison, and the four additional checks of Decimal type, discount, and rounding also passed. This validates the functional repair present in the workspace. It was not rerun from Work.
 
-Durante la tarea, el agente envió una llamada `file_editor` con `command=str_replace` sin el parámetro obligatorio `path`, e incluyó `file_text`. La validación de la herramienta rechazó la llamada. Se proporcionó al usuario un prompt de recuperación que indicaba la ruta y los campos correctos; posteriormente compartió la aceptación satisfactoria. No afirmar recuperación autónoma: hubo intervención humana y no se revisó el historial completo de herramientas.
+During the task, the agent sent a call `file_editor` with `command=str_replace` without the required parameter `path`, and included `file_text`. The tool validation rejected the call. The user was provided with a recovery prompt indicating the correct path and fields; later, the acceptance was shared. Do not claim autonomous recovery: there was human intervention and the complete tool history was not reviewed.
 
-La baseline de los fixtures se verificó localmente antes de entregarlos (tres fallos esperados y dos aciertos). No se recibió la salida de baseline ejecutada en el host; por ello el registro de antes/después en el host no está completo. Tampoco se midieron tiempo total o número de intentos.
+The baseline of the fixtures was verified locally before delivering them (three expected failures and two successes). The baseline output executed on the host was not received; therefore, the before/after record on the host is incomplete. The total time or number of attempts was also not measured.
 
-Conclusión del experimento: OpenHands y Qwen3 local pueden resolver este bug sintético con guía. El uso consistente de esquemas de herramientas sigue siendo una limitación observada. Próximo paso: registrar ejecuciones, errores de herramientas e intervenciones para evaluar la autonomía y preparar observabilidad.
+Experiment conclusion: OpenHands and local Qwen3 can resolve this synthetic bug with guidance. The consistent use of tool schemas remains an observed limitation. Next step: log executions, tool errors, and interventions to evaluate autonomy and prepare observability.

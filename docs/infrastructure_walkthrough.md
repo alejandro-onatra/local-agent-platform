@@ -1,39 +1,39 @@
-# Infraestructura del laboratorio, con código en mano
+# Local platform infrastructure, with code in hand
 
-Fecha: 6 de octubre de 2026. Repositorio: `/home/alejandro/CloudDrive/Engineering/agent-platform`.
+Date: October 6, 2026. Repository: `/home/alejandro/CloudDrive/Engineering/agent-platform`.
 
-Esta guía explica los archivos reales inspeccionados. Separa el código preparado de su activación y de las pruebas registradas. Las revisiones anteriores a esta instantánea inicial no tenían commits; por tanto, la explicación retrospectiva no es un diff histórico exacto. En este turno se prepara el primer commit local, que establece una base para revisar las próximas modificaciones. El registro de cambios está en [changelog.md](changelog.md).
+This guide explains the actual files inspected. It separates the prepared code from its activation and from the recorded tests. Previous reviews to this initial snapshot had no commits; therefore, the retrospective explanation is not an exact historical diff. In this turn, the first local commit is prepared, which establishes a base for reviewing the next modifications. The change log is in [changelog.md](changelog.md).
 
-**1. Lo que hemos construido y su recorrido**
+**1. What we have built and its journey**
 
-Un laboratorio local donde OpenHands ejecuta herramientas y consulta Qwen3 servido por Ollama. LiteLLM proporciona una frontera API para observar las llamadas que pasan por él. Collector, Prometheus, Tempo, Loki y Grafana recolectan y muestran telemetría. Las sondas HTTP comprueban disponibilidad. Esta es la base experimental de la plataforma agnóstica; los contratos propios de runtime, adapters, DecisionProvider, state store, MCP gateway y políticas aún están en el [plan](plan.md).
+A local platform where OpenHands executes tools and queries Qwen3 served by Ollama. LiteLLM provides an API boundary to observe the calls passing through it. Collector, Prometheus, Tempo, Loki, and Grafana collect and display telemetry. HTTP probes check availability. This is the experimental base of the platform agnostic; the runtime-specific contracts, adapters, DecisionProvider, state store, MCP gateway, and policies are still in the [plan](plan.md).
 
 ```mermaid
 flowchart LR
-    U[Navegador local: 8000] --> N[Nginx: 8080]
-    N --> A[OpenHands: agente y herramientas]
-    A -->|Perfil observado: API compatible| L[LiteLLM: 4000]
-    L --> O[Ollama: Qwen3 en GPU]
-    A -.->|Perfil directo anterior| O
-    L -->|Callback OTel: trazas y métricas| C[Collector]
-    C -->|Scrape autenticado de caché activo| L
-    D[Logs Docker de tres servicios] -->|filelog limitado| C
-    C --> T[Tempo: trazas]
-    C --> K[Loki: logs sanitizados]
-    C -->|Métricas en 8889| P[Prometheus]
-    B[Blackbox: nueve sondas HTTP] --> P
-    P --> G[Grafana local: 3000]
+    U[Local browser: 8000] --> N[Nginx: 8080]
+    N --> A[OpenHands: agent and tools]
+    A -->|Observed profile: compatible API| L[LiteLLM: 4000]
+    L --> O[Ollama: Qwen3 on GPU]
+    A -.->|Previous direct profile| O
+    L -->|OTel callback: traces and metrics| C[Collector]
+    C -->|Active authenticated cache scrape| L
+    D[Docker logs from three services] -->|limited filelog| C
+    C --> T[Tempo: traces]
+    C --> K[Loki: sanitized logs]
+    C -->|Metrics on 8889| P[Prometheus]
+    B[Blackbox: nine HTTP probes] --> P
+    P --> G[Local Grafana: 3000]
     T --> G
     K --> G
 ```
 
-El perfil directo salta LiteLLM. No produce sus métricas de consumo. La ruta efectiva se elige en la configuración de la conversación OpenHands; añadir contenedores a Compose no cambia por sí solo todas las conversaciones.
+The direct profile bypasses LiteLLM. It does not produce its consumption metrics. The effective path is chosen in the OpenHands conversation settings; adding containers to Compose does not by itself change all conversations.
 
-**2. mise, Task y scripts: tres responsabilidades**
+**2. mise, Task, and scripts: three responsibilities**
 
-mise fija herramientas del entorno. Actualmente fija Task, Python y uv, y activa `.venv`; no administra por sí mismo el daemon Docker ni el driver del kernel. El bootstrap de mise verifica hashes y su versión está en `infra/host/mise-version.json`. `mise.lock` conserva el artefacto y checksums de las herramientas; Python apunta al objetivo Linux x86_64.
+mise fixes the environment tools. Currently, it fixes Task, Python, and uv, and activates `.venv`; it does not manage the Docker daemon itself or the kernel driver. The mise bootstrap verifies hashes and its version is in `infra/host/mise-version.json`. `mise.lock` preserves the tool artifact and checksums; Python points to the target Linux x86_64.
 
-Fuente: [mise.toml](../mise.toml). Fragmento literal del archivo actual.
+Source: [mise.toml](../mise.toml). Literal fragment of the current file.
 
 ```toml
 # mise owns environment versions, preparation and validation.
@@ -49,7 +49,7 @@ uv = "0.12.23"
 _.python.venv = { path = ".venv", create = true }
 ```
 
-Fuente: [Taskfile.yml](../Taskfile.yml). Fragmento literal del archivo actual.
+Source: [Taskfile.yml](../Taskfile.yml). Literal fragment of the current file.
 
 ```yaml
   llm:setup:
@@ -62,13 +62,13 @@ Fuente: [Taskfile.yml](../Taskfile.yml). Fragmento literal del archivo actual.
       - task: llm:check
 ```
 
-Task encadena pasos en orden. Las tareas llaman scripts en `scripts/bootstrap/`, `host/`, `llm/`, `openhands/`, `observability/` y `repo/`. Los bloques extensos viven en esos scripts. El shell coordina Docker y permisos; los helpers Python leen configuración YAML, manejan JSON de API y comprobaciones estructuradas.
+Task chains steps in order. The tasks call scripts in `scripts/bootstrap/`, `host/`, `llm/`, `openhands/`, `observability/`, and `repo/`. The extended blocks live in those scripts. The shell coordinates Docker and permissions; the Python helpers read YAML configuration, handle JSON API, and perform structured checks.
 
-**3. Docker y acceso a la GPU**
+**3. Docker and GPU access**
 
-`infra/host/versions.yaml` fija nueve paquetes de Docker/Compose/Buildx/containerd y NVIDIA Container Toolkit para Ubuntu 26.04 amd64. El instalador verifica el sistema y conflictos, hace backups de configuraciones existentes, instala desde repositorios APT firmados y verifica las versiones resultantes. Reutiliza el driver NVIDIA del host; no lo sustituye ni agrega automáticamente usuarios al grupo Docker.
+`infra/host/versions.yaml` fixes nine Docker/Compose/Buildx/containerd and NVIDIA Container Toolkit packages for Ubuntu 26.04 amd64. The installer verifies the system and conflicts, makes backups of existing configurations, installs from signed APT repositories, and verifies the resulting versions. It reuses the host NVIDIA driver; it does not replace it or automatically add users to the Docker group.
 
-Fuente: [scripts/host/install-docker-gpu.sh](../scripts/host/install-docker-gpu.sh). Fragmento literal del archivo actual.
+Source: [scripts/host/install-docker-gpu.sh](../scripts/host/install-docker-gpu.sh). Literal fragment of the current file.
 
 ```bash
     sudo apt-get install -y --no-install-recommends "${package_specs[@]}"
@@ -77,15 +77,15 @@ Fuente: [scripts/host/install-docker-gpu.sh](../scripts/host/install-docker-gpu.
     sudo systemctl restart docker
 ```
 
-`nvidia-ctk` registra el runtime NVIDIA en la configuración de Docker; la petición de GPU de Compose habilita el dispositivo para Ollama. Esto es distinto de fijar la imagen del servidor o descargar pesos. Los reportes iniciales verificaron driver, `hello-world` y `nvidia-smi` dentro de un contenedor. La inferencia se validó luego con el modelo real.
+`nvidia-ctk` registers the NVIDIA runtime in Docker configuration; the GPU request in Compose enables the device for Ollama. This is different from fixing the server image or downloading weights. The initial reports verified the driver, `hello-world`, and `nvidia-smi` within a container. The inference was validated later with the real model.
 
-Las operaciones Docker usan explícitamente `--context default`. Desde esta sesión el socket exige sudo interactivo: los scripts solicitan autenticación en tu terminal. No hemos ejecutado Work como root.
+Docker operations use explicitly `--context default`. From this session, the socket requires interactive sudo: the scripts request authentication in your terminal. We have not executed Work as root.
 
-**4. Ollama: servicio, modelo, límites y persistencia**
+**4. Ollama: service, model, limits, and persistence**
 
-Ollama corre en un contenedor fijado por digest, no como instalación global de inferencia. Los pesos de `qwen3:8b` se descargan dentro del volumen `agent-platform-local_ollama-data`, montado en `/root/.ollama`. El volumen lo administra Docker y no se guarda en Git/CloudDrive. `infra/llm/versions.yaml` fija también el digest del modelo, porque el tag puede cambiar.
+Ollama runs in a container pinned by digest, not as a global inference installation. The weights of `qwen3:8b` are downloaded within the volume `agent-platform-local_ollama-data`, mounted in `/root/.ollama`. The volume is managed by Docker and is not saved in Git/CloudDrive. `infra/llm/versions.yaml` also fixes the model digest, because the tag can change.
 
-Fuente: [infra/llm/compose.yaml](../infra/llm/compose.yaml). Fragmento literal del archivo actual.
+Source: [infra/llm/compose.yaml](../infra/llm/compose.yaml). Literal fragment of the current file.
 
 ```yaml
     ports:
@@ -111,13 +111,13 @@ Fuente: [infra/llm/compose.yaml](../infra/llm/compose.yaml). Fragmento literal d
     cap_drop: [ALL]
 ```
 
-El binding `127.0.0.1` publica la API solo en loopback del host. `OLLAMA_HOST=0.0.0.0` permite que el servidor reciba conexiones dentro de su contenedor, incluidas las redes Compose. No abre el puerto del host a toda la LAN. `OLLAMA_NO_CLOUD` desactiva funcionalidades cloud de Ollama.
+The binding `127.0.0.1` publishes the API only on the host's loopback. `OLLAMA_HOST=0.0.0.0` allows the server to receive connections within its container, including Compose networks. It does not open the host port to the entire LAN. `OLLAMA_NO_CLOUD` disables Ollama's cloud features.
 
-Se pasó de contexto 8192 a 32768 en el laboratorio. Se mantiene una petición paralela y un modelo cargado para limitar el consumo de memoria. La GPU se solicita por ID 0. Los límites de RAM/CPU del contenedor están separados de la VRAM de la GPU.
+We moved from context 8192 to 32768 in the local platform. A parallel request and a loaded model are maintained to limit memory consumption. The GPU is requested by ID 0. The container's RAM/CPU limits are separate from the GPU's VRAM.
 
-`pull-model.sh` revisa espacio, descarga y comprueba el digest; `check-inference.py` prueba generación, tool call sintético, API compatible y residencia en VRAM. No demuestra por sí solo que cualquier tarea de agente funcione. Se corrigió la medición de velocidad para dividir tokens por tiempo de generación, separando carga del modelo y procesamiento del prompt.
+`pull-model.sh` checks space, downloads, and verifies the digest; `check-inference.py` tests generation, synthetic tool call, API compatibility, and residency in VRAM. It does not by itself demonstrate that any agent task works. The speed measurement was corrected to divide tokens by generation time, separating model loading and prompt processing.
 
-Fuente: [scripts/llm/check-inference.py](../scripts/llm/check-inference.py). Fragmento literal del archivo actual.
+Source: [scripts/llm/check-inference.py](../scripts/llm/check-inference.py). Literal fragment of the current file.
 
 ```python
     count, duration = data.get("eval_count", 0), data.get("eval_duration", 0)
@@ -126,13 +126,13 @@ Fuente: [scripts/llm/check-inference.py](../scripts/llm/check-inference.py). Fra
     return round(count * 1e9 / duration, 2)
 ```
 
-**5. OpenHands: agente, workspace y red**
+**5. OpenHands: agent, workspace and network**
 
-El agente organiza pasos y ejecuta herramientas; el modelo genera texto y propuestas de tool calls. OpenHands aporta la UI, conversaciones y herramientas. Ollama sirve el modelo; no decide qué comando de terminal ejecutar.
+The agent organizes steps and executes tools; the model generates text and tool call proposals. OpenHands provides the UI, conversations and tools. Ollama serves the model; it does not decide which terminal command to execute.
 
-`infra/openhands/compose.yaml` se combina con el Compose de Ollama, conservando el proyecto y su volumen. OpenHands está en `agent-link`, una red interna, sin Docker socket ni puertos publicados directamente. Nginx recibe el navegador por localhost:8000 y reenvía HTTP/WebSocket al servicio interno.
+`infra/openhands/compose.yaml` combines with Ollama's Compose, preserving the project and its volume. OpenHands is in `agent-link`, an internal network, without Docker socket or directly published ports. Nginx receives the browser via localhost:8000 and forwards HTTP/WebSocket to the internal service.
 
-Fuente: [infra/openhands/compose.yaml](../infra/openhands/compose.yaml). Fragmento literal del archivo actual.
+Source: [infra/openhands/compose.yaml](../infra/openhands/compose.yaml). Literal fragment of the current file.
 
 ```yaml
     networks: [agent-link]
@@ -158,7 +158,7 @@ Fuente: [infra/openhands/compose.yaml](../infra/openhands/compose.yaml). Fragmen
     security_opt: [no-new-privileges:true]
 ```
 
-Fuente: [infra/openhands/nginx.conf](../infra/openhands/nginx.conf). Fragmento literal del archivo actual.
+Source: [infra/openhands/nginx.conf](../infra/openhands/nginx.conf). Literal fragment of the current file.
 
 ```nginx
         location / {
@@ -171,13 +171,13 @@ Fuente: [infra/openhands/nginx.conf](../infra/openhands/nginx.conf). Fragmento l
             proxy_read_timeout 3600s;
 ```
 
-`OH_WORKSPACE` es `artifacts/openhands/projects` en el repositorio; el bind lo monta como `/projects`. Por tanto, `artifacts/openhands/projects/demo` se ve en el agente como `/projects/demo`. Su estado persistente vive en `openhands-state`, separado de esos archivos.
+`OH_WORKSPACE` is `artifacts/openhands/projects` in the repository; the bind mounts it as `/projects`. Therefore, `artifacts/openhands/projects/demo` is visible to the agent as `/projects/demo`. Its persistent state lives in `openhands-state`, separate from those files.
 
-`OH_WORKSPACE_PATH` expresa la ruta configurada, pero comprobamos que una conversación puede empezar en `/home/openhands/workspace/project/<id>`. Por eso se pidió ejecutar explícitamente `pwd` y trabajar en `/projects/demo`. No declaramos que esa variable imponga el directorio efectivo de cualquier conversación.
+`OH_WORKSPACE_PATH` expresses the configured path, but we check that a conversation can start in `/home/openhands/workspace/project/<id>`. That is why we explicitly requested to execute `pwd` and work in `/projects/demo`. We did not declare that this variable imposes the effective directory of any conversation.
 
-Se usa el grupo del host y permisos 2770 para dar acceso al usuario no root del contenedor. Una corrección importante fue preservar las dos variables al cruzar sudo: sin esto Compose fallaba por valores ausentes.
+The host group and permissions 2770 are used to grant access to the non-root user in the container. An important fix was preserving the two variables when crossing sudo: without this, Compose failed due to missing values.
 
-Fuente: [scripts/openhands/common.sh](../scripts/openhands/common.sh). Fragmento literal del archivo actual.
+Source: [scripts/openhands/common.sh](../scripts/openhands/common.sh). Literal fragment of the current file.
 
 ```bash
 oh_root="$llm_repo_root"
@@ -197,13 +197,13 @@ oh_compose() {
             -f "$llm_compose_file" -f "$oh_root/infra/openhands/compose.yaml" "$@"
 ```
 
-Los scripts comprueban que el usuario de la imagen no sea root y pueda escribir en demo y su estado. La UI se validó con una demo de suma y un bugfix Decimal; el agente necesitó guía tras herramientas inválidas. Subagentes y cambio automático de perfiles se mantienen desactivados en el perfil del laboratorio, configurado en la UI; no son garantías impuestas por Compose.
+The scripts check that the image user is not root and can write to demo and its state. The UI was validated with a sum demo and a Decimal bugfix; the agent needed guidance after invalid tools. Subagents and automatic profile switching are kept disabled in the local platform profile, configured in the UI; they are not guarantees imposed by Compose.
 
-**6. LiteLLM: ruta observada y callbacks existentes**
+**6. LiteLLM: observed path and existing callbacks**
 
-El perfil observado de OpenHands debe usar modelo `openai/qwen3:8b`, base URL `http://litellm:4000/v1` y la clave privada del proxy. El prefijo `openai/` selecciona el protocolo compatible en esta integración; el destino configurado sigue siendo Ollama local. El perfil anterior usa `http://ollama:11434/v1` y accede directamente.
+The observed profile of OpenHands must use model `openai/qwen3:8b`, base URL `http://litellm:4000/v1` and the private key of the proxy. The prefix `openai/` selects the compatible protocol in this integration; the configured destination remains local Ollama. The previous profile used `http://ollama:11434/v1` and accessed directly.
 
-Fuente: [infra/observability/litellm.yaml](../infra/observability/litellm.yaml). Fragmento literal del archivo actual.
+Source: [infra/observability/litellm.yaml](../infra/observability/litellm.yaml). Literal fragment of the current file.
 
 ```yaml
 model_list:
@@ -242,11 +242,11 @@ callback_settings:
       - gen_ai.request.model
 ```
 
-El alias `qwen3:8b` se dirige al backend `openai/qwen3:8b` en `http://ollama:11434/v1`. `local-only` es el placeholder del tramo hacia Ollama; no es la clave que autoriza la entrada a LiteLLM. Se usa timeout de 180 s y cero reintentos del proxy para este laboratorio.
+The alias `qwen3:8b` directs to the backend `openai/qwen3:8b` in `http://ollama:11434/v1`. `local-only` is the placeholder for the segment towards Ollama; it is not the key that authorizes entry to LiteLLM. A timeout of 180 seconds and zero proxy retries are used for this local platform.
 
-Los callbacks `otel` y `prometheus` ya se validaron en el host. La prueba de caché del 6 de octubre a las 09:57 Europe/Berlin cotejó 1.623 tokens reutilizados con un aumento idéntico del contador. No debe confundirse código en disco con configuración cargada en el proceso.
+The callbacks `otel` and `prometheus` have already been validated on the host. The cache test of October 6 at 09:57 Europe/Berlin checked 1,623 tokens reused with an identical increase in the counter. Disk code should not be confused with configuration loaded into the process.
 
-Fuente: [infra/observability/compose.yaml](../infra/observability/compose.yaml). Fragmento literal del archivo actual.
+Source: [infra/observability/compose.yaml](../infra/observability/compose.yaml). Literal fragment of the current file.
 
 ```yaml
       OTEL_SERVICE_NAME: litellm-proxy
@@ -263,17 +263,17 @@ Fuente: [infra/observability/compose.yaml](../infra/observability/compose.yaml).
       DO_NOT_TRACK: '1'
 ```
 
-Estas variables envían OTel por HTTP/protobuf al Collector interno. Desactivan captura de mensajes y eventos, y los exemplars de métricas; habilitan métricas de uso y el span de entrada del proxy. El filtro de atributos de `litellm.yaml` limita etiquetas de las métricas. Se retiró `gen_ai.token.type` de ese filtro porque LiteLLM lo trata como discriminador estructural y rechazaba inicializar el callback.
+These variables send OTel via HTTP/protobuf to the internal Collector. They disable message and event capture, and metric exemplars; they enable usage metrics and the proxy's incoming span. The attribute filter of `litellm.yaml` limits metric labels. `gen_ai.token.type` was removed from that filter because LiteLLM treats it as a structural discriminator and rejected initializing the callback.
 
-Una conversación puede conservar su propia configuración después de editar los defaults. `openhands:profile:check` lee los defaults; `openhands:usage:check CONVERSATION_ID=...` lee la ruta actual y uso de la conversación concreta, sin imprimir mensajes o claves. La ruta actual no demuestra todas las rutas históricas.
+A conversation can retain its own configuration after editing the defaults. `openhands:profile:check` reads the defaults; `openhands:usage:check CONVERSATION_ID=...` reads the current path and usage of the specific conversation, without printing messages or keys. The current path does not show all historical paths.
 
-**7. Seguridad y almacenamiento de credenciales**
+**7. Security and credential storage**
 
-LiteLLM rechazó arrancar sin una master key. Se corrigió con una clave fuerte persistente; no se activó su bypass de claves ausentes/débiles. Grafana requiere login y tiene acceso anónimo y signup desactivados. Las credenciales se crean fuera del repositorio y CloudDrive, en `${XDG_DATA_HOME:-$HOME/.local/share}/agent-platform/observability`.
+LiteLLM rejected starting without a master key. This was fixed with a strong persistent key; its absence/weakness bypass was not activated. Grafana requires login and has anonymous access and signup disabled. Credentials are created outside the repository and CloudDrive, in `${XDG_DATA_HOME:-$HOME/.local/share}/agent-platform/observability`.
 
-`prepare-secrets.py` conserva las credenciales existentes, comprueba propiedad y formato y rechaza symlinks.
+`prepare-secrets.py` preserves existing credentials, checks ownership and format, and rejects symlinks.
 
-Fuente: [scripts/observability/prepare-secrets.py](../scripts/observability/prepare-secrets.py). Fragmento literal del archivo actual.
+Source: [scripts/observability/prepare-secrets.py](../scripts/observability/prepare-secrets.py). Literal fragment of the current file.
 
 ```python
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -288,15 +288,15 @@ Fuente: [scripts/observability/prepare-secrets.py](../scripts/observability/prep
         else:
 ```
 
-La carpeta queda con permisos 700 y los archivos 600. No mostramos valores en documentación, diffs ni reportes. `.gitignore` excluye `.env`, claves, pesos y `artifacts/`; los archivos Docker originales y el workspace pueden contener contenido sin redacción. Excluir de Git no excluye automáticamente de la sincronización CloudDrive.
+The folder remains with permissions 700 and the files 600. We do not show values in documentation, diffs or reports. `.gitignore` excludes `.env`, keys, weights and `artifacts/`; the original Docker files and the workspace may contain unredacted content. Excluding from Git does not automatically exclude from CloudDrive synchronization.
 
-Los servicios usan imágenes fijadas, límites de memoria/CPU, capacidades retiradas, `no-new-privileges`, configuraciones montadas read-only y logs rotados. El agente sigue pudiendo modificar su workspace y ejecutar herramientas. No hay todavía una capa propia completa de aprobación, políticas ni auditoría inmutable. El master key es administrativo y corresponde al laboratorio local, no a usuarios familiares independientes.
+The services use pinned images, memory/CPU limits, dropped capabilities, `no-new-privileges`, mounted read-only configurations and rotated logs. The agent can still modify its workspace and execute tools. There is no yet a complete layer of approval, policies or immutable audit. The master key is administrative and corresponds to the local platform, not to independent family users.
 
-**8. Collector: recepción, privacidad y tres destinos**
+**8. Collector: reception, privacy and three destinations**
 
-`infra/observability/collector.yaml` recibe OTLP HTTP 4318 y gRPC 4317, aplica límites de memoria, filtros y procesamiento por lotes. Su pipeline de trazas entrega spans sanitizados a Tempo y a `spanmetrics`, un conector existente que produce métricas de número/duración de spans. Prometheus lee el exporter de métricas en 8889; también lee telemetría interna del Collector en 8888.
+`infra/observability/collector.yaml` receives OTLP HTTP 4318 and gRPC 4317, applies memory limits, filters and batch processing. Its trace pipeline delivers sanitized spans to Tempo and to `spanmetrics`, an existing connector that produces span count/duration metrics. Prometheus reads the metrics exporter in 8889; it also reads internal telemetry from the Collector in 8888.
 
-Fragmento estructural de `service.pipelines.traces`, extraído del YAML actual:
+Structural fragment of `service.pipelines.traces`, extracted from the current YAML:
 
 ```yaml
 receivers:
@@ -311,9 +311,9 @@ exporters:
 - spanmetrics
 ```
 
-La privacidad usa listas permitidas: recurso `service.name`, modelo normalizado, números de uso y etiquetas operativas limitadas. Elimina nombres libres, texto de errores, eventos y spans con links. En logs conserva categorías, por ejemplo `tool_validation_error`, y reemplaza el cuerpo completo.
+Privacy uses allowed lists: resource `service.name`, normalized model, usage numbers and limited operational labels. It removes free names, error text, events and spans with links. In logs it preserves categories, for example `tool_validation_error`, and replaces the full body.
 
-Expresiones OTTL literales de `transform/privacy`:
+OTTL literal expressions of `transform/privacy`:
 
 ```text
 keep_keys(attributes, ["gen_ai.request.model", "gen_ai.usage.input_tokens", "gen_ai.usage.output_tokens", "gen_ai.usage.total_tokens"])
@@ -321,21 +321,21 @@ set(status.message, "")
 set(body, "operational record")
 ```
 
-Esto sanitiza lo exportado, no los originales del host ni todo lo que pasa por memoria. Las canarias sintéticas verifican campos concretos. La correlación de una petición de prueba LiteLLM con su trace ID pasó; la traza completa del agente y el proxy aún necesita aceptación propia.
+This sanitizes what is exported, not the originals from the host or everything that passes through memory. Synthetic canaries verify specific fields. The correlation of a LiteLLM test request with its trace ID passed; the full trace of the agent and the proxy still needs its own acceptance.
 
-**9. Logs Docker sin conceder el socket al Collector**
+**9. Docker logs without granting the socket to the Collector**
 
-`configure-logs.sh` consulta solo ID, LogPath y driver de OpenHands, Ollama y LiteLLM desde la terminal con permisos Docker. `configure-logs.py` genera mounts read-only de sus directorios específicos y receivers filelog, con offsets persistidos. El Collector usa UID 0 para poder leerlos, conserva capacidades retiradas y no recibe `docker.sock`.
+`configure-logs.sh` queries only ID, LogPath and driver of OpenHands, Ollama and LiteLLM from the terminal with Docker permissions. `configure-logs.py` generates read-only mounts of its specific directories and filelog receivers, with persisted offsets. The Collector uses UID 0 to be able to read them, preserves dropped capabilities and does not receive `docker.sock`.
 
-Los archivos generados son `artifacts/observability/collector-with-logs.json` y `logs-compose.json`; el YAML de `infra/` es la fuente canónica. Se regeneran tras recrear contenedores para no seguir IDs/logpaths antiguos. `start_at: end` captura nuevos registros del archivo activo; no es una importación histórica completa.
+The generated files are `artifacts/observability/collector-with-logs.json` and `logs-compose.json`; the YAML of `infra/` is the canonical source. They are regenerated after recreating containers to not follow old IDs/logpaths. `start_at: end` captures new records from the active file; it is not a complete historical import.
 
-**10. Prometheus, Tempo, Loki y Grafana**
+**10. Prometheus, Tempo, Loki and Grafana**
 
-Prometheus guarda métricas en su volumen, con retención de 7 días y tamaño máximo TSDB de 1 GB. Tempo guarda WAL y bloques de trazas en volumen local; su Compose fija retención objetivo 168 h. Loki guarda chunks/index y aplica retención 168 h. Grafana conserva su estado en volumen. Son límites del laboratorio, no almacenamiento enterprise de alta disponibilidad.
+Prometheus stores metrics in its volume, with retention of 7 days and maximum TSDB size of 1 GB. Tempo stores WAL and trace blocks in local volume; its Compose fixes retention target 168 h. Loki stores chunks/index and applies retention 168 h. Grafana preserves its state in volume. They are limits of the local platform, not enterprise storage of high availability.
 
-Los backends están en una red `data` interna y no publican puertos del host. Grafana publica `127.0.0.1:3000`; LiteLLM comparte `data` y `agent-link` para conectar agente y modelo. Loki/Tempo carecen de autenticación propia en esta configuración interna; esa frontera no permite exponerlos directamente a la familia.
+The backends are in a `data` internal network and do not publish host ports. Grafana publishes `127.0.0.1:3000`; LiteLLM shares `data` and `agent-link` to connect agent and model. Loki/Tempo lack their own authentication in this internal setup; that boundary does not allow exposing them directly to the family.
 
-Fuente: [infra/observability/grafana/provisioning/datasources/sources.yaml](../infra/observability/grafana/provisioning/datasources/sources.yaml). Fragmento literal del archivo actual.
+Source: [infra/observability/grafana/provisioning/datasources/sources.yaml](../infra/observability/grafana/provisioning/datasources/sources.yaml). Literal fragment of the current file.
 
 ```yaml
 apiVersion: 1
@@ -361,7 +361,7 @@ datasources:
   editable: false
 ```
 
-Fuente: [infra/observability/grafana/provisioning/dashboards/dashboards.yaml](../infra/observability/grafana/provisioning/dashboards/dashboards.yaml). Fragmento literal del archivo actual.
+Source: [infra/observability/grafana/provisioning/dashboards/dashboards.yaml](../infra/observability/grafana/provisioning/dashboards/dashboards.yaml). Literal fragment of the current file.
 
 ```yaml
 apiVersion: 1
@@ -376,39 +376,39 @@ providers:
     path: /var/lib/grafana/dashboards
 ```
 
-Grafana tiene UID estables de fuentes y dashboards JSON montados read-only. Provisioning hace que se carguen desde archivos y evita que una edición UI sea la fuente de verdad. Hay siete dashboards: overview, agent operations, LLM cost/routing, model quality, security, tools/MCP y workflow KPIs. Las áreas sin métricas se muestran como pendientes.
+Grafana has stable UID of data sources and JSON dashboards mounted read-only. Provisioning makes them load from files and prevents UI edits from being the source of truth. There are seven dashboards: overview, agent operations, LLM cost/routing, model quality, security, tools/MCP and workflow KPIs. Areas without metrics are shown as pending.
 
-Blackbox hace GET sin claves a nueve endpoints con timeout 3 s. Prometheus evalúa dos alertas tras 2 minutos: endpoint no disponible y scrape no disponible. No se ha configurado Alertmanager ni notificaciones. Salud HTTP no prueba que una tarea de agente haya completado correctamente.
+Blackbox makes GET without keys to nine endpoints with timeout 3 s. Prometheus evaluates two alerts after 2 minutes: endpoint not available and scrape not available. Alertmanager and notifications have not been configured. HTTP health does not test that an agent task has completed correctly.
 
-**11. Golden signals, totales y caché: qué consultas cambiamos**
+**11. Golden signals, totals and cache: what queries we change**
 
-Tráfico, errores y p95 usan el span SERVER `Received Proxy Server Request`, en vez de sumar los spans internos de la misma petición. Saturación visible actualmente es ocupación de colas del Collector; no es utilización ni cola de la GPU/Ollama.
+Traffic, errors and p95 use the span SERVER `Received Proxy Server Request`, instead of summing the internal spans of the same request. Visible saturation is currently collector queue occupancy; it is not usage nor queue of the GPU/Ollama.
 
-Entrada/salida usan el histograma nativo de uso de tokens. Sus tarjetas acumuladas son consultas instantáneas, reducción `lastNotNull`, sin sumar muestras del contador. El período usa `increase` y las tasas `rate`. Un scrape repetido del contador no representa otra llamada.
+Input/output uses the native histogram of token usage. Their accumulated cards are instant queries, reduction `lastNotNull`, without summing counter samples. The period uses `increase` and the rates `rate`. A repeated scrape of the counter does not represent another call.
 
-Consulta literal — **Entrada · tokens acumulados**:
+Literal query — **Input · accumulated tokens**:
 
 ```promql
 sum(gen_ai_client_token_usage_sum{job="otel-collector",exported_job="litellm-proxy",gen_ai_request_model=~"qwen3:8b|unknown",gen_ai_token_type="input"})
 ```
 
-Consulta literal — **Entrada · tokens del período**:
+Literal query — **Input · tokens of the period**:
 
 ```promql
 sum(increase(gen_ai_client_token_usage_sum{job="otel-collector",exported_job="litellm-proxy",gen_ai_request_model=~"qwen3:8b|unknown",gen_ai_token_type="input"}[$__range]))
 ```
 
-Consulta literal — **Cache Hit · tokens acumulados**:
+Literal query — **Cache Hit · accumulated tokens**:
 
 ```promql
 sum(litellm_input_cached_tokens_metric_total{job="otel-collector",exported_job="litellm-proxy",gen_ai_request_model="qwen3:8b"})
 ```
 
-La captura OpenHands acumulaba entrada 125.088, de los cuales 95.780 eran cache-read, y salida 4.838. Total = entrada + salida = 129.926. Los tokens cacheados ya están en entrada; no se suman otra vez. La prueba local de dos llamadas idénticas reportó entrada 1.624 en ambas y caché 1→1.623, confirmando reutilización real. El contador antiguo del proxy de 30/4 tenía otro alcance; no demuestra un fallo de suma de Grafana.
+The OpenHands capture accumulated input 125,088, of which 95,780 were cache-read, and output 4,838. Total = input + output = 129,926. The cached tokens are already in input; they are not summed again. The local test of two identical calls reported input 1,624 in both and cache 1→1,623, confirming real reuse. The old proxy counter of 30/4 had a different scope; it does not demonstrate a failure in Grafana summation.
 
-El callback OTel fijado no cubre correctamente el campo anidado de caché de Ollama. El callback Prometheus existente sí lo lee. Por eso se añadieron dos métricas permitidas, un scrape autenticado del Collector y paneles de lectura/escritura, acumulados, períodos, tasas, porcentaje y salud de ese scrape. No se escribió un adaptador nuevo de runtime.
+The pinned OTel callback does not correctly cover the nested cache field of Ollama. The existing Prometheus callback does read it. That is why two allowed metrics were added, an authenticated scrape of the Collector, and read/write panels, accumulated, periods, rates, percentage, and health of that scrape. A new runtime adapter was not written.
 
-Fragmento del receiver actual, con credencial referenciada y sin revelar su valor:
+Fragment of the current receiver, with referenced credential and without revealing its value:
 
 ```yaml
 config:
@@ -442,33 +442,33 @@ config:
       action: labelkeep
 ```
 
-El Collector también recibe el master key en su entorno para esa lectura interna. El filtro acepta solo el modelo local y elimina etiquetas privadas. `transform/cache-monitor` renombra `up` como `litellm.cache.scrape.up`: si la lectura falla, el panel muestra fallo aunque un contador previo siga visible. El callback omite series de caché ausentes/cero; “Sin datos” no equivale a cero. No se importan los 95.780 de la captura como telemetría nueva.
+The Collector also receives the master key in its environment for that internal reading. The filter accepts only the local model and removes private labels. `transform/cache-monitor` renames `up` as `litellm.cache.scrape.up`: if the reading fails, the panel shows failure although a previous counter remains visible. The callback omits cache series that are missing/zero; "No data" does not equate to zero. The 95,780 from the capture are not imported as new telemetry.
 
-**12. Arranque, correcciones y aceptación**
+**12. Startup, corrections, and acceptance**
 
-`observability:up` valida configuración, prepara credenciales persistentes, arranca servicios, comprueba procesos/readiness y regenera filelog. Fue necesario usar `--force-recreate`: cambiar el contenido de un archivo bind-mounted no garantiza que Compose reinicie el proceso que debe volver a leerlo.
+`observability:up` validates configuration, prepares persistent credentials, starts services, checks processes/readiness, and regenerates filelog. It was necessary to use `--force-recreate`: changing the content of a bind-mounted file does not guarantee that Compose restarts the process that must re-read it.
 
-Fuente: [scripts/observability/up.sh](../scripts/observability/up.sh). Fragmento literal del archivo actual.
+Source: [scripts/observability/up.sh](../scripts/observability/up.sh). Literal fragment of the current file.
 
 ```bash
 obs_compose up -d --force-recreate
 ```
 
-Otras correcciones documentadas: preservar variables al usar sudo; tratar tools null como defaults heredados en el diagnóstico; distinguir contenedor creado de proceso que sigue vivo; mantener health_check al añadir file_storage; corregir el nombre real del contador canario; quitar el discriminador reservado del filtro OTel; medir velocidad de generación sin carga/prefill; distinguir totales de rates e incrementos estimados.
+Other documented corrections: preserving variables when using sudo; treating tools null as inherited defaults in diagnostics; distinguishing created container from a process that continues to run; maintaining health_check when adding file_storage; correcting the real name of the canary counter; removing the reserved discriminator from the OTel filter; measuring generation speed without load/prefill; distinguishing totals of rates and estimated increments.
 
-| Parte | Evidencia registrada | Límite |
+| Part | Registered Evidence | Limit |
 | --- | --- | --- |
-| GPU y Docker/NVIDIA | Driver, contenedor y smoke checks pasaron | No prueba calidad de agente |
-| Ollama/Qwen3 | Digest, generación, tool call y VRAM pasaron | Modelo pequeño puede fallar tareas complejas |
-| OpenHands | Demo y bugfix pasaron tests y aceptación independiente | Requirió guía; no es autonomía general |
-| Pila de observabilidad anterior | Chequeo del host pasó el 6 de octubre a las 00:09:47 Europe/Berlin | Llamada sintética; correlación completa del agente pendiente |
-| Dashboards actuales | Provisioning y 59 consultas aceptadas | No hay datos de todas las áreas futuras |
-| Nuevo scrape de caché | Binario Collector fijado: auth, redacción, acumulados, fallo HTTP y ausencia de cero inventado pasaron | Prueba integral del host aprobada el 6 de octubre a las 09:57 Europe/Berlin |
-| Uso histórico de esa conversación | Captura y diagnóstico preparado | Perfil guardado apunta a LiteLLM; se volvió a seleccionar en la conversación. Falta observar una llamada nueva para confirmar la ruta efectiva |
+| GPU and Docker/NVIDIA | Driver, container, and smoke checks passed | Does not test agent quality |
+| Ollama/Qwen3 | Digest, generation, tool call, and VRAM passed | Small model may fail complex tasks |
+| OpenHands | Demo and bugfix passed tests and independent acceptance | Required guidance; not general autonomy |
+| Previous observability stack | Host check passed October 6 at 00:09:47 Europe/Berlin | Synthetic call; full agent correlation pending |
+| Current dashboards | Provisioning and 59 accepted queries | No data from all future areas |
+| New cache scrape | Fixed Collector binary: auth, redaction, accumulated, HTTP failure, and invented zero absence passed | Full host test approved on October 6 at 09:57 Europe/Berlin |
+| Historical use of this conversation | Capture and diagnosis prepared | Saved profile points to LiteLLM; it was reselected in the conversation. Observing a new call is needed to confirm the effective path |
 
-Evidencia: [GPU](diagnostics/gpu-2026-10-04.md), [aceptación de observabilidad](diagnostics/observability-2026-10-06.md), [tokens/caché](diagnostics/tokens-2026-10-06.md), [OpenHands](openhands.md).
+Evidence: [GPU](diagnostics/gpu-2026-10-04.md), [observability acceptance](diagnostics/observability-2026-10-06.md), [tokens/cache](diagnostics/tokens-2026-10-06.md), [OpenHands](openhands.md).
 
-Para validar la ampliación de caché, cuando el agente esté inactivo:
+To validate the cache expansion, when the agent is inactive:
 
 ```bash
 mise exec -- task observability:up
@@ -476,19 +476,19 @@ mise exec -- task observability:cache:check
 mise exec -- task observability:check
 ```
 
-`up` reinicia servicios y contadores actuales de LiteLLM, preservando volúmenes y conversaciones. No es necesario reinstalar Docker, GPU o el modelo. Estos comandos todavía requieren tu terminal por sudo; esta guía no afirma que ya se hayan ejecutado para la ampliación de caché.
+`up` restarts current LiteLLM services and counters, preserving volumes and conversations. Reinstalling Docker, GPU, or the model is not necessary. These commands still require your terminal via sudo; this guide does not claim that they have already been executed for the cache expansion.
 
-**13. Dónde termina la fase actual**
+**13. Where the current phase ends**
 
-LiteLLM tiene un destino local configurado; aún no hay decisión intercambiable ni escalado automático entre proveedores. El volumen OpenHands persiste su estado, pero no es el state store desacoplado futuro. Las herramientas de OpenHands funcionan dentro del contenedor; no equivalen a un gateway MCP/policy propio. Faltan métricas GPU/host, auditoría durable, aprobaciones, evaluación de calidad y resultados de workflow, además de identidad y despliegue multiusuario/Kubernetes. Jev sigue sin ser un requisito.
+LiteLLM has a local destination configured; there is still no interchangeable decision or automatic escalation between providers. The OpenHands volume persists its state, but it is not the future decoupled state store. OpenHands tools function within the container; they do not equate to a native MCP/gateway policy. Missing metrics for GPU/host, durable auditing, approvals, quality evaluation, and workflow results, as well as identity and multi-user/Kubernetes deployment, remain. Jev is still not a requirement.
 
-**14. Dónde encajarían LangChain y LangGraph**
+**14. Where LangChain and LangGraph would fit**
 
-LangChain proporciona componentes para crear el ciclo de un agente con modelos, instrucciones, herramientas y middleware. LangGraph aporta control de pasos, bifurcaciones y estado, incluida ejecución con intervención humana. Fuentes: [LangChain](https://docs.langchain.com/oss/python/langchain/overview) y [LangGraph](https://docs.langchain.com/oss/python/langgraph/overview).
+LangChain provides components to create the cycle of an agent with models, instructions, tools, and middleware. LangGraph contributes step control, branching, and state, including execution with human intervention. Sources: [LangChain](https://docs.langchain.com/oss/python/langchain/overview) and [LangGraph](https://docs.langchain.com/oss/python/langgraph/overview).
 
-En este laboratorio OpenHands ya desempeña la capa de agente. Un workflow propio con LangChain/LangGraph podría ser otro cliente de LiteLLM y reutilizar el mismo backend Ollama. Observar sus llamadas LLM no basta para observar sus decisiones: sus pasos necesitarían instrumentación propia. No se instaló LangChain ni se añadió un contenedor; es una ubicación posible para la fase de runtime desacoplado.
+In this local OpenHands platform, OpenHands already performs the agent layer. A native workflow with LangChain/LangGraph could be another client of LiteLLM and reuse the same Ollama backend. Observing their LLM calls is not enough to observe their decisions: their steps would require custom instrumentation. LangChain was not installed, and no container was added; it is a possible location for the decoupled runtime phase.
 
-Ejemplo ilustrativo, **no instalado ni ejecutado**. La URL `litellm` se resuelve desde un cliente en su red Compose; no desde cualquier proceso del host. Las dependencias y credenciales deben prepararse antes de convertirlo en un ejercicio real. La interfaz [ChatOpenAI](https://docs.langchain.com/oss/python/integrations/chat/openai) permite configurar el endpoint compatible.
+Illustrative example, **not installed or executed**. The URL `litellm` resolves from a client in its Compose network; not from any process on the host. Dependencies and credentials must be prepared before converting it into a real exercise. The interface [ChatOpenAI](https://docs.langchain.com/oss/python/integrations/chat/openai) allows configuring the compatible endpoint.
 
 ```python
 import os
@@ -496,39 +496,39 @@ from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
 
 
-def sumar(a: int, b: int) -> int:
-    """Suma dos enteros para el ejercicio pedagógico."""
+def add(a: int, b: int) -> int:
+    """Add two integers for the example workflow."""
     return a + b
 
 
-modelo = ChatOpenAI(
+model = ChatOpenAI(
     model="qwen3:8b",
     base_url="http://litellm:4000/v1",
     api_key=os.environ["LITELLM_MASTER_KEY"],
     temperature=0,
 )
-agente = create_agent(model=modelo, tools=[sumar])
-resultado = agente.invoke({
-    "messages": [{"role": "user", "content": "Calcula 2 + 3 usando sumar."}]
+agent = create_agent(model=model, tools=[add])
+result = agent.invoke({
+    "messages": [{"role": "user", "content": "Calculate 2 + 3 using add."}]
 })
 ```
 
-El código del workflow permanece separado de los pesos y el servidor de inferencia. La adopción del framework y el diseño de permisos, presupuestos, checkpoints y métricas se decidirán en esa fase.
+The workflow code remains separate from the weights and inference server. The adoption of the framework and design of permissions, budgets, checkpoints, and metrics will be decided in that phase.
 
-**15. Cómo verás los próximos cambios**
+**15. How to see upcoming changes**
 
-Antes de editar mostraré archivos, propósito y alcance. Después mostraré diff real o fragmentos concretos, validaciones y lo que falta aplicar. Las decisiones de infraestructura seguirán en `infra/`, la operación en Task/scripts y la documentación en `docs/`. Nunca se incluirán claves o contenido de conversaciones en un diff. La regla queda guardada en el `AGENTS.md` del repositorio.
+Before editing, I will show files, purpose, and scope. Then I will show real diff or specific fragments, validations, and what remains to be applied. Infrastructure decisions will continue in `infra/`, operations in Task/scripts, and documentation in `docs/`. Keys or conversation content will never be included in a diff. The rule is saved in the `AGENTS.md` of the repository.
 
 
-### Separación de tareas — 7 de octubre de 2026
+### Task Separation — October 7, 2026
 
-La preparación/validación del ambiente usa `mise run env:plan`, `mise run env:setup`, `mise run env:check` y las comprobaciones individuales GPU/Docker/Python/repositorio. mise declara llamadas breves; `scripts/environment/` conserva la secuencia y `scripts/host/` implementa las acciones del host. Task conserva despliegues, estado, logs, inferencia y pruebas de observabilidad. Un preflight de repositorio dentro de un despliegue invoca `mise run repo:check`, con una sola definición pública de esa validación.
+The preparation/validation of the environment uses `mise run env:plan`, `mise run env:setup`, `mise run env:check`, and individual GPU/Docker/Python/repository checks. mise declares brief calls; `scripts/environment/` preserves the sequence and `scripts/host/` implements the host actions. Task preserves deployments, status, logs, inference, and observability tests. A preflight of the repository within a deployment invokes `mise run repo:check`, with a single public definition of that validation.
 
 ```toml
 [tasks."env:check"]
-description = "Valida Python/uv/lock, estructura, driver GPU y Docker/GPU; ejecutar en la terminal del host."
+description = "Validate Python/uv/lock, repository structure, GPU driver and Docker/GPU in the host terminal."
 run = "bash scripts/environment/check.sh"
 ```
 
 
-Las dependencias Python se declaran en `pyproject.toml`, con resolución/hashes en `uv.lock`. `scripts/environment/setup-python.sh` ejecuta `uv sync --locked --no-dev --python "$repo_root/.venv/bin/python3"`; la comprobación usa `uv sync --locked --check` y no modifica el entorno. uv gestiona paquetes Python; mise fija los binarios de Python/uv/Task. No se conserva un requirements duplicado en infra.
+Python dependencies are declared in `pyproject.toml`, with resolution/hashes in `uv.lock`. `scripts/environment/setup-python.sh` runs `uv sync --locked --no-dev --python "$repo_root/.venv/bin/python3"`; the check uses `uv sync --locked --check` and does not modify the environment. uv manages Python packages; mise fixes Python/uv/Task binaries. No duplicated requirements are preserved in infrastructure.

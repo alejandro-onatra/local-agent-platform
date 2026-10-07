@@ -1,22 +1,22 @@
-# Docker y GPU — instalación local reproducible
+# Docker and GPU — Local Reproducible Installation
 
-## Estado
+## Status
 
-La GPU del host pasó la comprobación: RTX 4060 Ti, 16380 MiB, driver 580.178.04. Docker y NVIDIA Container Toolkit se instalaron y pasaron las comprobaciones desde la terminal del host el 4 de octubre de 2026, según la salida compartida por el usuario.
+The host GPU passed the check: RTX 4060 Ti, 16380 MiB, driver 580.178.04. Docker and NVIDIA Container Toolkit were installed and passed the checks from the host terminal on October 4, 2026, according to the output shared by the user.
 
-Work tiene activado `no_new_privs`, que impide elevar privilegios con sudo, y no puede controlar systemd. Por eso la instalación debe ejecutarse en una terminal normal del host. No hace falta iniciar Work como root ni cambiar el driver.
+Work has `no_new_privs` enabled, which prevents elevating privileges with sudo, and cannot control systemd. Therefore, the installation must be executed in a normal host terminal. There is no need to start Work as root or change the driver.
 
-## Punto de entrada con mise
+## Entry Point with mise
 
 ```bash
 mise run env:plan
-mise run env:setup  # solo cuando haga falta instalar/configurar el host
-mise run env:check  # comprobación habitual del entorno ya instalado
+mise run env:setup  # only when host installation/configuration is needed
+mise run env:check  # routine check of the installed environment
 ```
 
-Ver [bootstrap de mise y tareas](environment.md). Los scripts siguen siendo la implementación. Ejecutarlos directamente requiere activar el entorno Python/PyYAML preparado; para un checkout nuevo seguir primero environment.md.
+See [bootstrap of mise and tasks](environment.md). The scripts remain the implementation. Running them directly requires activating the prepared Python/PyYAML environment; for a new checkout follow environment.md first.
 
-## Revisar e instalar
+## Review and Install
 
 ```bash
 cd /home/alejandro/CloudDrive/Engineering/agent-platform
@@ -24,74 +24,74 @@ mise run docker:plan
 mise run docker:install
 ```
 
-El script se ejecuta como Alejandro y pide la contraseña mediante sudo donde corresponde. No pegues la contraseña en el chat. Si APT propone una operación inesperada, interrumpe y revisa el resultado.
+The script runs as Alejandro and asks for the password via sudo where appropriate. Do not paste the password in the chat. If APT proposes an unexpected operation, interrupt and review the result.
 
-## Cambios realizados por el instalador
+## Changes Made by the Installer
 
-- Comprueba Ubuntu 26.04 `resolute`, arquitectura amd64 y consulta GPU satisfactoria.
-- Se detiene ante paquetes de contenedores incompatibles; no los elimina automáticamente.
-- Se detiene si encuentra contenedores activos antes de modificar el runtime/reiniciar Docker.
-- Añade los repositorios oficiales estables Docker/NVIDIA y claves con `signed-by`.
-- Instala las nueve versiones de `infra/host/versions.yaml`, verificadas en los índices oficiales el 4 de octubre de 2026.
-- Configura NVIDIA en `/etc/docker/daemon.json`, habilita y reinicia Docker.
-- Conserva las configuraciones previas, si existen, en `/var/backups/agent-platform/` con acceso restringido.
-- Comprueba versiones y ejecuta hello-world y una consulta `nvidia-smi` dentro de un contenedor.
-- Guarda informes locales en `artifacts/diagnostics/`, excluidos de Git.
+- Checks Ubuntu 26.04 `resolute`, architecture amd64, and confirms a satisfactory GPU.
+- Stops before incompatible container packages; does not remove them automatically.
+- Stops if it finds active containers before modifying the runtime/restarting Docker.
+- Adds the official stable Docker/NVIDIA repositories and keys with `signed-by`.
+- Installs the nine versions of `infra/host/versions.yaml`, verified in the official indexes on October 4, 2026.
+- Configures NVIDIA in `/etc/docker/daemon.json`, enables and restarts Docker.
+- Preserves previous configurations, if any, in `/var/backups/agent-platform/` with restricted access.
+- Checks versions and runs hello-world and a `nvidia-smi` query inside a container.
+- Saves local reports in `artifacts/diagnostics/`, excluded from Git.
 
-No instala CUDA Toolkit, no reemplaza drivers, no abre puertos TCP, no monta la carpeta personal en los contenedores de prueba y no añade usuarios al grupo docker. Los procesos temporales de prueba se eliminan con `--rm`; las imágenes descargadas quedan almacenadas.
+Does not install CUDA Toolkit, does not replace drivers, does not open TCP ports, does not mount the personal folder in test containers, and does not add users to the docker group. The temporary test processes are removed with `--rm`; the downloaded images are stored.
 
-Los paquetes del sistema requieren privilegios. El grupo docker da acceso equivalente a root; por ahora las comprobaciones usan sudo cuando sea necesario, sin modificar grupos.
+System packages require privileges. The docker group provides equivalent access to root; for now, the checks use sudo when necessary, without modifying groups.
 
-## Versiones y límites de reproducibilidad
+## Versions and Reproducibility Limits
 
-Las versiones directas están fijadas en `infra/host/versions.yaml`. Las dos imágenes de prueba están fijadas por digest para Linux amd64; Ubuntu corresponde al tag 24.04 en la resolución inicial. APT valida firmas de repositorios. Los índices consultados al preparar el lock son evidencia de disponibilidad, no una validación de instalación.
+The direct versions are fixed in `infra/host/versions.yaml`. The two test images are pinned by digest for Linux amd64; Ubuntu corresponds to the tag 24.04 in the initial resolution. APT validates repository signatures. The indexes consulted when preparing the lock are evidence of availability, not a validation of installation.
 
-Las dependencias transitivas, los paquetes base y el kernel no están congelados. El script registra lo verificado y falla si una versión fijada deja de estar disponible; no cambia automáticamente a latest. No se usan apt holds para impedir futuras actualizaciones de seguridad; los upgrades deben revisar y actualizar el lock.
+Transitive dependencies, base packages, and the kernel are not frozen. The script records what is verified and fails if a pinned version is no longer available; it does not automatically switch to latest. Apt holds are not used to prevent future security updates; upgrades must review and update the lock.
 
-## Comprobar de nuevo
+## Recheck
 
 ```bash
 mise run docker:check
 ```
 
-Una consulta GPU satisfactoria dentro de Docker verifica acceso al dispositivo y al driver. La carga CUDA y la inferencia con un modelo serán pruebas posteriores.
+A satisfactory GPU query inside Docker verifies access to the device and the driver. CUDA loading and inference with a model will be later tests.
 
-## Si falla
+## If It Fails
 
-- **sudo/no new privileges:** ejecutar en una terminal normal del host, fuera de Work.
-- **Paquete incompatible:** revisar su uso antes de desinstalarlo; el script no borra datos de otros runtimes.
-- **APT no encuentra una versión:** revisar conectividad, repositorios y lock; no sustituir el codename de Ubuntu.
-- **Daemon Docker no arranca:** revisar `sudo systemctl status docker` y `sudo journalctl -u docker -n 80 --no-pager` antes de compartir un extracto sin secretos.
-- **GPU no aparece en el contenedor:** confirmar primero `nvidia-smi` en el host, revisar `sudo docker info` y la configuración de NVIDIA.
-- **Instalación parcial:** el script se detiene en el primer error y puede haber creado repositorios o instalado parte de los paquetes. Revisar el informe antes de repetir. Reinstalar las mismas versiones normalmente permite continuar.
+- **sudo/no new privileges:** run in a normal host terminal, outside of Work.
+- **Incompatible package:** review its use before uninstalling it; the script does not remove data from other runtimes.
+- **APT cannot find a version:** review connectivity, repositories, and lock; do not substitute the Ubuntu codename.
+- **Docker daemon does not start:** review `sudo systemctl status docker` and `sudo journalctl -u docker -n 80 --no-pager` before sharing an excerpt without secrets.
+- **GPU does not appear in the container:** confirm `nvidia-smi` first on the host, review `sudo docker info` and NVIDIA configuration.
+- **Partial installation:** the script stops at the first error and may have created repositories or installed part of the packages. Review the report before repeating. Reinstalling the same versions normally allows continuing.
 
-Restaurar configuración requiere revisar los backups concretos y detener primero los workloads. No hay un rollback automático que elimine Docker, imágenes o volúmenes.
+Restoring configuration requires reviewing the specific backups and stopping the workloads first. There is no automatic rollback that removes Docker, images, or volumes.
 
-## Fuentes
+## Sources
 
-- [Docker Engine en Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
+- [Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
 - [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
-- [Permisos del grupo docker](https://docs.docker.com/engine/install/linux-postinstall/)
+- [docker group permissions](https://docs.docker.com/engine/install/linux-postinstall/)
 
-## Validación completada — 4 de octubre de 2026
+## Validation completed — October 4, 2026
 
-Evidencia: salida del instalador compartida por el usuario; no es una ejecución del daemon desde Work.
+Evidence: installer output shared by the user; it is not a daemon execution from Work.
 
-| Componente | Resultado |
+| Component | Result |
 | --- | --- |
-| Docker Engine cliente / servidor | 29.8.2 / 29.8.2 |
+| Docker Engine client/server | 29.8.2 / 29.8.2 |
 | containerd | 2.3.6 |
 | Compose | 5.6.0 |
 | Buildx | 0.37.1 |
-| NVIDIA Container Toolkit | 1.20.1-1 instalado y runtime configurado |
-| hello-world | Ejecución correcta con imagen fijada por digest |
-| GPU dentro de contenedor | RTX 4060 Ti, 16380 MiB, driver 580.178.04 |
-| Versiones APT fijadas | El instalador completó la comprobación de las nueve versiones |
+| NVIDIA Container Toolkit | 1.20.1-1 installed and runtime configured |
+| hello-world | Correct execution with image pinned by digest |
+| GPU inside container | RTX 4060 Ti, 16380 MiB, driver 580.178.04 |
+| APT versions fixed | The installer completed the check of the nine versions |
 
-El runtime NVIDIA está disponible y el runtime por defecto sigue siendo runc. La prueba GPU pasó con `--gpus` sin cambiar el driver del host.
+The NVIDIA runtime is available and the default runtime remains runc. The GPU test passed with `--gpus` without changing the host driver.
 
-Informe local de la comprobación: `artifacts/diagnostics/docker-gpu-20261004T203234Z-ME33dN.txt`.
+Local check report: `artifacts/diagnostics/docker-gpu-20261004T203234Z-ME33dN.txt`.
 
-Backup de configuración informado por el instalador: `/var/backups/agent-platform/20261004T203210Z-158073`.
+Backup of configuration reported by the installer: `/var/backups/agent-platform/20261004T203210Z-158073`.
 
-Estado: instalación Docker y visibilidad GPU desde contenedores aprobadas. Falta instalar un servidor de modelos y verificar inferencia real, uso de VRAM, latencia y llamadas a herramientas antes de probar OpenHands.
+Status: Docker installation and GPU visibility from containers approved. Missing to install a model server and verify real inference, VRAM usage, latency, and tool calls before testing OpenHands.

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+repo_root="$(git rev-parse --show-toplevel)"
+cd -- "$repo_root"
+if command -v mise >/dev/null 2>&1; then
+    mise_cmd="$(command -v mise)"
+elif [[ -x "$HOME/.local/bin/mise" ]]; then
+    mise_cmd="$HOME/.local/bin/mise"
+else
+    printf 'Commit blocked: mise is missing. Install the project environment first.\n' >&2
+    exit 2
+fi
+printf 'Running pre-commit validation; no installations or Docker operations.\n'
+"$mise_cmd" exec -- task repo:commit:check

@@ -1,61 +1,61 @@
-# OpenHands local — primera experiencia con Agent Canvas
+# OpenHands local — first experience with Agent Canvas
 
-## Elección de versión
+## Version selection
 
-El 5 de octubre de 2026 el repositorio oficial publica Agent Canvas 1.24.0 como release estable. La antigua Local GUI aparece como proyecto deprecado en la documentación. Se utiliza la imagen oficial all-in-one de Agent Canvas, que incluye Agent Server 1.49.6 y Automation 1.15.1. El frontend sigue ejecutando el agente OpenHands; no hace falta un proveedor cloud.
+On October 5, 2026 the official repository publishes Agent Canvas 1.24.0 as a stable release. The old Local GUI appears as a deprecated project in the documentation. The official all-in-one image of Agent Canvas is used, which includes Agent Server 1.49.6 and Automation 1.15.1. The frontend continues to run the OpenHands agent; no cloud provider is needed.
 
-Imagen Linux amd64 fijada por digest en `infra/openhands/versions.yaml`; aproximadamente 1.40 GB comprimidos. El digest identifica toda la imagen y sus componentes. Node y el runtime Python de OpenHands están dentro de la imagen. El Python del host, fijado por mise, solo se utiliza para los scripts de configuración y validación del repositorio. mise mantiene Task y Python; go-task coordina y `scripts/openhands/` implementa.
+Linux amd64 image pinned by digest in `infra/openhands/versions.yaml`; approximately 1.40 GB compressed. The digest identifies the entire image and its components. Node and the OpenHands Python runtime are inside the image. The host Python, pinned by mise, is only used for the configuration and validation scripts of the repository. mise maintains Task and Python; go-task coordinates and `scripts/openhands/` implements.
 
-## Arranque
+## Startup
 
-Desde la terminal normal del host:
+From the normal host terminal:
 
 ```bash
 cd /home/alejandro/CloudDrive/Engineering/agent-platform
 mise exec -- task openhands:setup
 ```
 
-La tarea comprueba Ollama y su inferencia, descarga la imagen, crea el workspace y arranca el contenedor. Puede solicitar sudo para acceder a Docker. Aplica un segundo archivo Compose al proyecto `agent-platform-local`, conservando el volumen de pesos existente. Puede recrear Ollama para conectarlo a la red interna; no ejecutarla durante otra inferencia.
+The task checks Ollama and its inference, downloads the image, creates the workspace, and starts the container. It may request sudo to access Docker. It applies a second compose file to the project `agent-platform-local`, preserving the existing weights volume. It may recreate Ollama to connect it to the internal network; do not run it during another inference.
 
-Al finalizar, abrir **http://127.0.0.1:8000/canvas**. El chequeo comprueba HTML HTTP 200 y la ruta DNS/API desde OpenHands a Ollama, además del digest del modelo. No prueba todavía una conversación del agente.
+At the end, open **http://127.0.0.1:8000/canvas**. The check verifies HTML HTTP 200 and the DNS/API route from OpenHands to Ollama, as well as the model digest. It does not yet test an agent conversation.
 
-## Configurar el modelo en la interfaz
+## Configure the model in the interface
 
-En Settings / LLM Profiles, crear y activar el perfil `local-qwen3-8b`. Usar opciones avanzadas si el modelo no aparece:
+In Settings / LLM Profiles, create and activate the profile `local-qwen3-8b`. Use advanced options if the model does not appear:
 
-| Campo | Valor |
+| Field | Value |
 | --- | --- |
-| Modelo personalizado | `openai/qwen3:8b` |
+| Custom model | `openai/qwen3:8b` |
 | Base URL | `http://ollama:11434/v1` |
-| API key | `local-only` (placeholder, no secreto real) |
+| API key | `local-only` (placeholder, not a real secret) |
 
-El prefijo `openai/` selecciona el cliente compatible; los pesos siguen ejecutándose en Ollama. Dentro del contenedor `localhost` apunta a OpenHands, por eso se usa el nombre DNS `ollama`. Guardar y activar el perfil antes de crear la conversación. No seleccionar suscripciones, proveedor cloud ni introducir credenciales de GitHub en esta prueba.
+The prefix `openai/` selects the compatible client; the weights continue to run on Ollama. Inside the container `localhost` points to OpenHands, hence the DNS name `ollama` is used. Save and activate the profile before creating the conversation. Do not select subscriptions, cloud provider, or enter GitHub credentials in this test.
 
-El contexto inicial de 8192 tokens se usó para la prueba de inferencia; se ha ampliado a 32768 para probar OpenHands. Si el formulario permite límites de entrada/salida, evitar valores mayores que el contexto disponible y comenzar con salida de 1024 tokens. Un agente incorpora instrucciones y descripciones de herramientas; El contexto debe cubrir también las instrucciones y las herramientas del agente. Evaluar errores de contexto y calidad antes de aumentar memoria o cambiar modelo.
+The initial context of 8192 tokens was used for the inference test; it has been expanded to 32768 to test OpenHands. If the form allows input/output limits, avoid values greater than the available context and start with output of 1024 tokens. An agent incorporates instructions and tool descriptions; the context must also cover the agent's instructions and tools. Evaluate context errors and quality before increasing memory or changing the model.
 
-Desactivar el consentimiento de analytics/product telemetry en la interfaz. Agent Server tiene exporter `none` y consentimiento denegado. La imagen incluye un frontend con analytics compilado: la red interna del contenedor no controla las solicitudes que hace el navegador. No se afirma ausencia total de telemetría del navegador sin verificación adicional.
+Disable analytics/product telemetry consent in the interface. Agent Server has exporter `none` and consent denied. The image includes a frontend with analytics compiled: the internal network of the container does not control the requests that the browser makes. No claim is made about the absence of browser telemetry without additional verification.
 
-## Primera tarea pedagógica
+## First demo task
 
-Seleccionar el agente OpenHands y la carpeta `/projects/demo` (la ruta por defecto también está configurada ahí). Si la interfaz pregunta por ejecución o aprobación, revisar los comandos y activar confirmación manual cuando esté disponible. La política de aprobación propia de nuestra plataforma todavía no está implementada.
+Select the OpenHands agent and the folder `/projects/demo` (the default path is also configured there). If the interface asks for execution or approval, review the commands and activate manual confirmation when it is available. The platform's own approval policy is not yet implemented.
 
-Enviar esta tarea:
+Send this task:
 
-> Trabaja únicamente en /projects/demo. Crea sum.py con una función add(a, b) y test_sum.py con unittest. Incluye pruebas de enteros positivos, negativos y cero. Ejecuta python -m unittest -v y resume los resultados. Usa solamente la biblioteca estándar, sin descargar dependencias ni acceder a Internet. No modifiques otros archivos.
+> Work only in /projects/demo. Create sum.py with an add(a, b) function and test_sum.py with unittest. Include tests for positive integers, negatives, and zero. Run python -m unittest -v and summarize the results. Use only the standard library, without downloading dependencies or accessing the Internet. Do not modify other files.
 
-Comprobar que los dos archivos aparecen en `artifacts/openhands/projects/demo/`, que los tests pasan y que la conversación termina. Una suma es una prueba de herramientas y ejecución, no una evaluación representativa de programación compleja. Guardar un resumen del resultado sin copiar prompts personales, secretos ni conversaciones completas a Git.
+Check that the two files appear in `artifacts/openhands/projects/demo/`, that the tests pass, and that the conversation ends. A sum is a test of tools and execution, not a representative evaluation of complex programming. Save a summary of the results without copying personal prompts, secrets, or full conversations to Git.
 
-## Acceso, persistencia y límites
+## Access, persistence, and limits
 
-- UI publicada solo en `127.0.0.1:8000`. API de sesión y clave de cifrado se generan y conservan en el volumen `agent-platform-local_openhands-state`; no se imprimen ni se añaden al repositorio.
-- Solo se monta `artifacts/openhands/projects` como `/projects`. No se monta el repositorio completo, HOME, claves SSH ni Docker socket. Esa carpeta está dentro de CloudDrive: cualquier archivo de la demo puede sincronizarse; utilizar solo datos sintéticos.
-- La imagen corre como usuario no root. Se añade el grupo primario del usuario del host y se crean las dos carpetas con modo 2770. No se realiza chown recursivo ni cambios a los grupos del host. El arranque verifica permisos reales del contenedor.
-- OpenHands usa exclusivamente una red Docker interna compartida con Ollama; no tiene salida directa a Internet. Ollama conserva su red de descarga y su puerto loopback. Esto no protege frente a una vulnerabilidad del servicio ni evita tráfico del navegador.
-- 6 GB RAM, 4 CPU, máximo 512 procesos, sin capacidades Linux y sin elevación de privilegios. El agente puede ejecutar comandos dentro de su contenedor, modificar el workspace y acceder a su propio estado; el estado no es una auditoría inmutable.
-- No se habilitan automations ni conectores en esta fase. El componente Automation está incluido en la imagen, pero no se crean trabajos recurrentes. Editor integrado desactivado para esta prueba.
-- OpenHands no recibe GPU: Ollama es el servicio que la utiliza. No se reinicia automáticamente al arrancar Docker; se inicia de forma explícita.
+- UI published only in `127.0.0.1:8000`. Session API and encryption key are generated and preserved in the volume `agent-platform-local_openhands-state`; they are not printed nor added to the repository.
+- Only `artifacts/openhands/projects` is mounted as `/projects`. The full repository, HOME, SSH keys, or Docker socket are not mounted. That folder is inside CloudDrive: any file from the demo can be synchronized; use only synthetic data.
+- The image runs as a non-root user. The host user's primary group is added, and the two folders are created with mode 2770. No recursive chown or changes to the host's groups are made. Startup verifies the real permissions of the container.
+- OpenHands uses exclusively a shared internal Docker network with Ollama; it has no direct Internet access. Ollama preserves its download network and loopback port. This does not protect against a service vulnerability nor prevent browser traffic.
+- 6 GB RAM, 4 CPU, maximum 512 processes, no Linux capabilities, and no privilege escalation. The agent can run commands inside its container, modify the workspace, and access its own state; the state is not an immutable audit.
+- No automations or connectors are enabled in this phase. The Automation component is included in the image, but no recurring jobs are created. The integrated editor is disabled for this test.
+- OpenHands does not receive GPU: Ollama is the service that uses it. It does not restart automatically on Docker startup; it is started explicitly.
 
-## Operación y problemas
+## Operation and issues
 
 ```bash
 mise exec -- task openhands:plan
@@ -66,61 +66,61 @@ mise exec -- task openhands:down
 mise exec -- task openhands:up
 ```
 
-`openhands:down` detiene OpenHands y su proxy; conserva estado, workspace y Ollama. No usar `compose down -v` para operar este laboratorio.
+`openhands:down` stops OpenHands and its proxy; preserves state, workspace and Ollama. Do not use `compose down -v` to operate this local platform.
 
-Si se ejecuta después `llm:up` con su Compose individual, puede restaurar la configuración de redes de Ollama. Ejecutar `openhands:up` para reaplicar la conexión compartida.
+If executed after `llm:up` with its individual Compose, it can restore Ollama's network configuration. Run `openhands:up` to reapply the shared connection.
 
-Si falla la UI, revisar `openhands:logs`. No compartir claves ni cuerpos de conversaciones: los logs upstream no tienen aún nuestra capa de redacción. Si falla el acceso a `/projects/demo`, revisar el grupo y los permisos sin usar chmod 777. Si intenta descargar dependencias, la red interna debe impedirlo; mantener la tarea inicial con biblioteca estándar. Si el modelo falla al llamar herramientas o excede contexto, registrar el error: un chequeo sintético pasado no garantiza calidad del agente.
+If the UI fails, check `openhands:logs`. Do not share keys or conversation bodies: upstream logs do not yet have our layer of redaction. If access to `/projects/demo` fails, check the group and permissions without using chmod 777. If attempting to download dependencies, the internal network must prevent it; maintain the initial task with the standard library. If the model fails to call tools or exceeds context, log the error: a past synthetic check does not guarantee agent quality.
 
-## Validación realizada y pendiente
+## Validation performed and pending
 
-Se resolvió el digest oficial amd64 y se consultaron código, configuración de imagen y versión de los componentes. Se valida la configuración Compose combinada, los mounts y la red, y la sintaxis de los scripts. La ejecución real requiere la terminal del host con acceso a Docker; arranque, perfil LLM y conversación siguen pendientes hasta compartir los resultados.
+The official amd64 digest was resolved and code, image configuration and component versions were checked. The combined Compose configuration, mounts and network, and script syntax were validated. Real execution requires the host terminal with access to Docker; startup, LLM profile and conversation remain pending until results are shared.
 
-## Fuentes
+## Sources
 
-- [Release v1.24.0 y Quickstart oficial](https://github.com/OpenHands/OpenHands/tree/v1.24.0)
-- [Dockerfile de la imagen](https://github.com/OpenHands/OpenHands/blob/v1.24.0/docker/Dockerfile)
-- [Entrypoint y persistencia](https://github.com/OpenHands/OpenHands/blob/v1.24.0/docker/entrypoint.sh)
-- [Agent Server: configuración](https://github.com/OpenHands/software-agent-sdk/blob/v1.49.6/openhands-agent-server/openhands/agent_server/config.py)
-- [Modelos locales](https://docs.openhands.dev/openhands/usage/llms/local-llms)
+- [Release v1.24.0 and Official Quickstart](https://github.com/OpenHands/OpenHands/tree/v1.24.0)
+- [Dockerfile of the image](https://github.com/OpenHands/OpenHands/blob/v1.24.0/docker/Dockerfile)
+- [Entrypoint and persistence](https://github.com/OpenHands/OpenHands/blob/v1.24.0/docker/entrypoint.sh)
+- [Agent Server: configuration](https://github.com/OpenHands/software-agent-sdk/blob/v1.49.6/openhands-agent-server/openhands/agent_server/config.py)
+- [Local Models](https://docs.openhands.dev/openhands/usage/llms/local-llms)
 
-## Corrección del paso por sudo — 5 de octubre de 2026
+## Fix for sudo step — October 5, 2026
 
-La primera ejecución del host validó Ollama (40.88 tokens/s), pero Compose falló antes de descargar OpenHands: sudo eliminó `OH_HOST_GID` y `OH_WORKSPACE` del entorno. Se corrigió el helper para conservar únicamente esas dos variables al invocar Compose mediante sudo. No se conserva el entorno completo ni se cambia sudoers. Reintentar `task openhands:up`; no hace falta repetir la descarga ni la comprobación del modelo. El arranque real sigue pendiente.
+The first host execution validated Ollama (40.88 tokens/s), but Compose failed before downloading OpenHands: sudo removed `OH_HOST_GID` and `OH_WORKSPACE` from the environment. The helper was fixed to preserve only those two variables when invoking Compose via sudo. The full environment is not preserved nor is sudoers modified. Retry `task openhands:up`; no need to repeat the download or model check. The actual startup remains pending.
 
-## Corrección de publicación de la UI — 5 de octubre de 2026
+## Fix for UI publishing — October 5, 2026
 
-Los logs del host confirmaron que Agent Canvas y Automation arrancaron. Sin embargo, `compose ps` solo mostró `8000/tcp`, sin binding al host. La configuración anterior publicaba el puerto directamente desde un servicio conectado exclusivamente a la red interna; no produjo un puerto accesible en este Engine.
+The host logs confirmed that Agent Canvas and Automation started. However, `compose ps` only showed `8000/tcp`, without binding to the host. The previous configuration published the port directly from a service connected exclusively to the internal network; it did not produce an accessible port in this Engine.
 
-Se añadió `openhands-proxy`, con Nginx 1.30.5 fijado por digest. Solo el proxy publica `127.0.0.1:8000`, reenviando HTTP, WebSocket y streaming al puerto 8000 interno de Agent Canvas. OpenHands sigue conectado exclusivamente a `agent-link`. El proxy tiene red normal e interna, usuario no root, filesystem de solo lectura y sin Docker socket; no funciona como proxy de navegación genérico. Su access log está desactivado. La imagen del proxy es una descarga adicional pequeña.
+ `openhands-proxy` was added, with Nginx 1.30.5 pinned by digest. Only the proxy publishes `127.0.0.1:8000`, forwarding HTTP, WebSocket and streaming to the internal 8000 port of Agent Canvas. OpenHands remains connected exclusively to `agent-link`. The proxy has normal and internal network, non-root user, read-only filesystem and no Docker socket; it does not function as a generic navigation proxy. Its access log is disabled. The proxy image is a small additional download.
 
-Reintentar `task openhands:up`. Los checks de status/logs/down incluyen ambos servicios. No se borra el volumen de estado ni el modelo. La validación real del acceso desde el host sigue pendiente hasta ejecutar el nuevo despliegue.
+Retry `task openhands:up`. The status/logs/down checks include both services. The state volume and model are not deleted. The real validation of access from the host remains pending until the new deployment is executed.
 
-Referencia: [Publicación de puertos Docker](https://docs.docker.com/engine/network/port-publishing/).
+Reference: [Docker Port Publishing](https://docs.docker.com/engine/network/port-publishing/).
 
-## Próximo paso — primera conversación y aceptación
+## Next step — first conversation and acceptance
 
-La UI ya es accesible según confirmó el usuario. Sigue pendiente verificar el perfil activo y una tarea completa. Mantener subagentes y cambio automático de perfiles desactivados. Crear una conversación nueva con OpenHands, perfil `local-qwen3-8b` y workspace `/projects/demo`.
+The UI is already accessible as confirmed by the user. The active profile and a completed task remain pending. Keep sub-agents and automatic profile switching disabled. Create a new conversation with OpenHands, profile `local-qwen3-8b` and workspace `/projects/demo`.
 
-Usar la tarea de suma de esta guía; solicitar al menos tres casos unittest. No crear nosotros los archivos de solución antes: se evalúa que el agente los produzca y ejecute.
+Use the task of this guide's summation; request at least three unittest cases. Do not create the solution files ourselves before: it is evaluated that the agent produces and executes them.
 
-Al terminar, ejecutar en la terminal del host:
+Upon completion, run in the host terminal:
 
 ```bash
 mise exec -- task openhands:demo:check
 ```
 
-El check exige `sum.py` con `add(a, b)`, resultados correctos para cuatro entradas sintéticas y al menos tres tests unittest exitosos y no omitidos en `test_sum.py`. Ejecuta los archivos generados dentro del contenedor, no en el host. El checker verifica que existan archivos normales en el workspace y falla si faltan; no escribe ni corrige la solución. La validación funcional no demuestra que todos los cambios del agente hayan permanecido dentro del workspace: revisar también los eventos de la conversación.
+The check requires `sum.py` with `add(a, b)`, correct results for four synthetic entries and at least three successful and non-omitted unittests in `test_sum.py`. Run the generated files inside the container, not on the host. The checker verifies that normal files exist in the workspace and fails if they are missing; it does not write or correct the solution. Functional validation does not demonstrate that all agent changes have remained within the workspace: also check the conversation events.
 
-Si el agente se detiene por error, compartir el mensaje de error y la última acción; no cambiar modelo, contexto o permisos sin identificarlo. Si termina, compartir el resumen y la salida del check. Registrar después éxito/fallo, tiempo aproximado, número de intentos y errores de herramientas. No declarar completada la fase solo porque la UI o la API responden.
+If the agent stops due to an error, share the error message and the last action; do not change the model, context or permissions without identifying it. If it finishes, share the summary and the check output. Record after success/failure, approximate time, number of attempts and tool errors. Do not declare the phase completed just because the UI or API respond.
 
-## Incidente de uso de herramientas y ajuste de contexto
+## Incident of tool usage and context adjustment
 
-El usuario compartió un ciclo en el que el agente perdió la petición de terminal, eligió `think` y finalizó sin ejecutar el comando solicitado. La prueba sintética de herramientas pasó anteriormente, pero no valida un agente con todas sus instrucciones y herramientas.
+The user shared a cycle in which the agent lost the terminal request, chose `think` and finished without executing the requested command. The synthetic tool test passed previously, but it does not validate an agent with all its instructions and tools.
 
-La guía oficial de modelos locales de OpenHands recomienda al menos unos 22000 tokens, idealmente 32768 o más. Nuestra primera configuración de 8192 era conservadora para probar GPU, pero insuficiente como referencia para el agente completo. Se actualizó Ollama y el lock a 32768, manteniendo pesos, digest y modelo. Esto puede aumentar la VRAM; confirmar nuevamente residencia y rendimiento antes de continuar. La pérdida de contexto es una hipótesis, no una causa confirmada mediante el request real.
+The official guide for local models of OpenHands recommends at least 22000 tokens, ideally 32768 or more. Our initial setting of 8192 was conservative to test GPU, but insufficient as a reference for the full agent. Ollama was updated and the lock was set to 32768, keeping weights, digest and model. This may increase VRAM; confirm residency and performance again before proceeding. Context loss is a hypothesis, not a confirmed cause through the real request.
 
-Desde el host:
+From the host:
 
 ```bash
 mise exec -- task openhands:up
@@ -129,44 +129,44 @@ mise exec -- task llm:status
 mise exec -- task openhands:profile:check
 ```
 
-El último comando consulta los defaults persistidos de Agent Server e imprime solo campos permitidos del perfil y nombres de herramientas; no muestra claves, prompts ni conversaciones. Las conversaciones existentes pueden conservar otra configuración. Crear una conversación nueva tras corregir el perfil y confirmar que las herramientas incluyen terminal y archivos. Desactivar herramientas de navegador que no sean necesarias si la UI permite configurarlas.
+The last command queries the persisted defaults of Agent Server and prints only allowed fields of the profile and tool names; it does not show keys, prompts or conversations. Existing conversations may retain another configuration. Create a new conversation after correcting the profile and confirming that the tools include terminal and files. Disable browser tools that are not needed if the UI allows configuring them.
 
-Revisar límites de entrada/salida del perfil para que sean coherentes con 32768. No confundir los 128 tokens del smoke test con el límite del agente; ese valor solo está en el script de pruebas sintéticas. Para Qwen3, probar reasoning effort `none` si la configuración lo ofrece; Ollama documenta que ese valor desactiva thinking en modelos compatibles. No asumir que el indicador visual Thinking implica un fallo por sí solo.
+Review input/output limits of the profile to ensure they are consistent with 32768. Do not confuse the 128 tokens of the smoke test with the agent's limit; that value is only in the synthetic test script. For Qwen3, try reasoning effort `none` if the setting is available; Ollama documents that this value disables thinking in compatible models. Do not assume that the visual Thinking indicator implies a failure on its own.
 
-Repetir en una conversación nueva una única petición: ejecutar `pwd` y mostrar la salida real de la herramienta terminal. Después intentar `cd /projects/demo && pwd && ls -la`. Si sigue sin llamar terminal, revisar configuración y evaluar un modelo distinto. Todavía no se realiza fine-tuning ni se descarga otro modelo.
+Repeat in a new conversation a single request: execute `pwd` and show the real output of the terminal tool. After that, try `cd /projects/demo && pwd && ls -la`. If it still does not call terminal, review the configuration and evaluate a different model. Fine-tuning is still not performed and no other model is downloaded.
 
-Fuentes: [Contexto recomendado por OpenHands](https://docs.openhands.dev/openhands/usage/llms/local-llms), [reasoning_effort en Ollama](https://docs.ollama.com/api/openai-compatibility).
+Sources: [Recommended context by OpenHands](https://docs.openhands.dev/openhands/usage/llms/local-llms), [reasoning_effort in Ollama](https://docs.ollama.com/api/openai-compatibility).
 
-## Validación del contexto ampliado y corrección del diagnóstico
+## Validation of extended context and correction of diagnosis
 
-El usuario compartió el 5 de octubre a las 18:45 UTC: UI y conexión interna correctas, contexto cargado 32768, 100% GPU y 9,969,650,892 bytes de VRAM. Generación, herramienta sintética y API compatibles pasaron, pero la primera solicitud después de recrear Ollama dio 0.79 tokens/s: carga 32.566 s, prompt 21.998 s y generación de tokens 12.625 s. La lentitud no se atribuye solo a carga; repetir la prueba para comprobar si persiste antes de modificar más parámetros.
+The user shared on October 5 at 18:45 UTC: UI and internal connection correct, context loaded 32768, 100% GPU and 9,969,650,892 bytes of VRAM. Generation, synthetic tool and API compatibility passed, but the first request after recreating Ollama gave 0.79 tokens/s: load 32.566 s, prompt 21.998 s and token generation 12.625 s. The slowness is not attributed only to load; repeat the test to check if it persists before modifying more parameters.
 
-`openhands:profile:check` falló porque `agent_settings.tools` era null. Se corrigió el tratamiento de ese valor y se añade `tools_explicitly_configured`; null puede representar defaults heredados y no demuestra ausencia efectiva de herramientas en una conversación. La tarea consulta los defaults persistidos, no la configuración efectiva de cada sesión.
+`openhands:profile:check` failed because `agent_settings.tools` was null. The treatment of that value was corrected and `tools_explicitly_configured` is added; null may represent inherited defaults and does not demonstrate absence of tools in a conversation. The task queries the persisted defaults, not the effective configuration of each session.
 
-Repetir `task openhands:profile:check`, `task llm:check`, `task llm:status` y `task llm:logs`. La tarea del agente aún no está validada.
+Repeat `task openhands:profile:check`, `task llm:check`, `task llm:status` and `task llm:logs`. The agent's task is still not validated.
 
-## Segunda medición con 32768 y perfil activo
+## Second measurement with 32768 and active profile
 
-El usuario compartió a las 18:48 UTC del 5 de octubre: perfil `local-qwen3-8b`, modelo `openai/qwen3:8b`, base URL interna correcta, `reasoning_effort=high`; límites de entrada/salida y temperatura null (defaults, no significa cero). Herramientas sin configuración explícita; no se conoce aún la lista efectiva de la conversación.
+The user shared at 18:48 UTC on October 5: profile `local-qwen3-8b`, model `openai/qwen3:8b`, internal base URL correct, `reasoning_effort=high`; input/output limits and temperature null (defaults, does not mean zero). Tools without explicit configuration; the effective list of the conversation is still unknown.
 
-La repetición del smoke test dio 52.22 tokens/s, 0.265 s totales, 0.002 s de carga, 0.035 s de prompt y 0.192 s de generación; 100% GPU y contexto 32768. Los logs muestran reutilización de prompt cache, por lo que no es una comparación representativa con una solicitud fría ni un benchmark de instrucciones largas. El fallo funcional del agente todavía está pendiente de repetir.
+The repetition of the smoke test gave 52.22 tokens/s, 0.265 total seconds, 0.002 seconds of load, 0.035 seconds of prompt and 0.192 seconds of generation; 100% GPU and context 32768. The logs show prompt cache reuse, so it is not a representative comparison with a cold request or a long instruction benchmark. The functional failure of the agent is still pending to be repeated.
 
-Próximo experimento: en el perfil LLM, cambiar reasoning effort de high a none si la interfaz lo ofrece, guardar y activar. Ollama documenta none como solicitud de desactivar thinking en modelos booleanos compatibles. No afirmar que high sea la causa confirmada del fallo. Crear conversación nueva con cambio de perfiles y subagentes desactivados; solicitar una única ejecución de `pwd` con la herramienta de terminal. Si no existe la opción none, revisar la pantalla de opciones avanzadas antes de elegir otro ajuste.
+Next experiment: in the LLM profile, change reasoning effort from high to none if the interface offers it, save and activate. Ollama documents none as a request to disable thinking in compatible boolean models. Do not claim that high is the confirmed cause of the failure. Create a new conversation with profile change and disabled subagents; request a single execution of `pwd` with the terminal tool. If the none option does not exist, review the advanced options screen before choosing another setting.
 
-## Hito validado — primera tarea completa, 5 de octubre de 2026
+## Validated milestone — first complete task, October 5, 2026
 
-El usuario compartió la salida de `task openhands:demo:check`: `test_negative`, `test_positive` y `test_zero` pasaron, tres tests ejecutados sin omisiones, y la comprobación adicional de la función add fue satisfactoria. El check ejecuta los archivos presentes en `/projects/demo` dentro del contenedor. La carpeta corresponde a `artifacts/openhands/projects/demo` en el host.
+The user shared the output of `task openhands:demo:check`: `test_negative`, `test_positive` and `test_zero` passed, three tests executed without omissions, and the additional check of the add function was satisfactory. The check executes the files present in `/projects/demo` inside the container. The folder corresponds to `artifacts/openhands/projects/demo` on the host.
 
-Resultado: el laboratorio completó su primera tarea sintética de código y pruebas con OpenHands y Qwen3 local. La secuencia incluyó confirmación de la ruta de trabajo y verificación independiente de la solución. La ejecución fue realizada en la terminal del usuario; no se volvió a ejecutar desde Work. El cambio a contexto 32768 precedió a este resultado. No se registró aún una nueva lectura del perfil que confirme el valor efectivo de reasoning effort ni se atribuye el éxito a un único cambio.
+Result: the local platform completed its first synthetic code and OpenHands and Qwen3 local test. The sequence included confirmation of the working path and independent verification of the solution. The execution was performed in the user's terminal; it was not rerun from Work. The change to context 32768 preceded this result. No new profile reading has been recorded yet that confirms the effective value of reasoning effort nor is the success attributed to a single change.
 
-Este hito comprueba el funcionamiento básico, no calidad sostenida, seguridad completa ni cumplimiento de todas las restricciones del prompt. Aún están pendientes observabilidad centralizada, auditoría, políticas y adaptadores de la plataforma.
+This milestone verifies basic functionality, not sustained quality, full security or compliance with all prompt constraints. Centralized observability, auditing, policies and platform adapters are still pending.
 
-Siguiente experimento propuesto: corregir un bug pequeño en un proyecto de ejemplo con tests existentes, comprobando fallo previo y éxito posterior, y registrar duración, errores de herramientas y cambios de archivos. Mantener un agente, perfil fijo y datos sintéticos para comparar con esta referencia.
+Next proposed experiment: fix a small bug in an example project with existing tests, checking previous failure and subsequent success, and recording duration, tool errors and file changes. Keep one agent, fixed profile and synthetic data to compare with this reference.
 
-La segunda prueba está descrita en [openhands_bugfix.md](openhands_bugfix.md), con tareas `openhands:bugfix:prepare`, `baseline` y `check`.
+The second test is described in [openhands_bugfix.md](openhands_bugfix.md), with tasks `openhands:bugfix:prepare`, `baseline` and `check`.
 
-## Siguiente etapa — observabilidad con integraciones existentes
+## Next step — observability with existing integrations
 
-La [guía de observabilidad](observability.md) explica cómo intercalar LiteLLM entre OpenHands y Ollama, activar los tres backends y provisionar Grafana. Incluye el perfil `local-qwen3-8b-observed`, comandos de aceptación, ubicación de logs, privacidad y vuelta al perfil directo. Los [diagramas](architecture/observability_diagrams.md) muestran la ruta LLM, redes, almacenamiento y evolución.
+The [observability guide](observability.md) explains how to interleave LiteLLM between OpenHands and Ollama, activate the three backends and provision Grafana. It includes the profile `local-qwen3-8b-observed`, acceptance commands, log location, privacy and return to the direct profile. The [diagrams](architecture/observability_diagrams.md) show the LLM path, networks, storage and evolution.
 
-La configuración está preparada; no se afirma desplegada. El callback LiteLLM excluye mensajes; el Collector sanitiza trazas y logs. El tracing nativo de OpenHands es optativo para datos sintéticos porque puede capturar argumentos/resultados antes del filtro. El exporter de telemetría de producto `none` es un control distinto de OTLP del SDK. No habilitarlo pensando que la captura en origen ya está completamente eliminada.
+The configuration is ready; it is not asserted as deployed. The LiteLLM callback excludes messages; the Collector sanitizes traces and logs. The native tracing of OpenHands is optional for synthetic data because it can capture arguments/results before the filter. The product telemetry exporter `none` is a distinct control from OTLP of the SDK. Do not disable it thinking that the capture at source is already completely removed.

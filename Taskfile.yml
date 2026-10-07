@@ -226,3 +226,18 @@ tasks:
     desc: Test real secret detection in files, staging and history using temporary repos
     cmds:
       - bash scripts/security/test-secrets.sh
+
+  repo:commit:check:
+    desc: Run non-interactive environment checks, secret scanning and code tests before commit
+    cmds:
+      - mise run repo:check
+      - mise run env:python:check
+      - task: security:secrets
+      - task: repo:test
+      - task: observability:test
+      - task: security:test
+
+  repo:hooks:test:
+    desc: Verify real commit acceptance and rejection in a disposable clone
+    cmds:
+      - bash scripts/repo/test-hooks.sh

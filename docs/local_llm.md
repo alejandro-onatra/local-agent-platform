@@ -1,14 +1,14 @@
-# Primera inferencia local — Ollama + Qwen3 8B
+# First local inference — Ollama + Qwen3 8B
 
-## Decisión y alcance
+## Decision and scope
 
-Usar Ollama 0.35.1 en Docker y `qwen3:8b` Q4_K_M como prueba inicial de inferencia y herramientas. El modelo ocupa aproximadamente 5.23 GB de descarga. Con 16 GB de VRAM y contexto inicial de 8192 tokens es una selección conservadora; su consumo real y rendimiento se medirán en el host.
+Use Ollama 0.35.1 in Docker and `qwen3:8b` Q4_K_M as initial inference and tooling test. The model occupies approximately 5.23 GB of download. With 16 GB of VRAM and initial context of 8192 tokens is a conservative selection; its actual consumption and performance will be measured on the host.
 
-Qwen3 8B es una primera referencia técnica, no una garantía de calidad para tareas largas de OpenHands. La página del modelo declara soporte de herramientas y licencia Apache 2.0. La licencia MIT del repositorio no cambia las licencias de Ollama, modelos u otros componentes.
+Qwen3 8B is a first technical reference, not a guarantee of quality for long OpenHands tasks. The model page declares tool support and Apache 2.0 license. The MIT license of the repository does not change the licenses of Ollama, models or other components.
 
-## Preparación
+## Preparation
 
-Desde una terminal normal del host:
+From a normal host terminal:
 
 ```bash
 cd /home/alejandro/CloudDrive/Engineering/agent-platform
@@ -18,41 +18,41 @@ mise exec -- task llm:plan
 mise exec -- task llm:setup
 ```
 
-`llm:setup` valida el repositorio y Compose, arranca Ollama, espera su estado saludable, descarga el modelo, comprueba su digest y ejecuta pruebas de inferencia. Docker usa explícitamente el contexto `default`, para evitar un contexto Docker Desktop o socket configurado accidentalmente. Puede pedir sudo para acceder al Engine; el script no modifica grupos ni privilegios.
+`llm:setup` validates the repository and Compose, starts Ollama, waits for its healthy state, downloads the model, checks its digest and runs inference tests. Docker explicitly uses the context `default`, to avoid a Docker Desktop or accidentally configured socket. It may ask for sudo to access the Engine; the script does not modify groups or privileges.
 
-La primera ejecución descarga la imagen Ollama y unos 5.23 GB de pesos. Comprobar espacio en el almacenamiento Docker, no solo en CloudDrive. El script intenta verificarlo y avisa si no puede leer esa ruta. No elimina otros modelos ni volúmenes.
+The first run downloads the Ollama image and about 5.23 GB of weights. Check storage space in Docker, not just in CloudDrive. The script attempts to verify it and warns if it cannot read that path. It does not remove other models or volumes.
 
-## Seguridad y persistencia
+## Security and persistence
 
-- API: `http://127.0.0.1:11434`; publicada solo en loopback, sin autenticación. Los procesos locales pueden usarla.
-- Funciones cloud desactivadas mediante `OLLAMA_NO_CLOUD=1`. Esto no es una restricción de red: el servicio necesita salida para descargar pesos.
-- GPU 0 reservada, un modelo cargado y una solicitud paralela, contexto inicial de 8192.
-- Límites de memoria RAM de 12 GB y 8 CPU; no equivalen a limitar VRAM. Si falta memoria, revisar los logs antes de aumentar límites.
-- Sin Docker socket ni carpetas personales montadas en Ollama; se eliminan capacidades y se impide elevar privilegios.
-- Pesos guardados en el volumen Docker `agent-platform-local_ollama-data`, fuera del repositorio y de la sincronización CloudDrive.
-- `llm:down` conserva los pesos. El servicio usa `unless-stopped`; se reanuda con Docker si no se detuvo explícitamente.
-- Los logs Docker tienen rotación. No introducir información sensible mientras no se haya revisado toda la política de datos.
+- API: `http://127.0.0.1:11434`; published only in loopback, without authentication. Local processes can use it.
+- Cloud functions disabled via `OLLAMA_NO_CLOUD=1`. This is not a network restriction: the service needs outgoing to download weights.
+- GPU 0 reserved, a loaded model and a parallel request, initial context of 8192.
+- RAM memory limits of 12 GB and 8 CPU; they do not equate to limiting VRAM. If memory is lacking, check the logs before increasing limits.
+- No Docker socket or personal folders mounted in Ollama; capabilities are removed and elevation of privileges is prevented.
+- Weights saved in the Docker volume `agent-platform-local_ollama-data`, outside the repository and CloudDrive synchronization.
+- `llm:down` preserves the weights. The service uses `unless-stopped`; it resumes with Docker if not explicitly stopped.
+- Docker logs have rotation. Do not introduce sensitive information until the entire data policy has been reviewed.
 
-## Versiones fijadas
+## Pinned versions
 
-`infra/llm/versions.yaml` conserva versión y digest Linux amd64 de Ollama, digest del manifiesto del modelo y opciones de la prueba. Compose fija la imagen por digest.
+`infra/llm/versions.yaml` preserves version and Linux amd64 digest of Ollama, model manifest digest and test options. Compose fixes the image by digest.
 
-El tag del modelo se descarga mediante Ollama y se compara con el digest esperado. Si el upstream modifica el tag, el proceso falla antes de inferencia; no actualiza el lock automáticamente. No garantizamos disponibilidad eterna del tag fijado. Para preservar una copia reproducible conservar los pesos y su manifiesto en el volumen o un backup revisado.
+The model tag is downloaded via Ollama and compared with the expected digest. If the upstream modifies the tag, the process fails before inference; it does not automatically update the lock. We do not guarantee eternal availability of the pinned tag. To preserve a reproducible copy, save the weights and their manifest in the volume or a reviewed backup.
 
-Los pesos se verifican mediante los mecanismos de descarga de Ollama; el script adicional verifica la identidad del manifiesto instalado.
+The weights are verified via Ollama's download mechanisms; the additional script verifies the identity of the installed manifest.
 
-## Qué comprueba llm:check
+## What checks llm:check
 
-1. Versión del servidor y digest del modelo instalado.
-2. Generación de una respuesta JSON correcta a una suma sintética, completada sin truncamiento.
-3. Modelo cargado con `size_vram > 0` según `/api/ps`. Demuestra asignación GPU, no demuestra que todas las capas estén en GPU ni constituye una prueba de carga sostenida.
-4. Una llamada sintética `add(a=2, b=3)` con argumentos correctos; no ejecuta herramientas ni acciones externas.
-5. Una respuesta válida y no truncada desde `/v1/chat/completions`.
-6. Tokens/segundo calculados con `eval_count / eval_duration`, que excluyen la carga inicial. El campo histórico `generation_seconds` contiene el tiempo total; se añaden `token_generation_seconds`, `model_load_seconds` y `prompt_processing_seconds` para distinguir las fases. Es una muestra corta, no un benchmark comparable.
+1. Server version and installed model digest.
+2. Generation of a correct JSON response to a synthetic sum, completed without truncation.
+3. Model loaded with `size_vram > 0` according to `/api/ps`. Demonstrates GPU assignment, not that all layers are on GPU nor constitutes a sustained load test.
+4. A synthetic call `add(a=2, b=3)` with correct arguments; does not execute tools or external actions.
+5. A valid and non-truncated response from `/v1/chat/completions`.
+6. Tokens/second calculated with `eval_count / eval_duration`, which exclude the initial load. The historical field `generation_seconds` contains the total time; `token_generation_seconds`, `model_load_seconds` and `prompt_processing_seconds` are added to distinguish phases. It is a short sample, not a comparable benchmark.
 
-La prueba usa solo datos sintéticos. Guarda resúmenes de estado, versión, digest, tiempos y VRAM en `artifacts/diagnostics/llm-*.json`; no guarda prompts, respuestas ni razonamiento. El informe no valida todavía compatibilidad completa o calidad de OpenHands.
+The test uses only synthetic data. Saves summaries of status, version, digest, times and VRAM in `artifacts/diagnostics/llm-*.json`; does not save prompts, responses or reasoning. The report does not yet validate full compatibility or OpenHands quality.
 
-## Operación y diagnóstico
+## Operation and diagnosis
 
 ```bash
 mise exec -- task llm:status
@@ -66,22 +66,22 @@ mise run env:check
 mise exec -- task llm:check
 ```
 
-- **sudo bloqueado en Work:** ejecutar desde la terminal normal del host.
-- **Puerto 11434 ocupado:** revisar el servicio existente; no se detiene automáticamente ni se cambia el puerto silenciosamente.
-- **Digest distinto:** revisar el cambio upstream y actualizar configuración explícitamente; no ignorar el control.
-- **Sin VRAM o error CUDA:** comprobar host y Docker/GPU y revisar logs del servicio. No reinstalar el driver sin diagnóstico.
-- **Respuesta/llamada inválida:** infraestructura y calidad son controles separados; registrar el fallo y evaluar modelo/opciones antes de OpenHands.
-- **Timeout:** revisar memoria y modelo cargado; cada solicitud de inferencia tiene un timeout de 600 segundos y no se reintenta automáticamente.
+- **sudo blocked in Work:** run from the normal host terminal.
+- **Port 11434 occupied:** check existing service; it is not stopped automatically nor the port changed silently.
+- **Different digest:** check upstream change and update configuration explicitly; do not ignore the control.
+- **No VRAM or CUDA error:** check host and Docker/GPU and review service logs. Do not reinstall the driver without diagnosis.
+- **Invalid response/call:** infrastructure and quality are separate controls; register the failure and evaluate model/options before OpenHands.
+- **Timeout:** check memory and loaded model; each inference request has a timeout of 600 seconds and is not retried automatically.
 
-## Estado de validación
+## Validation status
 
-Se verificaron disponibilidad de la imagen y del manifiesto del modelo, sintaxis shell, configuración Compose y consistencia con el lock. Los tests de validadores usan fixtures y comprueban fallos reales como drift, CPU-only, truncamiento y llamadas incorrectas.
+Availability of the image and model manifest, shell syntax, Compose configuration and consistency with the lock were verified. The validators' tests use fixtures and check real failures like drift, CPU-only, truncation and incorrect calls.
 
-El usuario ejecutó `task llm:setup` desde el host y compartió un resultado satisfactorio el 5 de octubre de 2026: versión y digest correctos, generación JSON, residencia GPU, llamada sintética y API compatible verificadas. El informe tiene timestamp UTC del 4 de octubre a las 22:16, equivalente al 5 de octubre a las 00:16 en Europe/Berlin.
+The user ran `task llm:setup` from the host and shared a satisfactory result on October 5, 2026: correct version and digest, JSON generation, GPU residency, synthetic call and compatible API verified. The report has a UTC timestamp of October 4 at 22:16, equivalent to October 5 at 00:16 in Europe/Berlin.
 
-Se observaron 0.78 tokens/s, 10 tokens generados, 68.809 segundos totales y 6,295,440,588 bytes de VRAM asignados (aproximadamente 5.86 GiB). La prueba funcional pasó; el rendimiento requiere diagnóstico. La velocidad usa solo `eval_duration`, por lo que no se puede atribuir únicamente a la carga inicial. No se comprobó aún el porcentaje de capas en GPU.
+The following 0.78 tokens/s, 10 tokens generated, 68.809 total seconds, and 6,295,440,588 bytes of VRAM allocated (approximately 5.86 GiB) were observed. The functional test passed; performance requires diagnosis. The speed uses only `eval_duration`, so it cannot be solely attributed to initial load. The percentage of layers on GPU has not been verified yet.
 
-Antes de OpenHands, repetir la prueba y consultar el reparto CPU/GPU inmediatamente después, mientras el modelo sigue cargado:
+Before OpenHands, repeat the test and consult the CPU/GPU distribution immediately after, while the model is still loaded:
 
 ```bash
 mise exec -- task llm:check
@@ -89,41 +89,41 @@ mise exec -- task llm:status
 mise exec -- task llm:logs
 ```
 
-Compartir esos resultados para revisar tiempos, `PROCESSOR` y backend CUDA. No cambiar driver, modelo o límites sin evidencia. El informe original queda en `artifacts/diagnostics/llm-y546ryve.json` en el host; este estado está basado en la salida compartida por el usuario.
+Share these results for reviewing times, `PROCESSOR` and backend CUDA. Do not change driver, model, or limits without evidence. The original report remains in `artifacts/diagnostics/llm-y546ryve.json` on the host; this state is based on the output shared by the user.
 
-## Segunda validación — 5 de octubre de 2026
+## Second Validation — October 5, 2026
 
-El usuario compartió una nueva ejecución del host, a las 07:49 UTC (09:49 Europe/Berlin), con todos los controles satisfactorios:
+The user shared a new host execution at 07:49 UTC (09:49 Europe/Berlin), with all controls satisfactory:
 
-| Medida | Resultado |
+| Metric | Result |
 | --- | --- |
-| Generación según API | 38.07 tokens/s; 10 tokens |
-| Tiempo total de la primera solicitud | 3.565 s |
-| Carga del modelo | 3.153 s |
-| Procesamiento del prompt | 0.148 s |
-| Generación de tokens | 0.263 s |
-| VRAM asignada | 6,295,440,588 bytes, aproximadamente 5.86 GiB |
-| Reparto mostrado por `ollama ps` | 100% GPU |
-| Contexto cargado | 8192 tokens |
-| Llamada sintética y API compatible | Verificadas |
+| Generation via API | 38.07 tokens/s; 10 tokens |
+| Total time of the first request | 3.565 s |
+| Model loading | 3.153 s |
+| Prompt processing | 0.148 s |
+| Token generation | 0.263 s |
+| VRAM allocated | 6,295,440,588 bytes, approximately 5.86 GiB |
+| Distribution shown by `ollama ps` | 100% GPU |
+| Context loaded | 8192 tokens |
+| Synthetic call and API compatibility | Verified |
 
-El contenedor aparece saludable. Los logs muestran solicitudes HTTP 200 y velocidades internas de generación de aproximadamente 34–45 tokens/s en las tres solicitudes. La tasa interna del runner y la tasa calculada con los contadores de la API usan convenciones de conteo distintas; no se exige igualdad entre ambas.
+The container appears healthy. The logs show HTTP requests 200 and internal generation speeds of approximately 34–45 tokens/s across the three requests. The internal rate of the runner and the rate calculated using the API counters use different counting conventions; equality between the two is not required.
 
-La lentitud de 0.78 tokens/s de la primera ejecución no se reprodujo. Estos logs no explican su causa; no se atribuye de forma concluyente a carga inicial, driver o CPU. No se requieren cambios del driver o de los límites con la evidencia actual.
+The slowness of 0.78 tokens/s from the first execution did not reproduce. These logs do not explain the cause; it is not conclusively attributed to initial load, driver, or CPU. No changes to the driver or limits are required with the current evidence.
 
-Informe original en el host: `artifacts/diagnostics/llm-eofbwzvb.json`. Este registro se basa en la salida compartida, no en una ejecución desde Work. Son pruebas cortas y sintéticas; aún no demuestran rendimiento sostenido, calidad de tareas complejas o compatibilidad completa con OpenHands.
+Original report on the host: `artifacts/diagnostics/llm-eofbwzvb.json`. This record is based on the shared output, not on an execution from Work. These are short and synthetic tests; they still do not demonstrate sustained performance, quality of complex tasks, or full compatibility with OpenHands.
 
-La infraestructura de inferencia está lista para la siguiente fase: integrar OpenHands y ejecutar una tarea pedagógica pequeña en un workspace dedicado. Mantener el modelo y el contexto actuales como referencia inicial y evaluar por separado las necesidades de contexto y calidad del agente.
+The inference infrastructure is ready for the next phase: integrating OpenHands and running a small demonstration task in a dedicated workspace. Keep the model and context current as an initial reference and evaluate separately the needs of context and agent quality.
 
-## Fuentes
+## Sources
 
-- [Ollama en Docker](https://docs.ollama.com/docker)
-- [Qwen3 8B: tamaño, capacidades y licencia](https://ollama.com/library/qwen3:8b)
+- [Ollama in Docker](https://docs.ollama.com/docker)
+- [Qwen3 8B: size, capabilities, and license](https://ollama.com/library/qwen3:8b)
 - [API generate](https://docs.ollama.com/api/generate)
 - [API chat](https://docs.ollama.com/api/chat)
-- [Modelos cargados y VRAM](https://docs.ollama.com/api/ps)
-- [Ollama local-only y configuración](https://docs.ollama.com/faq)
+- [Loaded models and VRAM](https://docs.ollama.com/api/ps)
+- [Ollama local-only and configuration](https://docs.ollama.com/faq)
 
-## Cambio de contexto para el agente
+## Context Change for the Agent
 
-Tras el primer fallo de uso de herramientas en OpenHands se amplió el contexto del servidor de 8192 a 32768 tokens, conservando la identidad del modelo. Las medidas anteriores corresponden a 8192 y no deben tratarse como benchmark del nuevo contexto. La aplicación del cambio requiere reiniciar mediante `task openhands:up`; el nuevo consumo y el comportamiento del agente están pendientes de verificar.
+After the first tool usage failure in OpenHands, the server's context of 8192 was expanded to 32768 tokens, preserving the model's identity. The previous measures correspond to 8192 and should not be treated as a benchmark of the new context. Applying the change requires restarting via `task openhands:up`; the new consumption and agent behavior are pending verification.

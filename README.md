@@ -1,65 +1,72 @@
-# Agent Platform — laboratorio pedagógico
+# Local Agent Platform
 
-Proyecto de aprendizaje para explorar agentes, modelos locales, OpenHands y una plataforma agnóstica con seguridad y observabilidad.
+A model-agnostic local agent platform with OpenHands, Ollama, Docker Compose, and OpenTelemetry observability. The current implementation provides GPU-backed inference, agent execution, authenticated model routing, and provisioned Grafana dashboards. Decoupled runtime/provider contracts, policy enforcement, and multi-user deployment are planned extensions.
 
-**Uso pedagógico y experimental.** No ofrecemos garantías, soporte comercial ni compromiso de adecuación para producción. Quien lo utilice debe evaluar sus riesgos y requisitos. MIT permite uso comercial; este aviso no modifica sus permisos ni sustituye sus cláusulas de ausencia de garantías y limitación de responsabilidad.
-
-## Inicio
+## Getting started
 
 ```bash
-# Solo para un equipo sin mise:
+# Only on a machine where mise is not installed:
 bash scripts/bootstrap/install-mise.sh
 
 export PATH="$HOME/.local/bin:$PATH"
 mise trust mise.toml
 mise install --locked
 mise run env:python:setup
+mise run repo:hooks:install
 mise tasks ls
 mise exec -- task --list
 mise run env:plan
 mise run env:check
 ```
 
-Para preparar Docker/Toolkit en un host nuevo: `mise run env:setup` (requiere sudo). En este equipo Docker/GPU ya están validados; no hace falta repetir la instalación.
+To prepare Docker/NVIDIA Container Toolkit on a new host, review `mise run env:plan` and run `mise run env:setup` in the host terminal. This requires sudo and can restart Docker. The documented development host already passed Docker/GPU installation checks; use validation tasks rather than reinstalling it.
 
-## Organización
+## Repository layout
 
-- `mise.toml`: Python, uv y Task fijados; activación y tareas de preparación/validación del ambiente.
-- `pyproject.toml` / `uv.lock`: descripción del proyecto y dependencias Python resueltas con hashes.
-- `Taskfile.yml`: operación de servicios y tests de código mediante llamadas breves.
-- `scripts/bootstrap/`, `scripts/host/`, `scripts/repo/`: implementación en scripts shell.
-- `scripts/llm/`: servidor, modelo y pruebas; `scripts/openhands/`: despliegue y comprobación de OpenHands.
-- `infra/`: configuración y versiones de infraestructura.
-- `docs/`: documentación detallada.
-- `artifacts/`: informes locales, excluidos de Git.
+- `mise.toml` / `mise.lock`: pinned tools, environment activation, environment setup/checks, and Git hook installation.
+- `pyproject.toml` / `uv.lock`: project metadata and resolved Python dependencies with hashes.
+- `Taskfile.yml`: service operations, code tests, and commit validation through short task calls.
+- `scripts/bootstrap/`, `scripts/environment/`, `scripts/host/`, `scripts/repo/`: implementation of bootstrap, environment, host, and repository checks.
+- `scripts/llm/`, `scripts/openhands/`, `scripts/observability/`: service deployment and functional checks.
+- `scripts/security/`: redacted secret detection and acceptance tests.
+- `infra/`: host/service configuration, pinned versions, image digests, and Grafana provisioning.
+- `docs/`: architecture, operating procedures, and recorded validation evidence.
+- `artifacts/`: local reports and workspaces, excluded from Git.
 
-## Documentación
+## Documentation
 
-- [Infraestructura explicada con código](docs/infrastructure_walkthrough.md)
-- [Registro de cambios](docs/changelog.md)
-- [Plan por fases](docs/plan.md)
-- [Entorno, mise y Task](docs/environment.md)
-- [Control de secretos y cobertura de seguridad](docs/security.md)
-- [Instalación Docker/GPU](docs/docker_gpu.md)
-- [LLM local: preparación e inferencia](docs/local_llm.md)
-- [OpenHands local](docs/openhands.md)
-- [Observabilidad: despliegue, perfiles, logs y privacidad](docs/observability.md)
-- [Diagramas de observabilidad](docs/architecture/observability_diagrams.md)
-- [ADR 001: integraciones existentes](docs/architecture/adr-001-observability.md)
-- [Diagnóstico GPU](docs/diagnostics/gpu-2026-10-04.md)
-- [Aviso pedagógico](docs/educational_use.md)
+- [Infrastructure explained with code](docs/infrastructure_walkthrough.md)
+- [Changelog](docs/changelog.md)
+- [Implementation plan](docs/plan.md)
+- [Environment, mise, uv, and Task](docs/environment.md)
+- [Git commit validation](docs/git_hooks.md)
+- [Secret detection and security coverage](docs/security.md)
+- [Docker/GPU installation](docs/docker_gpu.md)
+- [Local LLM inference](docs/local_llm.md)
+- [Local OpenHands](docs/openhands.md)
+- [Observability: deployment, profiles, logs, and privacy](docs/observability.md)
+- [Observability diagrams](docs/architecture/observability_diagrams.md)
+- [ADR 001: existing integrations](docs/architecture/adr-001-observability.md)
+- [GPU diagnostics](docs/diagnostics/gpu-2026-10-04.md)
+- [Project scope and warranty](docs/project_scope.md)
 
-Estado: GPU, Docker y Ollama/Qwen3 validados en el host; contexto 32768 y modelo 100% GPU. OpenHands completó la demo y una reparación de bug: tests originales y aceptación independiente satisfactorios. La reparación requirió guía tras una llamada de herramienta inválida. Ver `docs/openhands.md`. La pila de observabilidad y siete dashboards provisionados ya pasaron el chequeo del host para una petición sintética. El desglose de caché ya pasó la prueba integral del host el 6 de octubre a las 09:57 Europe/Berlin. Falta confirmar una nueva llamada de la conversación OpenHands después de volver a seleccionar su perfil guardado. Ver `docs/diagnostics/tokens-2026-10-06.md`. Repositorio GitHub indicado: `git@github.com:alejandro-onatra/local-agent-platform.git`; publicación pendiente de validar SSH.
+## Current validation status
 
-## Licencia
+The host GPU/Docker stack and Ollama/Qwen3 passed the recorded checks; the current model context is 32768 and GPU residency was verified. OpenHands completed the arithmetic demo and Decimal bug repair with independent acceptance checks. The repair required guidance after an invalid tool call.
 
-[MIT](LICENSE). Los componentes de terceros mantienen sus propias licencias.
+The observability stack and seven provisioned dashboards passed synthetic-request checks. Cache counters passed host acceptance on October 6, 2026, at 09:57 Europe/Berlin. The inspected conversation was subsequently switched to LiteLLM; a streamed proxy request reported 23 input and 8 output tokens, matching the metric increases. Historical OpenHands usage is not backfilled into Prometheus. Full conversation-to-trace correlation remains pending. See [token diagnostics](docs/diagnostics/tokens-2026-10-06.md).
 
-Dashboard de entrada: [Plataforma de agentes · Vista general](http://127.0.0.1:3000/d/platform-overview). Diseño, cobertura y diagnóstico: [docs/dashboards.md](docs/dashboards.md).
+Repository: [alejandro-onatra/local-agent-platform](https://github.com/alejandro-onatra/local-agent-platform), branch `main`. SSH and the initial push were verified.
 
-## Revisión de cambios y Git
+Dashboard entry point: [Agent platform overview](http://127.0.0.1:3000/d/platform-overview). See [dashboard coverage](docs/dashboards.md) for metrics and limitations.
 
-Repositorio local en rama `main`. La instantánea inicial incluye infraestructura, scripts, pruebas y documentación; `.idea/`, reportes, pesos y credenciales quedan excluidos. Remoto solicitado: `git@github.com:alejandro-onatra/local-agent-platform.git`. Antes de publicar, ejecutar `mise exec -- task security:secrets`; publicación pendiente de validar SSH.
+## Commit validation and change review
+
+Git hooks are versioned under `.githooks/` and enabled per checkout with `mise run repo:hooks:install`. Before a normal commit, the hook runs `mise exec -- task repo:commit:check`: repository/environment checks, secret detection, and code tests. Any failure stops the commit. These local hooks do not replace CI or branch protection.
+
+`main` tracks `origin/main` at `git@github.com:alejandro-onatra/local-agent-platform.git`. Credentials, reports, model weights, `.venv/`, and IDE files are excluded from Git.
+
+Changes are announced before actions and explained with inline diffs, step by step. The persistent collaboration rules are in [AGENTS.md](AGENTS.md); the implementation record is in [docs/changelog.md](docs/changelog.md).
 
 ```bash
 git log --oneline
@@ -67,4 +74,6 @@ git show --stat HEAD
 git diff
 ```
 
-Las modificaciones se anuncian antes de editar y se entregan con enlaces, diff o fragmentos y validación. La regla está en [AGENTS.md](AGENTS.md); el detalle está en [docs/changelog.md](docs/changelog.md).
+## License and scope
+
+[MIT](LICENSE). Third-party components retain their own licenses. The project is provided as is, without a warranty, commercial support commitment, or service-level agreement. Review the [project scope](docs/project_scope.md) before adopting it.

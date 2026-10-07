@@ -1,38 +1,38 @@
-# Aceptación de observabilidad — 6 de octubre de 2026
+# Acceptance of observability — October 6, 2026
 
-## Evidencia del host
+## Host evidence
 
-El usuario ejecutó `mise exec -- task observability:up` y `mise exec -- task observability:check` en el repositorio. El chequeo terminó con **status: passed** a las **00:09:47 del 6 de octubre de 2026, Europe/Berlin** (`2026-10-05T22:09:47Z`).
+The user executed `mise exec -- task observability:up` and `mise exec -- task observability:check` in the repository. The check ended with **status: passed** at **00:09:47 of October 6, 2026, Europe/Berlin** (`2026-10-05T22:09:47Z`).
 
-Las configuraciones nativas de Collector, Prometheus, Loki, Tempo y Blackbox se validaron. Pasaron las dos reglas de alerta y sus escenarios. Los siete contenedores de observabilidad arrancaron y se regeneraron los mounts filelog de los tres servicios seleccionados, conservando las credenciales y volúmenes.
+The native configurations of Collector, Prometheus, Loki, Tempo and Blackbox were validated. Both alert rules and their scenarios passed. The seven observability containers started and the filelog mounts of the three selected services were regenerated, preserving the credentials and volumes.
 
-| Aceptación | Resultado |
+| Acceptance | Result |
 | --- | --- |
-| Readiness de los backends y proxy | Pasó |
-| Solicitud API sin clave | Rechazada como se esperaba |
-| Llamada autenticada LiteLLM → Ollama/Qwen3 | Pasó |
-| Nueve sondas HTTP de la plataforma | Todas sanas en el chequeo |
-| Traza nativa de la petición de prueba a LiteLLM | Encontrada en Tempo con el trace ID propagado |
-| Métricas nativas de tokens LLM | Encontradas en Prometheus |
-| Canary OTLP: trazas, logs y métricas | Encontradas en Tempo, Loki y Prometheus |
-| Canary sensible en los campos comprobados | Excluida de los backends |
+| Readiness of the backends and proxy | Passed |
+| API request without key | Rejected as expected |
+| Authenticated call LiteLLM → Ollama/Qwen3 | Passed |
+| Nine HTTP probes of the platform | All healthy in the check |
+| Native trace of the test request to LiteLLM | Found in Tempo with the trace ID propagated |
+| Native metrics of LLM tokens | Found in Prometheus |
+| Canary OTLP: traces, logs and metrics | Found in Tempo, Loki and Prometheus |
+| Sensitive canary in the checked fields | Excluded from the backends |
 
-La corrección del filtro de atributos OTel queda aceptada en el host. No es necesario reinstalar Docker, Ollama ni el modelo.
+The correction of the OTel attribute filter is accepted on the host. It is not necessary to reinstall Docker, Ollama or the model.
 
-## Dashboard confirmado desde Grafana
+## Dashboard confirmed from Grafana
 
-La API local confirmó que `platform-overview` está provisionado y tiene 24 paneles, incluyendo texto y secciones. Las 23 consultas fueron aceptadas por sus fuentes reales. Se encontraron datos de endpoints, scrape, timeline, solicitudes/errores/latencia del proxy, tokens/duración LLM, colas, flujo y memoria del Collector, y logs sanitizados.
+The local API confirmed that `platform-overview` is provisioned and has 24 panels, including text and sections. The 23 queries were accepted by their real sources. Data of endpoints, scrape, timeline, requests/errors/latency of the proxy, tokens/duration LLM, queues, flow and memory of the Collector, and sanitized logs were found.
 
-La ausencia de series de alerta o fallo de exportación no debe sustituirse por una garantía general de éxito. El dashboard distingue estas señales de salud HTTP e inferencia real.
+The absence of alert series or export failure should not be substituted by a general guarantee of success. The dashboard distinguishes these health signals from real inference.
 
-## Alcance y siguiente aceptación
+## Scope and next acceptance
 
-La llamada al modelo comprobada fue la petición de prueba del chequeo. **Aún no se ha demostrado que una conversación real de OpenHands esté usando LiteLLM**, ni una traza completa que una spans del agente y del proxy.
+The checked model call was the test request of the check. **It has not yet been demonstrated that a real conversation of OpenHands is using LiteLLM**, nor a complete trace that spans of the agent and the proxy.
 
-Siguiente paso: crear/seleccionar `local-qwen3-8b-observed`, modelo `openai/qwen3:8b`, base URL `http://litellm:4000/v1`, clave del archivo privado local `litellm-master-key`; iniciar una conversación nueva y ejecutar la tarea de lectura en `/projects/demo` descrita en [observability.md](../observability.md). Mantener subagentes y cambio automático de perfiles desactivados.
+Next step: create/select `local-qwen3-8b-observed`, model `openai/qwen3:8b`, base URL `http://litellm:4000/v1`, private file key `litellm-master-key`; start a new conversation and run the read task in `/projects/demo` described in [observability.md](../observability.md). Keep sub-agents and automatic profile switching disabled.
 
-El tracing nativo del agente sigue siendo un paso optativo posterior; no se presume activado por esta validación. GPU/host, calidad evaluada, auditoría/políticas, tools/MCP tipados y resultados de negocio siguen pendientes de instrumentación.
+Native tracing of the agent remains an optional later step; it is not assumed activated by this validation. GPU/host, quality evaluated, audit/policies, tools/MCP typed and business results remain pending instrumentation.
 
-## Golden signals y totales visibles
+## Golden signals and totals visible
 
-Se observó una llamada posterior al chequeo por LiteLLM. Se actualizaron los dashboards para mostrar golden signals con alcance explícito y totales acumulados actuales frente a incrementos estimados del período. La primera petición se refleja en el acumulado aunque `increase` pueda omitirla. Grafana recargó ambos JSON como provisionados; las 43 consultas fueron aceptadas. La instantánea mostraba 30 tokens de entrada, 4 de salida, 34 en total; 3 solicitudes y 1 error (incluye el rechazo esperado del chequeo). El total de tokens se contrastó con la suma real entrada+salida. No se reiniciaron servicios ni se modificó la instrumentación o las credenciales. La saturación del modelo/GPU permanece pendiente; la tarjeta de colas corresponde al Collector.
+A call after the check was observed by LiteLLM. The dashboards were updated to show golden signals with explicit scope and current accumulated totals against estimated increments of the period. The first request is reflected in the accumulated although `increase` may omit it. Grafana reloaded both JSON as provisioned; the 43 queries were accepted. The snapshot showed 30 input tokens, 4 output tokens, 34 in total; 3 requests and 1 error (includes the expected rejection of the check). The total of tokens was compared with the real sum input+output. No services were restarted and no instrumentation or credentials were modified. The model/GPU saturation remains pending; the queue card corresponds to the Collector.

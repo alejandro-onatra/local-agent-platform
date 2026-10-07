@@ -1,72 +1,72 @@
-# Preparación de observabilidad — 5 de octubre de 2026
+# Preparation of observability — October 5, 2026
 
-## Resultado verificado desde Work
+## Verified result from Work
 
-- Se resolvieron manifests y digests Linux amd64 publicados para las seis imágenes; el lock está en `infra/observability/versions.yaml`.
-- Compose resuelto y validado: backends internos, solo Grafana publicada en loopback, sin Docker socket, imágenes coincidentes con el lock, mounts de configuración de lectura y límites declarados.
-- Collector 0.162.0, Tempo 3.1.0, Loki 3.7.8 y promtool 3.15.0 aceptaron sus configuraciones. Los binarios se extrajeron de layers verificados contra sus digests en un directorio temporal; no se instalaron servicios en el host.
-- La prueba del Collector ejecutó de verdad receivers OTLP y filelog, processors, spanmetrics y exporters de archivo/Prometheus sobre datos sintéticos. Pasó la exclusión de canarias en cuerpos, atributos, nombres/scope, mensajes de estado y eventos, con rechazo de spans con links y datapoints con exemplars. Se conservó información operativa y se ingirió un archivo Docker sintético.
-- La configuración generada de filelog y checkpoint se validó usando un directorio temporal de offsets. No se leyó ningún log real del host en esta comprobación.
-- Se confirmaron nombres Prometheus reales: `agent_calls_total`, `agent_duration_seconds_bucket`, `gen_ai_client_operation_duration_seconds_bucket` y `gen_ai_client_token_usage_sum`. Se ajustaron las consultas Grafana a esos nombres.
-- Los seis dashboards JSON se parsearon y tienen UID y panel IDs estables. No se comprobó todavía su render en Grafana.
-- Sintaxis shell, estructura del repositorio, `task observability:plan` y el plan previo OpenHands pasaron; los 11 tests existentes de validación LLM siguen pasando.
+- Manifests and Linux amd64 digests for the six images were resolved; the lock is in `infra/observability/versions.yaml`.
+- Compose was resolved and validated: internal backends, only Grafana published in loopback, no Docker socket, images matching the lock, configuration mounts for read and declared limits.
+- Collector 0.162.0, Tempo 3.1.0, Loki 3.7.8 and promtool 3.15.0 accepted their configurations. The binaries were extracted from layers verified against their digests in a temporary directory; no services were installed on the host.
+- The Collector test executed real OTLP and filelog receivers, processors, spanmetrics and file/Prometheus exporters over synthetic data. It passed the canary exclusion in bodies, attributes, names/scope, status messages and events, with rejection of spans with links and datapoints with exemplars. Operational information was preserved and a synthetic Docker file was ingested.
+- The generated filelog and checkpoint configuration was validated using a temporary directory of offsets. No real host logs were read during this verification.
+- Real Prometheus names were confirmed: `agent_calls_total`, `agent_duration_seconds_bucket`, `gen_ai_client_operation_duration_seconds_bucket` and `gen_ai_client_token_usage_sum`. Grafana queries were adjusted to those names.
+- The six JSON dashboards were parsed and have stable UID and panel IDs. Their rendering in Grafana has not been verified yet.
+- Shell syntax, repository structure, `task observability:plan` and the previous OpenHands plan passed; the existing 11 validation LLM tests continue to pass.
 
-## Repetir comprobaciones
+## Repeat verifications
 
 ```bash
 mise run repo:check
 mise exec -- task repo:test
 mise exec -- task observability:plan
-# En host con Docker: validadores dentro de las imágenes fijadas
+# On a Docker host: validators inside the pinned images
 mise exec -- task observability:validate
-# Con un binario Collector de la versión fijada disponible localmente
-python3 scripts/observability/test-privacy.py --collector /ruta/al/otelcol-contrib
+# With the pinned Collector binary available locally
+python3 scripts/observability/test-privacy.py --collector /path/to/otelcol-contrib
 ```
 
-## Pendiente en host
+## Pending on host
 
-Ejecutar `task observability:setup`; verificar el reporte del smoke test, readiness y lectura de nuevos logs reales. Activar el perfil observado, comprobar una conversación real y explorar los seis dashboards. El tracing nativo OpenHands es optativo para datos sintéticos: confirmar dependencia, spans y propagación real de contexto antes de declarar trazabilidad completa.
+Run `task observability:setup`; verify the smoke test report, readiness and reading of new real logs. Activate the observed profile, check a real conversation and explore the six dashboards. Native OpenHands tracing is optional for synthetic data: confirm dependency, spans and real context propagation before declaring full traceability.
 
-No se declara validada la ejecución Docker completa, el callback dentro de la imagen LiteLLM, la correlación del agente ni la interfaz Grafana. Los controles de origen del callback se corroboraron también leyendo el código de la versión 1.104.0; esa inspección no sustituye el smoke test del despliegue. La [guía](../observability.md) describe estos límites y el almacenamiento local que todavía puede contener contenido.
+Full Docker execution is not declared validated, the callback within the LiteLLM image, agent correlation or Grafana interface. The origin controls of the callback were also corroborated by reading the code of version 1.104.0; that inspection does not replace the smoke test of the deployment. The [guide](../observability.md) describes these limits and the local storage that still may contain content.
 
-## Primer despliegue en host — 21:32–21:34 UTC
+## First deployment on host — 21:32–21:34 UTC
 
-La salida compartida por el usuario confirma descarga de las seis imágenes, validación nativa de Collector/Prometheus/Loki/Tempo dentro de Docker y creación/arranque inicial de todos los contenedores. OpenHands y la conexión a Ollama pasaron.
+The shared output by the user confirms download of the six images, native validation of Collector/Prometheus/Loki/Tempo within Docker and creation/initial startup of all containers. OpenHands and the connection to Ollama passed.
 
-El flujo se detuvo al configurar logs: `Start observability first.` Ese mensaje se emitía al no encontrar LiteLLM entre contenedores en ejecución. No demuestra un error del usuario ni determina el motivo del fallo del proceso. Los logs y el estado de LiteLLM son necesarios para distinguir error de configuración, dependencia, memoria u otra causa.
+The flow stopped when configuring logs: `Start observability first.` This message was emitted when LiteLLM was not found among running containers. It does not demonstrate a user error nor determine the cause of the process failure. Logs and LiteLLM status are necessary to distinguish configuration error, dependency, memory or another cause.
 
-Se corrigió el diagnóstico: status incluye contenedores detenidos; el arranque comprueba los seis procesos y la disponibilidad HTTP de LiteLLM antes de configurar filelog. Si un servicio termina, informa nombre, estado, exit code y OOMKilled. No se ha cambiado la configuración de LiteLLM sin conocer sus logs ni se declara corregida la causa de arranque.
+The diagnosis was corrected: status includes stopped containers; the startup checks the six processes and HTTP availability of LiteLLM before configuring filelog. If a service terminates, it reports name, status, exit code and OOMKilled. The LiteLLM configuration has not been changed without knowing its logs nor is the cause of startup declared corrected.
 
-## Causa confirmada por los logs de LiteLLM
+## Cause confirmed by LiteLLM logs
 
-El usuario compartió estado `exited`, exit code 3, `OOMKilled=false`. El traceback concluye `UnsafeMasterKeyError`: la master key estaba ausente y el servidor rechazó aceptar solicitudes sin autenticación. Los avisos de trusted proxy ranges no explican ese cierre.
+The user shared status `exited`, exit code 3, `OOMKilled=false`. The traceback concludes `UnsafeMasterKeyError`: the master key was missing and the server rejected accepting requests without authentication. The trusted proxy range warnings do not explain that closure.
 
-Corrección: clave fuerte persistente fuera de Git/CloudDrive, variable de entorno del proxy y paso explícito al usar sudo. El smoke test pasa esa clave solo al endpoint LiteLLM y comprueba rechazo de solicitudes sin autenticar. El perfil observado deja de usar `local-only` para la entrada al proxy; ese placeholder se mantiene solo en el tramo de Ollama. No se utiliza el bypass de clave débil/ausente. Reinicio y aceptación del host todavía pendientes.
+Correction: strong persistent key outside of Git/CloudDrive, proxy environment variable and explicit passing when using sudo. The smoke test passes that key only to the LiteLLM endpoint and checks rejection of unauthenticated requests. The observed profile stops using `local-only` for proxy entry; that placeholder is maintained only in the Ollama segment. The weak/missing key bypass is not used. Restart and host acceptance are still pending.
 
-## Comprobación de la corrección de autenticación
+## Verification of authentication correction
 
-Pasaron cinco tests locales: credenciales distintas con modos 700/600, conservación al repetir el arranque, rechazo de clave existente inválida sin sobrescribirla, rechazo de symlink y envío de Bearer solo al hostname LiteLLM. Se verificaron con un stub los estados running/created/exited para evitar tratar un contenedor detenido como listo. La prueba real de privacidad del Collector se repitió y pasó después de modificar el cliente de comprobación.
+Five local tests passed: distinct credentials with modes 700/600, preservation on repeated startup, rejection of existing invalid key without overwriting it, rejection of symlink and Bearer sending only to LiteLLM hostname. The running/created/exited states were verified with a stub to avoid treating a stopped container as ready. The real privacy test of the Collector was repeated and passed after modifying the verification client.
 
-Estos tests verifican los scripts y la preparación de credenciales; el reinicio de LiteLLM y el rechazo real de solicitudes sin autenticar están pendientes del comando del host. Repetición local: `mise exec -- task observability:test`.
+These tests verify the scripts and credential preparation; the LiteLLM restart and real rejection of unauthenticated requests are pending from the host command. Local repetition: `mise exec -- task observability:test`.
 
-## Segundo despliegue y corrección del nombre del contador
+## Second deployment and correction of the counter name
 
-La nueva salida del host confirma LiteLLM y los otros servicios en ejecución, validadores nativos correctos, credenciales persistentes y mounts filelog/checkpoints activos. `observability:check` superó readiness, rechazo sin autenticación, respuesta autenticada del modelo y envío OTLP; falló al consultar las señales almacenadas.
+The new host output confirms LiteLLM and the other services running, correct native validators, persistent credentials and active filelog/checkpoints mounts. `observability:check` passed readiness, unauthenticated rejection, authenticated model response and OTLP sending; failed to query stored signals.
 
-Una consulta autenticada a Grafana y sus fuentes mostró: Tempo almacenó una traza `observability-smoke` con operación sanitizada, Loki almacenó `operational record` con categoría `tool_validation_error`, el scrape del Collector dio `up=1` y Prometheus tenía `privacy_smoke_total=1`. El chequeo buscaba incorrectamente `privacy_smoke`; se corrigió a `privacy_smoke_total`. El sufijo del contador se comprobó ahora también en la prueba local con el Collector real. Se añadió diagnóstico por etapa/HTTP sin imprimir cuerpos, secretos ni canarias.
+An authenticated query to Grafana and its sources showed: Tempo stored a trace `observability-smoke` with sanitized operation, Loki stored `operational record` with category `tool_validation_error`, the Collector scrape gave `up=1` and Prometheus had `privacy_smoke_total=1`. The check was incorrectly looking for `privacy_smoke`; it was corrected to `privacy_smoke_total`. The counter suffix was also verified in the local test with the real Collector. Diagnostic by stage/HTTP was added without printing bodies, secrets or canaries.
 
-Esto confirma las señales sintéticas existentes; no confirma todavía spans/métricas del callback real de LiteLLM ni una conversación OpenHands por el perfil observado. Repetir `mise exec -- task observability:check` para confirmar el chequeo completo con una canaria nueva.
+This confirms existing synthetic signals; it does not confirm yet real LiteLLM callback spans/metrics or an OpenHands conversation through the observed profile. Repeat `mise exec -- task observability:check` to confirm the full check with a new canary.
 
-### Estado adicional observado desde Grafana
+### Additional observed status from Grafana
 
-La API local de Grafana respondió y mostró las tres fuentes provisionadas con sus UID. Una búsqueda de Tempo devolvió solo la canaria; una consulta de nombres Prometheus devolvió contadores/histogramas del span sintético y `privacy_smoke_total`, sin métricas `gen_ai.*`. Loki mostró categorías de error recientes de `litellm-proxy` con cuerpos sanitizados.
+The local Grafana API responded and displayed the three provisioned data sources along with their UID. A search for Tempo returned only the canary; a query for Prometheus names returned counters/histograms of the synthetic span and `privacy_smoke_total`, without metrics `gen_ai.*`. Loki showed recent error categories from `litellm-proxy` with sanitized bodies.
 
-Por tanto, ingestión sintética y callback LLM se tratan como aceptaciones separadas. Se solicitaron los logs locales de LiteLLM para comprobar por qué todavía no se observa telemetría de sus llamadas. No se modificó esa configuración sin identificar el error. El chequeo guarda también un reporte JSON de fallo con etapa/tipo/código HTTP, evitando archivos de diagnóstico vacíos.
+Therefore, synthetic ingestion and LLM callback are treated as separate acceptances. Local LiteLLM logs were requested to check why telemetry from its calls is still not observed. That configuration was not modified without identifying the error. The check also saves a JSON failure report with stage/type/HTTP code, avoiding empty diagnostic files.
 
-## Vista general y corrección del callback
+## Overview and callback correction
 
-Se confirmó en logs que `gen_ai.token.type` en el filtro de atributos impedía inicializar el callback nativo de LiteLLM. Se corrigió sin desactivar privacidad ni autenticación. Se añade dashboard general provisionado, Blackbox Exporter fijado, nueve sondas, métricas internas del Collector y dos reglas locales con espera de 2 minutos. Validaciones nativas, canarias de privacidad y siete pruebas de autenticación/contexto pasan. Grafana reconoce el dashboard como provisionado; las consultas se comprueban mediante sus fuentes reales. Pendiente reaplicar Compose y demostrar traza/métricas reales y nueve sondas sanas con el chequeo del host.
+It was confirmed in logs that `gen_ai.token.type` in the attribute filter prevented initializing the native LiteLLM callback. It was corrected without disabling privacy or authentication. A general provisioned dashboard is added, Blackbox Exporter fixed, nine probes, internal metrics of the Collector, and two local rules with wait of 2 minutes. Native validations, privacy canaries, and seven authentication/context tests pass. Grafana recognizes the dashboard as provisioned; queries are verified through their real sources. Pending is to reapply Compose and demonstrate real tracing/metrics and nine healthy probes with the host check.
 
-Verificación final: dashboard `platform-overview` reconocido como provisionado, 24 paneles (incluye secciones y texto), 23 consultas sin errores en las APIs reales de Prometheus/Loki. Ensayo temporal confirmó métricas internas RSS/colas/envíos/fallos del Collector y sondas Blackbox sanas en OpenHands/Grafana/Ollama más un HTTP 503 controlado. No se afirma que las nueve sondas nuevas ni el callback corregido estén activos antes del siguiente `observability:up` en el host.
+Final verification: dashboard `platform-overview` recognized as provisioned, 24 panels (includes sections and text), 23 queries without errors in the real Prometheus/Loki APIs. A temporary test confirmed internal Collector metrics RSS/queues/sends/fails and healthy Blackbox probes in OpenHands/Grafana/Ollama plus an HTTP 503 controlled. It is not claimed that the nine new probes or the corrected callback are active before the next `observability:up` on the host.
 
-Nota de reorganización (7 de octubre): la comprobación de estructura del ejemplo usa ahora mise; el resultado histórico se conserva.
+Reorganization note (October 7): the example structure check now uses mise; the historical result is preserved.

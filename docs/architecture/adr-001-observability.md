@@ -1,49 +1,49 @@
-# ADR 001 — Reutilizar integraciones de observabilidad
+# ADR 001 — Reuse Observability Integrations
 
-Fecha: 5 de octubre de 2026. Decisión aceptada para el laboratorio; despliegue e integración real pendientes de validar.
+Date: October 5, 2026. Decision accepted for the local platform; deployment and integration remain pending validation.
 
-## Problema
+## Problem
 
-Ollama y OpenHands ya ejecutan tareas sintéticas. Necesitamos ver solicitudes LLM, errores y actividad del agente en Grafana, sin duplicar instrumentación ni almacenar contenido personal. Un adaptador que interprete conversaciones upstream añadiría mantenimiento y dependería de formatos internos.
+Ollama and OpenHands already perform synthetic tasks. We need to see LLM requests, errors, and agent activity in Grafana, without duplicating instrumentation or storing personal content. An adapter that interprets upstream conversations would add maintenance and depend on internal formats.
 
-## Decisión
+## Decision
 
-1. LiteLLM Proxy será la frontera compatible con OpenAI para llamadas al modelo y emitirá OTel mediante su callback existente.
-2. OpenHands conservará su runtime. Su SDK tiene tracing nativo basado en Laminar/OTel; se habilitará aparte con datos sintéticos. No se configura una cuenta ni endpoint cloud Laminar.
-3. El Collector Contrib usará OTLP, filelog y el receiver Prometheus nativo para tokens de caché; sanitizará antes de enviar a Tempo, Prometheus y Loki.
-4. Grafana provisionará fuentes y siete dashboards (vista general y seis especializados) desde archivos versionados. Los indicadores sin fuente se identificarán como pendientes.
-5. No habrá adaptador propio de conversaciones en esta fase. Solo configuración, scripts de operación y comprobaciones sintéticas.
+1. LiteLLM Proxy will be the OpenAI-compatible API boundary for model calls and will emit OTel via its existing callback.
+2. OpenHands will retain its runtime. Its SDK has native tracing based on Laminar/OTel; it will be enabled separately with synthetic data. No cloud Laminar account or endpoint is configured.
+3. The Collector Contrib will use OTLP, filelog, and the native Prometheus receiver for cache tokens; it will sanitize before sending to Tempo, Prometheus, and Loki.
+4. Grafana will provision sources and seven dashboards (overview and six specialized) from versioned files. Indicators without a source will be identified as pending.
+5. There will be no proprietary conversation adapter in this phase. Only configuration, operational scripts, and synthetic checks.
 
-## Alternativas
+## Alternatives
 
-- **Grafana Alloy:** disponible para recolectar logs/OTel; válido si se unifica la pila en su ecosistema. Se elige Collector Contrib porque ya es parte del objetivo y ofrece filelog/transform. No necesitamos dos recolectores ahora.
-- **Langfuse/Phoenix:** útiles para evaluación, datasets y contenido de generaciones. No se añaden junto a Grafana en esta etapa; evitar más persistencia de contenido y servicios hasta tener una necesidad de evaluación.
-- **Instrumentación automática Python:** puede capturar llamadas a bibliotecas pero no reconstruye por sí sola decisiones, aprobaciones ni resultados de negocio. Revisar versión y privacidad antes de incorporarla.
-- **Exporter Ollama/GPU comunitario:** puede complementar métricas de servidor/GPU; no sustituye trazas del agente. Se pospone hasta verificar compatibilidad con la RTX 4060 Ti y mantenimiento.
-- **Adaptador propio:** reservarlo para una carencia concreta demostrada. Métricas propias de decisiones/calidad se emitirán desde los futuros contratos del runtime, no deduciendo éxito a partir de logs.
+- **Grafana Alloy:** available for collecting logs/OTel; valid if the stack is unified within its ecosystem. Collector Contrib is chosen because it is already part of the goal and offers filelog/transform. We do not need two collectors now.
+- **Langfuse/Phoenix:** useful for evaluation, datasets, and generation content. They are not added alongside Grafana in this phase; avoid more content persistence and services until there is a need for evaluation.
+- **Automatic Python Instrumentation:** can capture library calls but does not reconstruct decisions, approvals, or business results on its own. Review version and privacy before incorporating it.
+- **Ollama/GPU Community Exporter:** can complement server/GPU metrics; it does not replace agent tracing. It is postponed until compatibility with the RTX 4060 Ti and maintenance is verified.
+- **Proprietary Adapter:** reserve it for a demonstrated specific lack. Metrics specific to decisions/quality will be emitted from future runtime contracts, not deducing success from logs.
 
-## Consecuencias
+## Consequences
 
-Hay un salto HTTP adicional y un servicio más entre agente y modelo. Debemos medir la latencia y repetir tool calls reales al cambiar la ruta. El perfil directo queda disponible para volver al laboratorio anterior.
+There is an additional HTTP hop and a service in between agent and model. We must measure latency and repeat real tool calls when changing the route. The direct profile remains available to return to the previous local platform.
 
-La primera cobertura se limita a llamadas LLM y logs sanitizados. La correlación completa exige propagación de contexto comprobada. El tracing nativo puede introducir contenido en memoria antes del filtro; no cumple todavía una prohibición absoluta de capturarlo en origen. Se mantiene optativo.
+The initial coverage is limited to LLM calls and sanitized logs. Full correlation requires proven context propagation. Native tracing may introduce content into memory before filtering; it does not yet fulfill an absolute prohibition of capturing it at the source. It remains optional.
 
-El Collector que lee logs usa UID 0 con mounts limitados y de lectura, sin Docker socket. La configuración depende de IDs de contenedor y debe refrescarse tras recrearlos. La telemetría almacenada pierde texto de errores deliberadamente; el diagnóstico completo, si fuera necesario, se realiza localmente con datos sintéticos.
+The collector that reads logs uses UID 0 with limited and read-only mounts, without Docker socket. The configuration depends on container IDs and must be refreshed after recreating them. Stored telemetry deliberately omits error text; full diagnostics, if needed, are performed locally with synthetic data.
 
-La auditoría durable y la autorización de herramientas siguen perteneciendo al diseño del runtime. Grafana, LiteLLM y OTel no implementan por sí solos esas políticas.
+Durable auditing and tool authorization still belong to the runtime design. Grafana, LiteLLM, and OTel do not implement these policies on their own.
 
-## Evolución
+## Evolution
 
-Validar ingestión y una conversación; definir el contrato de spans/errores del SDK concreto; instrumentar el primer workflow y sus resultados; incorporar evaluación etiquetada. En Kubernetes: sustituir filelog de Docker por logs de pods, separar credenciales/identidad, usar TLS y almacenamiento apropiado, conservar protocolos OTLP y UID de dashboards. No se afirma que el Compose actual sea una instalación enterprise.
+Validate ingestion and a conversation; define the specific SDK span/error contract; instrument the first workflow and its results; incorporate labeled evaluation. In Kubernetes: replace Docker filelog with pod logs, separate credentials/identity, use TLS and appropriate storage, preserve OTLP protocols and dashboard UID. It is not claimed that the current Compose is an enterprise installation.
 
-## Autenticación del proxy — corrección tras el primer despliegue
+## Proxy Authentication — Correction After the First Deployment
 
-LiteLLM 1.104.0 rechaza iniciar sin una master key fuerte. Se genera y conserva fuera de Git/CloudDrive, y los clientes la usan para autenticar solicitudes. Sin base de datos no se implementan todavía virtual keys por usuario; la master key es administrativa y solo es adecuada para este laboratorio local de confianza. La evolución multiusuario deberá separar privilegios de cliente y administración. No se relaja el control de arranque.
+LiteLLM 1.104.0 rejects starting without a strong master key. It is generated and kept outside of Git/CloudDrive, and clients use it to authenticate requests. Virtual keys by user are not yet implemented without a database; the master key is administrative and only suitable for this trusted local platform. Multi-user evolution will need to separate client privileges and administration. Startup control is not relaxed.
 
-Se añade Blackbox Exporter oficial para sondas de nueve endpoints y la telemetría interna del Collector para colas/fallos de envío. No se escribe un adaptador de métricas del runtime. Las sondas no implican ejecución exitosa ni calidad; las alertas se evalúan localmente sin notificaciones. Ver `docs/dashboards.md`.
+Official Blackbox Exporter is added for nine endpoint probes and internal Collector telemetry for queues/sending failures. No runtime metrics adapter is written. Probes do not imply successful execution or quality; alerts are evaluated locally without notifications. See `docs/dashboards.md`.
 
-## Caché Ollama — ampliación del 6 de octubre de 2026
+## Ollama Cache — Expansion of October 6, 2026
 
-La prueba local confirmó `prompt_tokens_details.cached_tokens` en Ollama v0.35.1. El callback OTel fijado no transforma ese campo anidado a sus atributos de caché. Se elige el callback Prometheus oficial de LiteLLM, limitado a dos métricas y etiqueta de modelo, junto al receiver Prometheus existente del Collector con autenticación. No se requiere adaptador de conversaciones ni componentes alpha que acumulen números desde spans.
+The local test confirmed `prompt_tokens_details.cached_tokens` in Ollama v0.35.1. The pinned OTel callback does not transform that nested field into its cache attributes. The official LiteLLM Prometheus callback is chosen, limited to two metrics and model label, along with the existing Prometheus receiver of the Collector with authentication. No conversation adapter or alpha components that accumulate numbers from spans are required.
 
-El Collector recibe el master key del laboratorio en su entorno exclusivamente para leer `/metrics/`; no se habilita acceso anónimo ni se publica ese puerto. Privacidad de métricas y modelo local permitido se verifican antes de exportar. La caché de prefijo sigue incluida en Input y no se agrega a Total. Esta instrumentación cubre uso nuevo a través del proxy; conserva la diferencia de alcance con los acumulados persistidos de OpenHands. Ver `docs/diagnostics/tokens-2026-10-06.md` para pruebas y aceptación pendiente del host.
+The Collector receives the master key of the local platform in its exclusive environment for reading `/metrics/`; no anonymous access is enabled nor is that port published. Privacy of metrics and local model is verified before exporting. The prefix cache remains included in Input and is not added to Total. This instrumentation covers new usage through the proxy; it preserves the scope difference with the persisted accumulated OpenHands. See `docs/diagnostics/tokens-2026-10-06.md` for pending tests and acceptance of the host.

@@ -1,35 +1,35 @@
-# Observabilidad local: integración y operación
+# Local observability: integration and operation
 
-Actualización: 5 de octubre de 2026. Configuración preparada; el despliegue completo en Docker y la primera conversación observada requieren validación en el host. Ver [diagramas](architecture/observability_diagrams.md) y [decisión de arquitectura](architecture/adr-001-observability.md).
+Last updated: October 7, 2026. The stack passed host acceptance. The affected conversation route was repaired to use LiteLLM, and the streamed usage check matched the token counters. Full agent-to-LLM trace correlation remains pending. See [diagrams](architecture/observability_diagrams.md) and [architecture decision](architecture/adr-001-observability.md).
 
-## Qué añadimos y por qué
+## What we add and why
 
-Usamos integraciones existentes: callback OpenTelemetry de **LiteLLM Proxy**, trazado nativo opcional del SDK de **OpenHands** y receiver **filelog del OTel Collector**. Los scripts del repositorio despliegan, configuran y comprueban; no interceptan conversaciones mediante un adaptador propio.
+We use existing integrations: callback OpenTelemetry of **LiteLLM Proxy**, optional native tracing of the **OpenHands** SDK and receiver **filelog of OTel Collector**. The scripts in the repository deploy, configure and verify; they do not intercept conversations through a custom adapter.
 
-LiteLLM ofrece un endpoint compatible con OpenAI. OpenHands llama al proxy; el proxy llama a Ollama y emite metadatos de las solicitudes. Ollama sigue cargando el mismo Qwen3 en la GPU. No se reinstala el modelo ni se duplican sus pesos. Esta ruta inicial tiene un único modelo local y no configura fallback cloud.
+LiteLLM offers an endpoint compatible with OpenAI. OpenHands calls the proxy; the proxy calls Ollama and emits metadata of the requests. Ollama continues loading the same Qwen3 on the GPU. The model is not reinstalled and its weights are not duplicated. This initial path has a single local model and does not configure cloud fallback.
 
-El trazado del proxy muestra llamadas LLM, no cada paso del agente. El tracing nativo de OpenHands se habilita aparte para ejercicios sintéticos, porque sus decoradores pueden capturar argumentos y resultados de herramientas. `LMNR_TRACE_CONTENT=false` no garantiza excluir ese contenido de todos los spans. No se requiere una cuenta Laminar ni se configura un exporter cloud.
+The proxy tracing shows LLM calls, not each step of the agent. The native tracing of OpenHands is enabled separately for synthetic exercises, because its decorators can capture arguments and results of tools. `LMNR_TRACE_CONTENT=false` does not guarantee to exclude that content from all spans. No Laminar account is required and no cloud exporter is configured.
 
-## Servicios y accesos
+## Services and access
 
-La infraestructura se encuentra en `infra/observability/`; las tareas llaman a `scripts/observability/`. El proyecto Compose `agent-platform-observability` se conecta a la red interna existente `agent-platform-local_agent-link` y conserva los volúmenes del laboratorio.
+The infrastructure is located in `infra/observability/`; the tasks call `scripts/observability/`. The Compose project `agent-platform-observability` connects to the existing internal network `agent-platform-local_agent-link` and preserves the volumes of the local platform.
 
-| Componente | Responsabilidad | Dirección dentro de Docker | Acceso desde host |
+| Component | Responsibility | Address within Docker | Access from host |
 | --- | --- | --- | --- |
-| LiteLLM | Ruta del modelo y telemetría nativa | `http://litellm:4000/v1` | Sin puerto publicado |
-| Collector | Recibe OTLP, filtra y distribuye | `collector:4318` HTTP / `4317` gRPC | Sin puerto publicado |
-| Prometheus | Scrapea las métricas del Collector | `prometheus:9090` | Mediante Grafana |
-| Tempo | Almacena trazas OTLP | `tempo:3200` consultas / `4318` ingestión | Mediante Grafana |
-| Loki | Almacena registros sanitizados | `loki:3100` | Mediante Grafana |
-| Grafana | Explora los tres backends | `grafana:3000` | `http://127.0.0.1:3000` |
+| LiteLLM | Model path and native telemetry | `http://litellm:4000/v1` | No published port |
+| Collector | Receives OTLP, filters and distributes | `collector:4318` HTTP / `4317` gRPC | No published port |
+| Prometheus | Scrapes metrics from Collector | `prometheus:9090` | Through Grafana |
+| Tempo | Stores OTLP traces | `tempo:3200` queries / `4318` ingestion | Through Grafana |
+| Loki | Stores sanitized logs | `loki:3100` | Through Grafana |
+| Grafana | Explores the three backends | `grafana:3000` | `http://127.0.0.1:3000` |
 
-Se fijaron digests Linux amd64: Collector 0.162.0, Prometheus 3.15.0, Tempo 3.1.0, Loki 3.7.8, Grafana 13.2.3 y LiteLLM 1.104.0. Las referencias exactas y tamaños están en `infra/observability/versions.yaml`. Las siete imágenes, incluyendo Blackbox Exporter 0.28.0, suman aproximadamente **1.22 GB comprimidos**, además del laboratorio instalado. Los límites de RAM de la nueva pila suman aproximadamente 2.81 GiB; no representan consumo medido.
+Linux amd64 digests were set: Collector 0.162.0, Prometheus 3.15.0, Tempo 3.1.0, Loki 3.7.8, Grafana 13.2.3 and LiteLLM 1.104.0. The exact references and sizes are in `infra/observability/versions.yaml`. The seven images, including Blackbox Exporter 0.28.0, sum up to approximately **1.22 GB compressed**, in addition to the installed local platform. The RAM limits of the new stack sum up to approximately 2.81 GiB; they do not represent measured consumption.
 
-Tempo se configura en modo monolítico con disco local, sin Kafka. Los backends y LiteLLM usan redes internas. Grafana añade una red normal para publicar su UI en loopback. Este diseño no constituye una política de autorización para herramientas.
+Tempo is configured in monolithic mode with local disk, without Kafka. The backends and LiteLLM use internal networks. Grafana adds a normal network to publish its UI in loopback. This design does not constitute an authorization policy for tools.
 
-## Arranque y comprobación
+## Startup and verification
 
-Ejecutar desde la terminal del host, donde sudo ya funciona:
+Run from the host terminal, where sudo already works:
 
 ```bash
 cd /home/alejandro/CloudDrive/Engineering/agent-platform
@@ -37,116 +37,116 @@ mise exec -- task observability:plan
 mise exec -- task observability:setup
 ```
 
-`setup` reaplica el laboratorio existente, arranca los siete servicios, configura la lectura de logs de los tres contenedores seleccionados y comprueba una llamada sintética a Qwen3 a través de LiteLLM junto con ingestión/redacción en Tempo, Loki y Prometheus. No borra volúmenes. Ejecutarlo cuando el agente esté inactivo, porque `openhands:up` puede recrear Ollama/OpenHands.
+`setup` reapplies the existing local platform, starts the seven services, configures the log reading of the three selected containers and verifies a synthetic call to Qwen3 through LiteLLM along with ingestion/redaction in Tempo, Loki and Prometheus. It does not delete volumes. Run it when the agent is inactive, because `openhands:up` may recreate Ollama/OpenHands.
 
-Grafana requiere usuario `admin` y una contraseña generada en el host, fuera de Git y CloudDrive:
+Grafana requires user `admin` and a password generated on the host, outside of Git and CloudDrive:
 
 ```bash
 cat "${XDG_DATA_HOME:-$HOME/.local/share}/agent-platform/observability/admin-password"
 ```
 
-No compartir esa salida. El archivo se crea con permisos restringidos. La contraseña se transmite a Grafana mediante una variable Compose: administradores de Docker pueden verla en inspect. Cambiarla en Grafana requiere gestionar también ese archivo; el valor de arranque no restablece la contraseña de una base Grafana ya inicializada.
+Do not share that output. The file is created with restricted permissions. The password is transmitted to Grafana through a Compose variable: Docker administrators can view it in inspect. Changing it in Grafana requires managing that file as well; the startup value does not reset the password of an already initialized Grafana instance.
 
-## Activar la ruta observada en OpenHands
+## Activate the observed path in OpenHands
 
-No se modifica automáticamente el perfil que ya funciona. En Settings → LLM, crear `local-qwen3-8b-observed`:
+The existing working profile is not modified automatically. In Settings → LLM, create `local-qwen3-8b-observed`:
 
-| Campo | Valor |
+| Field | Value |
 | --- | --- |
-| Modelo | `openai/qwen3:8b` |
+| Model | `openai/qwen3:8b` |
 | Base URL | `http://litellm:4000/v1` |
-| API key | Contenido del archivo local `litellm-master-key` generado por `observability:up` |
-| Contexto | Coherente con 32768 |
-| Reasoning effort | `none`, si lo permite la interfaz |
+| API key | Content of the local file `litellm-master-key` generated by `observability:up` |
+| Context | Consistent with 32768 |
+| Reasoning effort | `none`, if allowed by the interface |
 
-Copiar la clave desde la terminal local:
+Copy the key from the local terminal:
 
 ```bash
 cat "${XDG_DATA_HOME:-$HOME/.local/share}/agent-platform/observability/litellm-master-key"
 ```
 
-Pegarla únicamente en el campo API key de OpenHands; no compartirla en el chat. La ruta directa a Ollama conserva el placeholder `local-only`. La clave del proxy autentica OpenHands → LiteLLM; LiteLLM → Ollama sigue usando el placeholder local.
+Paste it only in the API key field of OpenHands; do not share it in the chat. The direct path to Ollama preserves the placeholder `local-only`. The proxy key authenticates OpenHands → LiteLLM; LiteLLM → Ollama continues using the local placeholder.
 
-En este laboratorio sin base de datos se usa la master key, que concede privilegios de administración del proxy. No es una clave limitada por usuario/modelo; para compartirlo con familia o evolucionar a multiusuario se necesitarán credenciales de cliente con alcance propio y un diseño de identidad. Se conserva en el archivo privado del host y en el perfil persistente de OpenHands. Administradores Docker pueden verla en el entorno del proxy.
+In this local platform without a database, the master key is used, which grants administrative privileges to the proxy. It is not a user/model-limited key; to share it with family or evolve to multi-user, you will need client credentials with specific scope and an identity design. It is preserved in the host's private file and in the persistent profile of OpenHands. Docker administrators can view it in the proxy's environment.
 
-Guardar, seleccionar ese perfil en el agente y crear una conversación nueva. Mantener un solo agente, herramientas en secuencia y cambio automático de perfiles desactivado. El contexto sigue siendo el configurado en Ollama; los 16 tokens del nuevo smoke test no limitan al agente.
+Save, select that profile in the agent and create a new conversation. Keep a single agent, tools in sequence, and automatic profile switching disabled. The context remains as configured in Ollama; the 16 tokens of the new smoke test do not constrain the agent.
 
-Usar primero esta tarea de lectura:
+Use this reading task first:
 
-> Usa la herramienta de terminal para ejecutar `pwd` y después `cd /projects/demo && pwd && ls -la`. Muestra la salida real. No modifiques archivos ni accedas a Internet.
+> Use the terminal tool to execute `pwd` and then `cd /projects/demo && pwd && ls -la`. Show the real output. Do not modify files or access the Internet.
 
-En Grafana → carpeta **Agent Platform**, comprobar nuevos spans/métricas del proxy. Una prueba sintética de la infraestructura no demuestra que la conversación haya usado el nuevo perfil; conservar ese paso como aceptación manual.
+In Grafana → **Agent Platform** folder, check new spans/metrics of the proxy. A synthetic test of the infrastructure does not demonstrate that the conversation has used the new profile; keep that step as manual acceptance.
 
-Para volver a la ruta anterior, seleccionar `local-qwen3-8b` con base `http://ollama:11434/v1` en una conversación nueva.
+To return to the previous path, select `local-qwen3-8b` based on `http://ollama:11434/v1` in a new conversation.
 
-## Tracing nativo de OpenHands: paso optativo
+## Native OpenHands Tracing: optional step
 
-Después de validar el proxy, y únicamente con datos sintéticos:
+After validating the proxy, and only with synthetic data:
 
 ```bash
 mise exec -- task observability:tracing:on
 ```
 
-La tarea verifica que `lmnr` y OpenTelemetry estén presentes en la imagen; no instala dependencias en caliente. Conecta OpenHands a la red interna de observabilidad y configura el endpoint OTLP HTTP local. Desactiva las integraciones automáticas adicionales mediante `LMNR_INSTRUMENTS` vacío, conservando los decoradores nativos del SDK. Recrea OpenHands; crear una conversación nueva y repetir la tarea de lectura.
+The task verifies that `lmnr` and OpenTelemetry are present in the image; it does not install dependencies on the fly. Connect OpenHands to the internal observability network and configure the local OTLP HTTP endpoint. Disable additional automatic integrations via `LMNR_INSTRUMENTS` empty, preserving the native decorators of the SDK. Recreate OpenHands; create a new conversation and repeat the reading task.
 
-Este paso permite comprobar spans del agente, pero puede enviar contenido de herramientas a la **memoria** del Collector antes de filtrarlo. Por eso está separado del arranque normal. Los exportadores persistentes reciben solo la salida filtrada. La cobertura exacta, el nombre de las operaciones y la propagación del `traceparent` entre OpenHands y LiteLLM deben comprobarse; no se promete una única traza completa hasta observarla.
+This step allows checking agent spans, but may send tool content to the **memory** of the Collector before filtering it. That is why it is separated from the normal startup. Persistent exporters receive only the filtered output. The exact coverage, the names of the operations, and the propagation of `traceparent` between OpenHands and LiteLLM must be checked; no single complete trace is promised until observed.
 
 ```bash
 mise exec -- task observability:tracing:off
 ```
 
-También `openhands:up` reaplica el Compose base y deshabilita el tracing optativo. Si se necesita mantenerlo, volver a ejecutar `tracing:on` después y refrescar la configuración de logs.
+This step also `openhands:up` reapplies the base Compose and disables the optional tracing. If it is needed to keep it, run `tracing:on` again afterwards and refresh the log configuration.
 
-## Dónde están los logs y cómo llegan a Loki
+## Where are the logs and how do they reach Loki
 
-Docker ya recoge stdout/stderr de OpenHands, Ollama y LiteLLM con su driver `json-file`. Su ubicación real se obtiene de `LogPath` del contenedor; no se supone que Docker esté siempre en `/var/lib/docker`.
+Docker already collects stdout/stderr of OpenHands, Ollama, and LiteLLM with its driver `json-file`. Their real location is obtained from `LogPath` of the container; it is not assumed that Docker is always in `/var/lib/docker`.
 
 ```bash
 mise exec -- task observability:logs:configure
 ```
 
-La tarea consulta únicamente ID, LogPath y driver de esos tres servicios. Genera dos archivos ignorados en `artifacts/observability/`: la configuración filelog y los mounts Compose. El Collector monta **solo los directorios de logs de esos contenedores, de lectura**, sin socket Docker ni acceso a logs de otros contenedores. Corre como UID 0 para poder leer esos directorios del host, con capacidades eliminadas, sin elevación y filesystem raíz de solo lectura. No se cambia el daemon ni se añade el usuario al grupo docker.
+The task queries only ID, LogPath, and driver of those three services. It generates two ignored files in `artifacts/observability/`: the filelog configuration and the Compose mounts. The Collector mounts **only the log directories of those containers, read-only**, without Docker socket or access to logs of other containers. It runs as UID 0 to be able to read those directories on the host, with capabilities removed, without elevation and root filesystem read-only. The daemon is not changed, and the user is not added to the docker group.
 
-Filelog empieza desde el final para evitar importar el historial. Guarda offsets en un volumen propio y sigue la rotación del archivo activo; no importa archivos históricos comprimidos. `observability:up` refresca esta configuración automáticamente después de arrancar el núcleo, evitando reutilizar mounts antiguos. Una recreación fuera de esa tarea cambia el ID y LogPath: **volver a ejecutar `logs:configure` tras recrear cualquiera de los tres contenedores**. De lo contrario, podrían faltar logs aunque el Collector siga activo.
+Filelog starts from the end to avoid importing the history. It saves offsets in its own volume and follows the rotation of the active file; it does not import compressed historical files. `observability:up` refreshes this configuration automatically after booting the core, avoiding reusing old mounts. A recreation outside of this task changes the ID and LogPath: **re-run `logs:configure` after recreating any of the three containers**. Otherwise, logs may be missing even though the Collector is still active.
 
-Pipeline: archivo Docker → receiver filelog → filtro de privacidad → batch → exporter OTLP HTTP → Loki. Los mensajes se reducen a `operational`, `error` o `tool_validation_error`, con cuerpo fijo `operational record`. Se renuncia al texto completo en Grafana para evitar almacenar contenido sensible. El filtrado no convierte logs en una auditoría de acciones autorizadas.
+Pipeline: Docker file → filelog receiver → privacy filter → batch → OTLP HTTP exporter → Loki. Messages are reduced to `operational`, `error`, or `tool_validation_error`, with fixed body `operational record`. The full text is renounced in Grafana to avoid storing sensitive content. The filtering does not convert logs into an audit of authorized actions.
 
-Los logs Docker originales y el estado/conversaciones de OpenHands siguen siendo fuentes locales sin esta redacción. Sus datos están en almacenamiento Docker, no en el repositorio. Los proyectos del agente sí están bajo CloudDrive; mantenerlos sintéticos.
+Original Docker logs and the state/conversations of OpenHands remain local sources without this redaction. Their data is in Docker storage, not in the repository. Agent projects are indeed under CloudDrive; keep them synthetic.
 
-## Privacidad y retención
+## Privacy and retention
 
-| Señal | En origen | Antes de persistir en backends |
+| Signal | At source | Before persisting in backends |
 | --- | --- | --- |
-| Solicitudes LLM | LiteLLM `turn_off_message_logging=true`, `NO_CONTENT`, eventos de contenido desactivados | Lista permitida de atributos; nombres de modelo/operaciones normalizados |
-| Spans OpenHands | Tracing optativo; posible captura de argumentos/resultados | Eventos eliminados; spans con links rechazados; mensajes de error y atributos libres excluidos |
-| Métricas | Lista permitida de dimensiones LiteLLM; exemplars desactivados | Lista de nombres y dimensiones; datapoints con exemplars rechazados; sin identificadores de ejecución/usuario |
-| Logs | Docker puede registrar contenido | Cuerpo sustituido y categorías acotadas; sin rutas, prompts, claves ni argumentos originales |
+| LLM Requests | LiteLLM `turn_off_message_logging=true`, `NO_CONTENT`, content events disabled | Allowed attribute list; model names/operations normalized |
+| OpenHands Spans | Optional tracing; possible capture of arguments/results | Events deleted; spans with links rejected; error messages and attributes excluded |
+| Metrics | Allowed dimension list of LiteLLM; exemplars disabled | Name and dimension list; datapoints with exemplars rejected; no execution/user identifiers |
+| Logs | Docker can log content | Body substituted and categories limited; no paths, prompts, keys, or original arguments |
 
-Se usa filtrado por lista permitida, no una expresión regular que pretenda reconocer todos los secretos. La prueba canaria cubre cuerpo, atributos, scope, nombres, eventos, mensajes de estado, links y exemplars. No demuestra seguridad ante cualquier campo o versión futura; repetirla al cambiar dependencias y revisar atributos nuevos. Los esquemas OTLP y el endpoint interno son para emisores controlados del laboratorio, no una API pública multiusuario.
+A whitelist filtering is used, not a regular expression that aims to recognize all secrets. The canary test covers body, attributes, scope, names, events, status messages, links, and exemplars. It does not demonstrate security against any field or future version; repeat it when changing dependencies and reviewing new attributes. The OTLP schemas and the internal endpoint are for controlled emitters of the local platform, not a multi-user public API.
 
-No hay exporter debug ni callback de contenido configurado. Las colas/batches contienen la salida sanitizada después del processor, pero el receiver trabaja inicialmente con la entrada original. No se configura una cola de exportación persistente: una interrupción puede perder datos en memoria; la entrega exactamente una vez no se garantiza.
+No debug exporter or content callback is configured. The queues/batches contain the sanitized output after the processor, but the receiver initially works with the original input. No persistent export queue is configured: an interruption may lose data in memory; exact once delivery is not guaranteed.
 
-Prometheus: 7 días, límite de datos de 1 GB. Loki: retención de 7 días mediante compactor. Tempo: objetivo de retención de 7 días mediante backend scheduler, con borrado asíncrono. Los límites no incluyen por igual WAL/índices/metadatos. Estado OpenHands, logs Docker y Grafana tienen retención independiente; los logs de aplicaciones se limitan por tamaño y número de archivos. Loki/Tempo no son la fuente de auditoría inmutable del futuro policy engine.
+Prometheus: 7 days, data limit of 1 GB. Loki: retention of 7 days via compactor. Tempo: retention target of 7 days via backend scheduler, with asynchronous deletion. The limits do not equally include WAL/indexes/metadata. OpenHands state, Docker logs, and Grafana have independent retention; application logs are limited by size and number of files. Loki/Tempo are not the immutable source of future policy engine audit.
 
-## Dashboards provisionados
+## Provisioned Dashboards
 
-La entrada principal es [Plataforma de agentes · Vista general](http://127.0.0.1:3000/d/platform-overview). Diseño, métricas, sondas, alertas y runbook: [dashboards.md](dashboards.md).
+The main entry is [Agent Platform · Overview](http://127.0.0.1:3000/d/platform-overview). Design, metrics, probes, alerts and runbook: [dashboards.md](dashboards.md).
 
-No es necesario importar JSON a mano. Las fuentes tienen UID estable `prometheus`, `tempo` y `loki`; los siete archivos están en `infra/observability/grafana/dashboards/`.
+Importing JSON manually is not necessary. Sources have stable UID `prometheus`, `tempo` and `loki`; the seven files are in `infra/observability/grafana/dashboards/`.
 
-| Dashboard | Qué presenta en esta etapa | Qué sigue pendiente |
+| Dashboard | What it presents in this stage | What remains pending |
 | --- | --- | --- |
-| Plataforma de agentes · Vista general | Endpoints, RED, transporte OTel y logs; navegación a detalles | GPU/host, resultados de workflows y evaluación etiquetada |
-| Agent operations | Tráfico, errores y latencia de spans del proxy | Tareas de agente finalizadas y duración total |
-| LLM cost and routing | Tokens y duración LLM; único destino local | Routing múltiple, precios cloud y coste operativo local |
-| Model quality and escalations | Errores técnicos; contexto de aceptación de ejercicios | Calidad etiquetada, intentos y escalaciones evaluadas |
-| Security | Logs sanitizados y descripción de controles | Denegaciones, aprobaciones, actores y auditoría durable |
-| Tools and MCP | Categorías de error de herramientas en logs | Contratos de spans de tools y MCP; no hay MCP configurado |
-| Workflow and business KPIs | Disponibilidad del scrape; estado de instrumentación | Resultados de negocio y espera de aprobación |
+| Agent Platform · Overview | Endpoints, RED, OTel transport and logs; navigation to details | GPU/host, workflow results and labeled evaluation |
+| Agent operations | Traffic, errors and span latency of the proxy | Completed agent tasks and total duration |
+| LLM cost and routing | Tokens and LLM duration; single local destination | Multi-routing, cloud pricing and local operational cost |
+| Model quality and escalations | Technical errors; context of exercise acceptance | Labeled quality, attempts and evaluated escalations |
+| Security | Sanitized logs and description of controls | Denials, approvals, actors and durable audit |
+| Tools and MCP | Tool error categories in logs | Span contracts of tools and MCP; no MCP configured |
+| Workflow and business KPIs | Scraping availability; instrumentation status | Business results and approval waiting |
 
-Paneles sin datos indican falta de tráfico/instrumentación; no equivalen a cero errores ni a éxito. La configuración no evalúa calidad de respuestas automáticamente. Coste de API local y coste total del equipo son conceptos diferentes.
+Panels without data indicate lack of traffic/instrumentation; they do not equate to zero errors nor to success. The configuration does not automatically evaluate response quality. Local API cost and total team cost are different concepts.
 
-## Operación y validación
+## Operation and validation
 
 ```bash
 mise exec -- task observability:test
@@ -157,28 +157,28 @@ mise exec -- task observability:logs
 mise exec -- task observability:stop
 ```
 
-`stop` conserva todos los volúmenes. Detener LiteLLM deja sin modelo las conversaciones que lo usan: volver primero al perfil directo si se desea seguir usando OpenHands. No se ejecuta `down -v` ni se elimina almacenamiento como parte de las tareas.
+`stop` preserves all volumes. Stopping LiteLLM leaves conversations that use it without a model: return first to the direct profile if you wish to continue using OpenHands. `down -v` is not executed nor storage is deleted as part of the tasks.
 
-`observability:check` se ejecuta con el Python de LiteLLM en la red interna, sin publicar puertos de diagnóstico. Comprueba nueve endpoints, una respuesta del modelo con traza nativa correlacionada y métricas de tokens, además de señales canarias enviadas a los tres backends. El reporte JSON se guarda en `artifacts/diagnostics/`; no contiene la respuesta del modelo ni el texto de la canaria. La prueba no sustituye la aceptación de una conversación real ni la comprobación de un evento recién escrito en los logs Docker.
+`observability:check` runs with LiteLLM Python on the internal network, without publishing diagnostic ports. It checks nine endpoints, a model response with native trace correlation and token metrics, as well as canary signals sent to the three backends. The JSON report is saved in `artifacts/diagnostics/`; it does not contain the model response or canary text. The test does not replace the acceptance of a real conversation nor the verification of a newly written event in Docker logs.
 
-Ver el [registro de validación](diagnostics/observability-2026-10-05.md). Validación de preparación: Compose resuelto, digests oficiales, configuraciones comprobadas con los binarios de las mismas imágenes, y prueba local del Collector con señales/filelog sintéticos. La prueba local se puede repetir con `python3 scripts/observability/test-privacy.py --collector /ruta/al/binario/otelcol-contrib` de la versión fijada. `observability:validate` repite la validación de archivos con los binarios dentro de las imágenes. El estado del despliegue en el host debe actualizarse después de recibir su resultado. El tracing nativo y la correlación real siguen pendientes.
+See the [validation log](diagnostics/observability-2026-10-05.md). Preparation validation: Resolved Compose, official digests, configurations verified with the same image binaries, and local Collector test with synthetic signals/filelog. The local test can be repeated with `python3 scripts/observability/test-privacy.py --collector /path/to/otelcol-contrib` of the pinned version. `observability:validate` repeats the file validation with the binaries inside the images. The deployment status on the host must be updated after receiving its result. Native tracing and real correlation remain pending.
 
-## Fuentes oficiales
+## Official sources
 
-- [LiteLLM: integración OpenTelemetry y controles de contenido](https://docs.litellm.ai/docs/observability/opentelemetry_integration)
-- [LiteLLM 1.104.0: implementación del callback](https://github.com/BerriAI/litellm/blob/v1.104.0/litellm/integrations/opentelemetry.py)
-- [OpenHands: observabilidad del SDK](https://docs.openhands.dev/sdk/guides/observability)
-- [SDK 1.49.6: activación y decoradores nativos](https://github.com/OpenHands/software-agent-sdk/blob/v1.49.6/openhands-sdk/openhands/sdk/observability/laminar.py)
+- [LiteLLM: OpenTelemetry integration and content controls](https://docs.litellm.ai/docs/observability/opentelemetry_integration)
+- [LiteLLM 1.104.0: callback implementation](https://github.com/BerriAI/litellm/blob/v1.104.0/litellm/integrations/opentelemetry.py)
+- [OpenHands: SDK observability](https://docs.openhands.dev/sdk/guides/observability)
+- [SDK 1.49.6: activation and native decorators](https://github.com/OpenHands/software-agent-sdk/blob/v1.49.6/openhands-sdk/openhands/sdk/observability/laminar.py)
 - [OTel Collector: filelog](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.162.0/receiver/filelogreceiver)
 - [OTel Collector: transform processor](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.162.0/processor/transformprocessor)
-- [Loki: ingestión OTLP](https://grafana.com/docs/loki/latest/send-data/otel/)
-- [Tempo 3: modos de despliegue](https://grafana.com/docs/tempo/latest/set-up-for-tracing/setup-tempo/plan/)
+- [Loki: OTLP ingestion](https://grafana.com/docs/loki/latest/send-data/otel/)
+- [Tempo 3: deployment modes](https://grafana.com/docs/tempo/latest/set-up-for-tracing/setup-tempo/plan/)
 
-## Diagnóstico de un servicio que se detiene al arrancar
+## Diagnosis of a service that stops on startup
 
-`Started` confirma que Docker inició el proceso, no que la aplicación completó su arranque. El script verifica que los siete procesos sigan ejecutándose y espera la API de LiteLLM además de Grafana. `observability:status` incluye contenedores detenidos.
+`Started` confirms that Docker started the process, not that the application completed its startup. The script verifies that the seven processes continue running and waits for the LiteLLM API in addition to Grafana. `observability:status` includes stopped containers.
 
-Si el despliegue informa un servicio detenido, obtener su estado y logs locales. Para LiteLLM:
+If the deployment reports a stopped service, obtain its status and local logs. For LiteLLM:
 
 ```bash
 mise exec -- task observability:status
@@ -186,55 +186,55 @@ sudo docker --context default inspect --format '{{json .State}}' agent-platform-
 sudo docker --context default logs --tail 100 agent-platform-observability-litellm-1
 ```
 
-El primer despliegue pasó las validaciones nativas, pero falló antes de activar filelog por ausencia de un LiteLLM en ejecución. La causa del proceso requiere sus logs. No reinstalar Docker ni descargar de nuevo el modelo por ese mensaje.
+The first deployment passed the native validations, but failed before activating filelog due to absence of a running LiteLLM. The cause of the process requires its logs. Do not reinstall Docker or re-download the model for this message.
 
-### Corrección de autenticación LiteLLM 1.104.0
+### LiteLLM authentication correction 1.104.0
 
-Los logs del primer arranque confirmaron `UnsafeMasterKeyError`, salida 3 y `OOMKilled=false`: faltaba `LITELLM_MASTER_KEY`. Esta versión rechaza por defecto una clave ausente/débil, aunque el puerto sea interno. No era un fallo de GPU, descarga o falta de memoria.
+The logs from the first startup confirmed `UnsafeMasterKeyError`, output 3 and `OOMKilled=false`: missing `LITELLM_MASTER_KEY`. This version rejects by default a missing/weak key, even if the port is internal. It was not a GPU, download or memory issue.
 
-`observability:up` ahora genera una clave aleatoria de 32 bytes (prefijo `sk-`) en el directorio privado junto a la contraseña Grafana. Conserva las claves existentes y los volúmenes; sudo preserva únicamente las variables Compose necesarias. El smoke test autentica la llamada al modelo y exige rechazo de una petición sin clave. No se habilita la excepción que permite arrancar sin autenticación.
+`observability:up` now generates a random key of 32 bytes (prefix `sk-`) in the private directory along with the Grafana password. It preserves existing keys and volumes; sudo preserves only the necessary Compose variables. The smoke test authenticates the model call and requires rejection of a request without a key. The exception that allows startup without authentication is not enabled.
 
-Reintentar `mise exec -- task observability:up` seguido de `mise exec -- task observability:check`. La corrección fue aceptada en el host el 6 de octubre; ver [evidencia](diagnostics/observability-2026-10-06.md).
+Retry `mise exec -- task observability:up` followed by `mise exec -- task observability:check`. The correction was accepted on the host on October 6; see [evidence](diagnostics/observability-2026-10-06.md).
 
-Fuente: [Cambio de autenticación en LiteLLM 1.104.0](https://docs.litellm.ai/release_notes/v1.104.0/v1-104-0), [API sin base de datos](https://docs.litellm.ai/docs/proxy/docker_quick_start).
+Source: [LiteLLM authentication change 1.104.0](https://docs.litellm.ai/release_notes/v1.104.0/v1-104-0), [Databaseless API](https://docs.litellm.ai/docs/proxy/docker_quick_start).
 
-### Corrección del contador de aceptación
+### Acceptance counter correction
 
-Tras el arranque autenticado, Tempo/Loki/Prometheus sí recibieron las señales sintéticas. El test usaba el nombre `privacy_smoke`, pero el exporter Prometheus publicó el contador como `privacy_smoke_total`. Se corrigió la consulta y se exige ese nombre en la prueba local del Collector. Si vuelve a fallar una señal, el test indica la etapa y el código HTTP sin mostrar contenido sensible. Repetir solo `observability:check`; no hace falta recrear servicios por este cambio del script.
+The services received synthetic traces, logs and metrics after startup. The test used the name `privacy_smoke`, but the Prometheus exporter published the counter as `privacy_smoke_total`. The query was corrected and the test requires that name in the local Collector test. If a signal fails again, the test indicates the stage and HTTP code without showing sensitive content. Repeat only `observability:check`; there is no need to recreate services for this script change.
 
-## Callback OTel de LiteLLM 1.104.0
+## LiteLLM OTel Callback 1.104.0
 
-Se retiró `gen_ai.token.type` de `callback_settings.otel.attributes.include_list`: LiteLLM rechaza configurarlo en ese filtro, por lo que el callback no iniciaba aunque las respuestas HTTP siguieran funcionando. El callback añade ese discriminador automáticamente a métricas de tokens. El Collector continúa admitiéndolo con valores limitados a input/output/unknown. `observability:check` exige ahora una traza nativa de la petición al modelo y sus métricas de tokens; una canaria sintética por sí sola no basta. Aplicar con `observability:up` y validar en el host.
+Removed `gen_ai.token.type` from `callback_settings.otel.attributes.include_list`: LiteLLM rejects configuring it in that filter, so the callback did not start even though HTTP responses continued to function. The callback automatically adds that discriminator to token metrics. The Collector continues to accept it with values limited to input/output/unknown. `observability:check` now requires a native trace of the request to the model and its token metrics; a synthetic canary alone is not sufficient. Apply with `observability:up` and validate on the host.
 
-`observability:up` recrea los servicios de observabilidad para aplicar cambios dentro de archivos montados (Compose no detecta su contenido en el hash del servicio). Hay una interrupción breve del proxy y los backends; credenciales y datos de volúmenes se conservan. El registro de logs se regenera después con los IDs actuales.
+`observability:up` recreates observability services to apply changes within mounted files (Compose does not detect its content in the service's hash). There is a brief interruption of the proxy and backends; credentials and volume data are preserved. The log registration is regenerated afterward with current IDs.
 
-## Estado validado — 6 de octubre de 2026
+## Validated State — October 6, 2026
 
-`observability:check` pasó completo en el host: nueve sondas sanas, rechazo de solicitudes sin clave, respuesta autenticada del modelo, traza nativa correlacionada de la petición de prueba, tokens LLM y canarias de las tres señales sin contenido sensible en los campos comprobados. Grafana recibe datos de los nuevos paneles. La siguiente aceptación es una conversación real de OpenHands usando el perfil observado; el tracing del agente y su correlación completa siguen separados. Ver [registro de aceptación](diagnostics/observability-2026-10-06.md).
+`observability:check` passed completely on the host: nine healthy probes, rejection of requests without a key, authenticated response from the model, native correlated trace of the test request, LLM tokens and canaries of the three signals without sensitive content in the checked fields. Grafana receives data from the new panels. The next acceptance is a real conversation of OpenHands using the observed profile; the agent's tracing and its full correlation remain separate. See [acceptance log](diagnostics/observability-2026-10-06.md).
 
-## Golden signals y totales — actualización del dashboard
+## Golden signals and totals — dashboard update
 
-La vista general incluye una fila explícita de tráfico, errores, latencia p95 exitosa y saturación de colas OTel; la saturación de GPU/servidor LLM sigue pendiente. Se añadieron acumulados actuales y totales estimados del período de solicitudes, errores y tokens (entrada, salida, total). El dashboard LLM incluye también ambos tipos de totales. Las tasas se conservan. Los acumulados incluyen pruebas y pueden reiniciarse; los incrementos no recuperan automáticamente una primera muestra perdida. Grafana recargó los archivos sin reiniciar la pila; las 43 consultas fueron aceptadas por las fuentes reales. Ver [semántica y límites](dashboards.md#golden-signals-y-totales).
+The overview includes an explicit row of traffic, errors, successful p95 latency, and OTel queue saturation; GPU/server LLM saturation remains pending. Current accumulated and estimated totals of the request period, errors, and tokens (input, output, total) were added. The LLM dashboard also includes both types of totals. Rates are preserved. Accumulated values include tests and can be reset; increments do not automatically recover a first lost sample. Grafana reloaded the files without restarting the stack; the 43 queries were accepted by the real sources. See [semantics and limits](dashboards.md#golden-signals-and-totals).
 
-## Uso de caché reportado por Ollama
+## Cache usage reported by Ollama
 
-La caché de contexto reutiliza cómputo del prefijo de entrada; no evita toda la inferencia ni representa una respuesta guardada. Para esta ruta, Cache Hit ya está dentro de Input. Los totales de una conversación OpenHands y los contadores de LiteLLM tienen alcances e inicios distintos.
+The context cache reuses computation of the input prefix; it does not avoid all inference nor represent a saved response. For this route, Cache Hit is already within Input. The totals of an OpenHands conversation and LiteLLM counters have different scopes and starts.
 
-Además del callback OTel, LiteLLM usa su callback Prometheus existente restringido a los contadores de tokens de caché y etiqueta `model`. El Collector accede a `/metrics/` por la red interna con autenticación; aplica selección de métricas/modelo y redacción de etiquetas, y exporta a Prometheus. El master key también está disponible en el entorno del Collector solo para esa lectura; se comparte la credencial del laboratorio sin DB, pendiente de identidad/credenciales limitadas para multiusuario. No se publica el endpoint ni se deshabilita su autenticación.
+In addition to the OTel callback, LiteLLM uses its existing Prometheus callback restricted to cache token counters and label `model`. The Collector accesses `/metrics/` over the internal network with authentication; it applies metric/model selection and label redaction, and exports to Prometheus. The master key is also available in the Collector's environment only for that read; the local platform credential without DB is shared, pending limited identity/credential for multiuser. The endpoint is not published and its authentication is not disabled.
 
-`observability:cache:check` hace dos llamadas sintéticas por el proxy y coteja `cached_tokens` con el contador observado. `observability:cache:test` verifica de forma aislada autenticación, privacidad, acumulados sin doble suma y detección de fallo de scrape usando el Collector fijado. El fallo de scrape es visible como `litellm_cache_scrape_up=0`; los valores retenidos no prueban actividad nueva.
+`observability:cache:check` makes two synthetic calls through the proxy and compares `cached_tokens` with the observed counter. `observability:cache:test` verifies authentication, privacy, accumulated values without double sum, and scrape failure detection using the pinned Collector. The scrape failure is visible as `litellm_cache_scrape_up=0`; retained values do not prove new activity.
 
-La implementación está preparada y validada aisladamente; el chequeo integral del nuevo callback requiere aplicar `observability:up` en la terminal del host. No se reescribe la conversación ni se rellena Grafana con cifras históricas de capturas. Ver [diagramas](architecture/observability_diagrams.md) y [evidencia](diagnostics/tokens-2026-10-06.md).
+The implementation is prepared and validated separately; the comprehensive check of the new callback requires applying `observability:up` in the host's terminal. The conversation is not rewritten nor is Grafana filled with historical capture figures. See [diagrams](architecture/observability_diagrams.md) and [evidence](diagnostics/tokens-2026-10-06.md).
 
-Aceptación de caché del 6 de octubre, 09:57 Europe/Berlin: la prueba integral del host cotejó 1.623 tokens reutilizados con un aumento idéntico del contador; el chequeo general posterior también pasó. Las tarjetas de Grafana ya devuelven datos reales de caché. La ruta efectiva de una nueva llamada de la conversación OpenHands se verifica por separado; no se recupera su uso histórico anterior al proxy.
+Cache acceptance on October 6, 09:57 Europe/Berlin: the host's full test compared 1,623 reused tokens with an identical counter increase; the general check also passed. Grafana cards already return real cache data. The effective route of a new OpenHands conversation call is verified separately; its historical usage prior to the proxy is not recovered.
 
-Configuración mantenida en YAML: `collector.yaml` y `versions.yaml`. Los scripts leen con `yaml.safe_load` en el entorno Python fijado de mise; los overrides filelog generados siguen en JSON. Ejecutar `mise install --locked` y `mise run env:python:setup` para preparar un checkout nuevo. No se cambian digests, filtros de privacidad, credenciales ni nombres de métricas por esta migración.
+Configuration maintained in YAML: `collector.yaml` and `versions.yaml`. The scripts read with `yaml.safe_load` in the pinned Python environment of mise; the generated filelog overrides remain in JSON. Run `mise install --locked` and `mise run env:python:setup` to prepare a new checkout. Digests, privacy filters, credentials, and metric names are not changed by this migration.
 
-### Conversación existente que omite el proxy
+### Existing conversation that omits the proxy
 
-Un perfil guardado puede apuntar a LiteLLM mientras la conversación abierta conserva `http://ollama:11434/v1`. En ese caso el agente consume tokens pero el proxy no recibe las llamadas. Confirmar con `openhands:usage:check`; no confundir el nombre visible del perfil con la ruta efectiva.
+A saved profile can point to LiteLLM while the open conversation preserves `http://ollama:11434/v1`. In that case, the agent consumes tokens but the proxy does not receive the calls. Confirm with `openhands:usage:check`; do not confuse the visible name of the profile with the effective path.
 
-Con el agente terminado o pausado:
+With the agent finished or paused:
 
 ```bash
 mise exec -- task openhands:route:proxy CONVERSATION_ID=<uuid>
@@ -242,9 +242,9 @@ mise exec -- task openhands:usage:check CONVERSATION_ID=<uuid>
 mise exec -- task observability:stream:check
 ```
 
-La reparación reutiliza la credencial del perfil `local-qwen3-8b` mediante la API de loopback dentro del contenedor; no la imprime. Verifica la autenticación del proxy, usa `switch_llm` con `usage_id` nuevo (el registro de SDK 1.49.6 reutiliza entradas con el mismo ID), verifica la conversación y activa el perfil para conversaciones futuras. No reinicia servicios. El script requiere la versión fijada y rechaza un perfil dirigido a otro servidor.
+The repair reuses the credential of the `local-qwen3-8b` profile via the loopback API within the container; it does not print it. It verifies the proxy's authentication, uses `switch_llm` with `usage_id` new (the SDK log 1.49.6 reuses entries with the same ID), verifies the conversation, and activates the profile for future conversations. It does not restart services. The script requires the pinned version and rejects a profile directed to another server.
 
-La prueba de streaming solicita `include_usage`, descarta el texto y compara los tokens reportados con el incremento de contadores OTel. Es una prueba sintética; la aceptación del tráfico del agente requiere una nueva consulta real después del cambio. Los tokens anteriores de la conversación se conservan en OpenHands; no se importan como nuevas llamadas de Prometheus. Fuente del comportamiento del registro: [SDK 1.49.6](https://github.com/OpenHands/software-agent-sdk/blob/v1.49.6/openhands-sdk/openhands/sdk/conversation/impl/local_conversation.py).
+The streaming test requests `include_usage`, discards the text, and compares the reported tokens with the OTel counter increment. It is a synthetic test; the agent traffic acceptance requires a new real query after the change. Previous conversation tokens are preserved in OpenHands; they are not imported as new Prometheus calls. Source of the log behavior: [SDK 1.49.6](https://github.com/OpenHands/software-agent-sdk/blob/v1.49.6/openhands-sdk/openhands/sdk/conversation/impl/local_conversation.py).
 
 
-Aceptación de la reparación: el host confirmó conversación y default por LiteLLM, streaming activo, y cotejo SSE exacto de 23 tokens de entrada y 8 de salida. Las consultas de tarjetas Grafana posteriores devolvieron 16.646 de entrada, 2.243 de salida, total 18.889 y Cache Hit 1.630. Son instantáneas acumuladas del emisor, no el total de vida de una conversación. La ausencia de incremento quedó resuelta sin editar los paneles; la correlación por conversación continúa como trabajo separado. Ver [diagnóstico](diagnostics/tokens-2026-10-06.md).
+Acceptance of the repair: the host confirmed conversation and default by LiteLLM, active streaming, and exact SSE comparison of 23 input tokens and 8 output tokens. Subsequent Grafana query cards returned 16,646 input, 2,243 output, total 18,889, and Cache Hit 1,630. These are accumulated snapshots from the emitter, not the total lifetime of a conversation. The absence of increment was resolved without editing the panels; the conversation correlation continues as a separate task. See [diagnosis](diagnostics/tokens-2026-10-06.md).

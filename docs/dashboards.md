@@ -1,8 +1,8 @@
-# Dashboard general de la plataforma
+# General platform dashboard
 
-Abrir [Plataforma de agentes · Vista general](http://127.0.0.1:3000/d/platform-overview) dentro de Grafana local. Está en la carpeta **Agent Platform** y se provisiona desde `infra/observability/grafana/dashboards/platform-overview.json`. No requiere importar JSON manualmente. Los seis dashboards especializados enlazan de vuelta a esta vista.
+Open [Agent Platform · Overview](http://127.0.0.1:3000/d/platform-overview) inside local Grafana. It is in the **Agent Platform** folder and is provisioned from `infra/observability/grafana/dashboards/platform-overview.json`. It does not require manual JSON import. The six specialized dashboards link back to this view.
 
-## Activación
+## Activation
 
 ```bash
 cd /home/alejandro/CloudDrive/Engineering/agent-platform
@@ -10,70 +10,70 @@ mise exec -- task observability:up
 mise exec -- task observability:check
 ```
 
-El archivo JSON se actualiza por el provisioning de Grafana; las sondas y la configuración del Collector/Prometheus necesitan reaplicar Compose. `up` conserva las credenciales existentes y los volúmenes; recrea los servicios de observabilidad para recargar también el contenido de los archivos montados. Ejecutarlo cuando el agente esté inactivo. Sudo, si Docker lo requiere, se autentica en la terminal del host. El chequeo comprueba nueve endpoints, una llamada local con traza nativa correlacionada por `traceparent`, métricas de tokens y canarias de privacidad. La correlación con una conversación real de OpenHands sigue siendo una aceptación separada.
+The JSON file is updated by Grafana provisioning; the probes and Collector/Prometheus configuration need to reapply Compose. `up` preserves existing credentials and volumes; it recreates observability services to reload the content of mounted files. Run it when the agent is inactive. Sudo, if Docker requires it, authenticates in the host terminal. The check verifies nine endpoints, a local call with native trace correlation by `traceparent`, token metrics, and privacy canaries. Correlation with a real OpenHands conversation remains a separate acceptance.
 
-## Diseño y lectura
+## Design and reading
 
-Orden: golden signals → totales acumulados y del período → disponibilidad → tendencias del modelo → transporte OTel → errores y detalles. Sigue la navegación de general a específico de las [recomendaciones de Grafana](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/best-practices/).
+Order: golden signals → accumulated totals and period → availability → model trends → OTel transport → errors and details. Follows the general to specific navigation of the [Grafana recommendations](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/best-practices/).
 
-| Bloque | Pregunta | Fuente y límites |
+| Block | Question | Source and limits |
 | --- | --- | --- |
-| Endpoints y timeline | ¿Qué servicio responde y desde cuándo falla? | Sondas HTTP de Blackbox Exporter; no ejecutan inferencia ni validan un workflow |
-| Scrape del monitor | ¿La observación sigue funcionando? | `up` de Prometheus; separado de `probe_success` de la aplicación |
-| Alertas | ¿Un fallo HTTP/scrape dura al menos 2 minutos? | Dos reglas locales en Prometheus, pendientes/activas; sin notificaciones |
-| Solicitudes y errores | ¿Hay tráfico y qué proporción falla? | Un span SERVER de entrada a LiteLLM por solicitud; no suma spans hijos ni canarias |
-| Duración p95 del proxy | ¿Qué tarda el recorrido por el proxy? | Histograma de spans, incluye overhead; percentiles aproximados e inestables con pocas muestras |
-| Tokens y p50/p95 LLM | ¿Cuánto uso y duración reporta el modelo? | Callback OTel nativo; entrada/salida separadas, sin prompts/respuestas |
-| Colas y fallos de exportación | ¿Se atasca el envío a los backends? | Métricas internas del Collector; una exportación fallida puede reintentarse |
-| Flujo y memoria del Collector | ¿Qué señales circulan y cuánto ocupa ese proceso? | Spans, puntos métricos y logs separados; RSS solo del Collector |
-| Errores y logs | ¿Qué categorías recientes requieren investigación? | Loki con cuerpos sanitizados; no equivale a auditoría durable ni calidad evaluada |
+| Endpoints and timeline | What service responds and when does it fail? | Blackbox Exporter HTTP probes; they do not run inference or validate a workflow |
+| Monitor scrape | Is the observation still working? | `up` of Prometheus; separated from `probe_success` of the application |
+| Alerts | Does an HTTP/scrape failure last at least 2 minutes? | Two local Prometheus rules, pending/active; no notifications |
+| Requests and errors | Is there traffic and what proportion fails? | A SERVER span entry to LiteLLM per request; it does not sum child spans or canaries |
+| Proxy p95 duration | How long does the proxy journey take? | Histogram of spans, includes overhead; approximate and unstable percentiles with few samples |
+| Tokens and p50/p95 LLM | How much usage and duration reports the model? | Native OTel callback; input/output separated, no prompts/responses |
+| Queues and export failures | Is the sending to backends getting stuck? | Internal Collector metrics; a failed export can be retried |
+| Collector flow and memory | What signals circulate and how much does that process occupy? | Spans, metric points, and logs separated; RSS only of the Collector |
+| Errors and logs | What recent categories require investigation? | Loki with sanitized bodies; it does not equate to durable auditing or quality evaluation |
 
-Solo las llamadas mediante `http://litellm:4000/v1` aparecen en RED/LLM. El perfil directo a Ollama omite este proxy. Las pruebas negativas de autenticación pueden producir errores esperados: revisar su contexto antes de interpretar un aumento como incidente.
+Only calls via `http://litellm:4000/v1` appear in RED/LLM. The direct profile to Ollama omits this proxy. Negative authentication tests may produce expected errors: review their context before interpreting an increase as an incident.
 
-El filtro **Servicio (HTTP/logs)** controla disponibilidad y logs. Las gráficas LLM observan la ruta local completa; hay un único destino Qwen3. Los enlaces superiores llevan a operaciones de agente, LLM/routing, calidad, seguridad, tools/MCP, workflows y búsqueda de trazas en Tempo. El filtro de privacidad normaliza alias de modelo no reconocidos a `unknown`; no es otro modelo.
+The **Service (HTTP/logs)** filter controls availability and logs. LLM graphs observe the full local path; there is a single destination Qwen3. The upper links lead to agent operations, LLM/routing, quality, security, tools/MCP, workflows, and trace search in Tempo. The privacy filter normalizes unrecognized model aliases to `unknown`; it is not another model.
 
-### Convenciones
+### Conventions
 
-- Rango inicial: última hora. Actualización: 30 s, con scrape de 15 s; `$__rate_interval` adapta las ventanas al rango/resolución.
-- HTTP/scrape: **OK** verde, **FALLO** rojo. Los huecos no se conectan ni se transforman en éxito.
-- **Sin datos** exige revisar tráfico, instrumentación o scrape. Nunca se sustituye por coste cero, cero errores o éxito. El porcentaje de error solo se muestra cuando hay tráfico observado.
-- Duraciones en segundos, memoria en bytes, ratios en porcentaje. Tokens/s representa consumo agregado, no la velocidad de generación por usuario.
-- Las señales exportadas no se suman entre unidades distintas. Los spans hijos y las canarias se excluyen del contador de solicitudes del proxy.
-- Colas: 70% y 90% son referencias visuales iniciales, no SLO aceptados. No se fijan presupuestos de coste ni umbrales de latencia sin una línea base de cargas representativas.
-- UID y fuentes estables, archivos versionables, edición en UI deshabilitada y variables de cardinalidad acotada; no se etiquetan usuarios, prompts, claves o IDs de conversación.
+- Initial range: last hour. Update: 30 s, with scrape of 15 s; `$__rate_interval` adapts the windows to the range/resolution.
+- HTTP/scrape: **OK** green, **FALLO** red. Gaps are not connected nor transformed into success.
+- **No data** requires reviewing traffic, instrumentation, or scrape. It is never substituted by zero cost, zero errors, or success. The error percentage is only shown when there is observed traffic.
+- Durations in seconds, memory in bytes, ratios in percentage. Tokens/s represents aggregated consumption, not the generation speed per user.
+- Exported signals are not summed across distinct units. Child spans and canaries are excluded from the proxy's request count.
+- Queues: 70% and 90% are initial visual references, not accepted SLOs. No cost budgets or latency thresholds are set without a representative load baseline.
+- UID and stable sources, versionable files, UI editing disabled, and bounded cardinality variables; users, prompts, keys, or conversation IDs are not tagged.
 
-## Golden signals y totales
+## Golden signals and totals
 
-Las [cuatro golden signals del libro SRE de Google](https://sre.google/sre-book/monitoring-distributed-systems/) son tráfico, errores, latencia y saturación. La primera fila ahora muestra:
+The [four golden signals from Google's SRE book](https://sre.google/sre-book/monitoring-distributed-systems/) are traffic, errors, latency, and saturation. The first row now shows:
 
-| Señal | Panel y alcance |
+| Signal | Panel and scope |
 | --- | --- |
-| Tráfico | Solicitudes completadas observadas / segundo en el span SERVER del proxy |
-| Errores | Porcentaje de solicitudes técnicas con error, incluyendo autenticación; sin tráfico no se muestra un ratio |
-| Latencia | p95 de solicitudes exitosas del proxy; la gráfica separa éxito y error para evitar mezclar fallos rápidos con inferencia lenta |
-| Saturación disponible | Máxima ocupación de colas de exportación del Collector; no se presenta como saturación de GPU/servidor LLM |
+| Traffic | Completed requests observed / second in the proxy's SERVER span |
+| Errors | Percentage of technical requests with error, including authentication; no ratio is shown without traffic |
+| Latency | p95 of successful proxy requests; the graph separates success and error to avoid mixing fast failures with slow inference |
+| Available saturation | Maximum occupation of Collector export queues; it is not presented as GPU/LLM server saturation |
 
-La saturación del servidor del modelo y GPU continúa pendiente de instrumentación. Los paneles indican qué componente mide cada señal.
+Server model and GPU saturation continues pending instrumentation. The panels indicate which component measures each signal.
 
-Dos filas de **totales** muestran solicitudes, errores, tokens de entrada, tokens de salida y suma entrada+salida:
+Two rows of **totals** show requests, errors, input tokens, output tokens, and sum input+output:
 
-- **Acumulados actuales por emisor:** último valor expuesto al final del rango. Incluyen la primera petición, pruebas y todas las conversaciones por LiteLLM. Los tokens pueden reiniciarse con el emisor LiteLLM; los spans se agregan en el Collector y pueden reiniciarse independientemente. No son un registro histórico durable ni cifras por conversación.
-- **Totales del período seleccionado:** `increase` de Prometheus dentro del rango. Corrige resets que observó y extrapola bordes, por lo que puede dar decimales. No recupera el valor inicial si la serie apareció después de la primera petición y necesita al menos dos muestras. Se muestran como estimados. Ver [comportamiento de increase](https://prometheus.io/docs/prometheus/latest/querying/functions/#increase).
+- **Current accumulated by emitter:** last value exposed at the end of the range. They include the first request, tests, and all conversations via LiteLLM. Tokens can be reset with the LiteLLM emitter; spans are aggregated in the Collector and can be reset independently. They are not a durable historical record nor per-conversation figures.
+- **Totals of the selected period:** `increase` of Prometheus within the range. It corrects resets observed and extrapolates edges, so it may give decimals. It does not recover the initial value if the series appeared after the first request and needs at least two samples. They are shown as estimates. See [increase behavior](https://prometheus.io/docs/prometheus/latest/querying/functions/#increase).
 
-Las gráficas de rate se conservan: muestran actividad por segundo, no el total consumido. El dashboard **LLM cost and routing** también muestra entrada, salida y total, con acumulados e incrementos en filas separadas. Sus consultas filtran el emisor `litellm-proxy` y el job de métricas del Collector.
+Rate graphs are preserved: they show activity per second, not the total consumed. The **LLM cost and routing** dashboard also shows input, output, and total, with accumulated and increases in separate rows. Its queries filter the emitter `litellm-proxy` and the Collector's metric job.
 
-Las consultas son instantáneas para tarjetas y de rango para tendencias. Los totales responden al final/rango seleccionado según su tipo; no usar acumulados como contabilidad de una conversación o facturación. Para un histórico durable exacto se necesitará un registro de uso y una política de acceso/retención, fuera de este cambio de visualización.
+Queries are instant for cards and range-based for trends. Totals respond to the selected end/range according to their type; do not use accumulated values as conversation or billing accounting. For an exact durable history, a usage log and an access/retention policy are needed, outside of this visualization change.
 
-Los cambios de visualización por sí solos se cargan con el polling de provisioning de Grafana. La ampliación de caché también cambia el callback y el Collector: requiere aplicar `observability:up` como se explica abajo; no borra volúmenes.
+Visualization changes themselves are loaded with Grafana's provisioning polling. Cache expansion also changes the callback and the Collector: requires applying `observability:up` as explained below; does not erase volumes.
 
-## Sondas existentes, sin adaptador propio
+## Existing Probes, Without a Dedicated Adapter
 
-Se incorpora el [Blackbox Exporter oficial de Prometheus](https://github.com/prometheus/blackbox_exporter) v0.28.0, fijado por digest Linux amd64. Corre como usuario 65534, raíz de solo lectura, sin capacidades ni Docker socket, máximo 64 MiB. Sus puertos no se publican; solo accede a las redes internas de observabilidad y del laboratorio. Las sondas usan GET, timeout de 3 s, sin seguir redirects ni adjuntar credenciales.
+The [official Prometheus Blackbox Exporter](https://github.com/prometheus/blackbox_exporter) v0.28.0 is incorporated, pinned by Linux amd64 digest. It runs as user 65534, read-only root filesystem, no capabilities or Docker socket, maximum 64 MiB. Its ports are not published; it only accesses the internal observability and local platform networks. The probes use GET, timeout of 3 s, without following redirects or attaching credentials.
 
-| Servicio | Endpoint interno |
+| Service | Internal Endpoint |
 | --- | --- |
 | OpenHands | `http://openhands:8000/canvas` |
-| Acceso web OpenHands | `http://openhands-proxy:8080/canvas` |
+| OpenHands Web Access | `http://openhands-proxy:8080/canvas` |
 | Ollama | `http://ollama:11434/api/version` |
 | LiteLLM | `http://litellm:4000/health/liveliness` |
 | Collector | `http://collector:13133/` |
@@ -82,42 +82,42 @@ Se incorpora el [Blackbox Exporter oficial de Prometheus](https://github.com/pro
 | Loki | `http://loki:3100/ready` |
 | Grafana | `http://grafana:3000/api/health` |
 
-Se mezclan endpoints de liveness, readiness y UI, por eso el panel se llama **Endpoints**. La extensión `health_check` del Collector confirma su ciclo de vida, no la entrega a los backends. La prueba de ingestión complementa estas sondas. La [telemetría interna de OTel](https://opentelemetry.io/docs/collector/internal-telemetry/) se expone en 8888, solo en la red de datos; Prometheus conserva una lista limitada de métricas operativas y elimina el ID de instancia del servicio.
+Liveness, readiness, and UI endpoints are mixed, hence the panel is called **Endpoints**. The `health_check` extension of the Collector confirms its lifecycle, not its delivery to backends. The ingestion test complements these probes. The [internal OTel telemetry](https://opentelemetry.io/docs/collector/internal-telemetry/) is exposed in 8888, only in the data network; Prometheus retains a limited list of operational metrics and removes the service instance ID.
 
-## Diagnóstico y alertas
+## Diagnosis and Alerts
 
-`PlatformEndpointUnavailable`: HTTP falla durante 2 minutos. Revisar servicio, logs y dependencias. `ObservabilityScrapeUnavailable`: Prometheus no puede leer un target durante 2 minutos. Resolver primero el monitor si faltan datos. Las reglas están en `infra/observability/alerts.yaml`; se prueban con promtool en `observability:validate` mediante escenarios de espera, activación, recuperación y fallo independiente del monitor.
+`PlatformEndpointUnavailable`: HTTP fails during 2 minutes. Review service, logs, and dependencies. `ObservabilityScrapeUnavailable`: Prometheus cannot read a target during 2 minutes. Resolve the monitor first if data is missing. The rules are in `infra/observability/alerts.yaml`; they are tested with promtool in `observability:validate` through scenarios of waiting, activation, recovery, and failure independent of the monitor.
 
-Un dashboard no notifica por sí solo. No hay Alertmanager, destinos de contacto ni alertas de coste/calidad configurados. La ausencia de series de `ALERTS` significa ausencia de alertas activas solo si Prometheus está disponible y sus reglas cargadas. Prometheus caído no puede avisar de su propia caída: un monitor externo sería una fase posterior.
+A dashboard does not notify on its own. There is no Alertmanager, contact destinations, or cost/quality alerts configured. The absence of series of `ALERTS` means absence of active alerts only if Prometheus is available and its rules are loaded. A down Prometheus cannot warn of its own failure: an external monitor would be a later phase.
 
-1. Endpoint rojo: revisar `task observability:status`, el servicio concreto y sus logs.
-2. HTTP OK sin métricas LLM: verificar perfil por LiteLLM y el resultado de `task observability:check`; un callback deshabilitado no impide que el modelo responda.
-3. Exportaciones fallidas o colas crecientes: comprobar Loki/Tempo, red de datos y límites de memoria/disco. Un intento fallido no prueba pérdida definitiva.
-4. Errores de tools: abrir Tools/MCP y una traza en Tempo cuando esté disponible. Una regex en logs no sustituye un resultado tipado de herramienta.
+1. Red endpoint: review `task observability:status`, the specific service, and its logs.
+2. HTTP OK without LLM metrics: verify profile by LiteLLM and the result of `task observability:check`; a disabled callback does not prevent the model from responding.
+3. Failed exports or growing queues: check Loki/Tempo, data network, and memory/disk limits. A failed attempt does not prove definitive loss.
+4. Tool errors: open Tools/MCP and a trace in Tempo when it is available. A regex in logs does not replace a typed tool result.
 
-## Cobertura que falta
+## Missing Coverage
 
-CPU/RAM/disco del host y otros contenedores; métricas de GPU/VRAM/temperatura; tareas completadas y duración completa; calidad con evaluación etiquetada y escalaciones; políticas/aprobaciones y auditoría durable; herramientas/MCP y resultados de negocio. Se muestran como pendientes, sin métricas inventadas. La retención aproximada de Prometheus/Loki/Tempo es de 7 días. Coste de API local, coste eléctrico y coste total del equipo siguen sin cálculo.
+CPU/RAM/disk of the host and other containers; GPU/VRAM/temperature metrics; completed tasks and full duration; quality with labeled evaluation and escalations; policies/approvals and durable auditing; tools/MCP and business results. They are shown as pending, without invented metrics. The approximate retention of Prometheus/Loki/Tempo is of 7 days. Local API cost, electrical cost, and total equipment cost remain without calculation.
 
-## Verificación realizada
+## Verified Changes
 
-Se validan con binarios oficiales fijados las configuraciones del Collector, Prometheus y Blackbox, junto con las dos reglas y sus escenarios de activación/recuperación. La prueba real del Collector con señales sintéticas conserva metadatos operativos y elimina canarias sensibles de trazas, logs, métricas y filelog. Las pruebas de autenticación y contexto de trazas comprueban aislamiento de credenciales.
+The Collector, Prometheus, and Blackbox configurations are validated with pinned official binaries, along with the two rules and their activation/recovery scenarios. The real Collector test with synthetic signals preserves operational metadata and removes sensitive canaries from traces, logs, metrics, and filelog. Authentication and trace context tests check credential isolation.
 
-Grafana local cargó la vista desde provisioning. Sus consultas se verifican contra las APIs reales de Prometheus/Loki. Esto validó inicialmente carga y sintaxis. El 6 de octubre se reaplicó `observability:up` y `observability:check` pasó en el host: nueve sondas sanas y telemetría nativa de la petición de prueba al modelo. Grafana muestra datos de los nuevos paneles; la conversación OpenHands y las áreas pendientes mantienen su aceptación separada. Ver [evidencia](diagnostics/observability-2026-10-06.md).
+Local Grafana loaded the view from provisioning. Its queries are verified against the real APIs of Prometheus/Loki. This validated initial loading and syntax. The October 6 was reapplied `observability:up` and `observability:check` passed on the host: nine healthy probes and native telemetry of the test request to the model. Grafana shows data from the new panels; the OpenHands conversation and pending areas maintain their separate acceptance. See [evidence](diagnostics/observability-2026-10-06.md).
 
-Además, una ejecución temporal con el binario oficial confirmó los nombres de RSS, colas, señales enviadas y señales con fallo del Collector. Blackbox devolvió éxito para los endpoints locales actuales de OpenHands, Grafana y Ollama y fallo para un HTTP 503 controlado. Las 23 consultas de la vista final fueron aceptadas por las fuentes reales. Estos ensayos no arrancaron ni modificaron los contenedores del usuario.
+Additionally, a temporary run with the official binary confirmed the names of RSS, queues, signals sent, and signals with failure of the Collector. Blackbox returned success for the current local endpoints of OpenHands, Grafana, and Ollama and failure for an HTTP 503 controlled. The 23 queries of the final view were accepted by the real sources. These trials did not start or modify the user containers.
 
-Validación del cambio de golden signals/totales: Grafana cargó el contenido final de ambos JSON como provisionado (vista general: 39 paneles contando secciones/texto; LLM: 9). Las 43 consultas de ambos dashboards fueron aceptadas por las fuentes reales. En la instantánea verificada, los contadores dieron 30 tokens de entrada + 4 de salida = 34, iguales en ambos dashboards; 3 solicitudes y 1 error, incluyendo el chequeo de autenticación. Estas cifras son evidencia de esa instantánea, no una expectativa fija para futuras ejecuciones.
+Validation of the change of golden signals/totals: Grafana loaded the final content of both JSON as provisioned (overview: 39 panels counting sections/text; LLM: 9). The 43 queries of both dashboards were accepted by the real sources. In the verified snapshot, the counters gave 30 input tokens + 4 output = 34, equal in both dashboards; 3 requests and 1 error, including the authentication check. These figures are evidence of that snapshot, not a fixed expectation for future runs.
 
-## Caché de contexto del modelo
+## Model Context Cache
 
-**Cache Hit** cuenta tokens de entrada reutilizados, no solicitudes ni respuestas completas. En la ruta OpenAI/Ollama está incluido en Entrada. Total sigue siendo Entrada + Salida. No confundir con la caché de respuestas de LiteLLM: esa es otra funcionalidad, no activada aquí.
+**Cache Hit** counts reused input tokens, not full requests or responses. In the OpenAI/Ollama route, it is included in Input. Total remains Input + Output. Do not confuse with LiteLLM's response cache: that is another functionality, not activated here.
 
-El callback Prometheus oficial de LiteLLM exporta `litellm_input_cached_tokens_metric_total` y `litellm_input_cache_creation_tokens_metric_total`. Solo se habilitan esas métricas y la etiqueta `model` en origen. El receiver autenticado `prometheus/litellm-cache` del Collector selecciona los dos contadores, normaliza Qwen3 y elimina etiquetas privadas antes de exportar. El estado `litellm_cache_scrape_up` permite detectar fallo de esa lectura aunque el último contador siga visible.
+The official Prometheus callback of LiteLLM exports `litellm_input_cached_tokens_metric_total` and `litellm_input_cache_creation_tokens_metric_total`. Only those metrics and the label `model` are enabled in origin. The authenticated receiver `prometheus/litellm-cache` of the Collector selects the two counters, normalizes Qwen3, and removes private labels before exporting. The state `litellm_cache_scrape_up` allows detecting failure of that reading even if the last counter remains visible.
 
-Los dos dashboards incluyen acumulados, incrementos estimados del período, tasas y porcentaje de entrada reutilizada. Caché e input/output reinician con LiteLLM; los incrementos manejan resets observados, pero los huecos de captura y la primera muestra pueden perder uso. El porcentaje debe compararse en un rango con cobertura continua; no es una medición de ahorro de GPU/tiempo/energía. No se resta el acumulado de caché del acumulado de entrada para fabricar otro total.
+The two dashboards include accumulated values, estimated period increments, rates, and percentage of reused input. Cache and input/output reset with LiteLLM; increments handle observed resets, but capture gaps and the first sample may lose usage. The percentage should be compared within a range with continuous coverage; it is not a measurement of GPU/time/energy savings. The accumulated cache value is not subtracted from the input accumulated value to fabricate another total.
 
-**Sin datos** significa que no hay serie reportada: el callback omite valores ausentes/cero. Cache Write 0 en OpenHands no garantiza que Ollama informe una métrica de escritura. Solo se captura uso nuevo que pasa por el proxy; no se importa el acumulado de conversaciones anteriores o directas.
+**No data** means there is no reported series: the callback omits missing/zero values. Cache Write 0 in OpenHands does not guarantee that Ollama reports a write metric. Only new usage that passes through the proxy is captured; the accumulated previous or direct conversation data is not imported.
 
 ```bash
 mise exec -- task observability:up
@@ -125,6 +125,6 @@ mise exec -- task observability:cache:check
 mise exec -- task observability:check
 ```
 
-Aplicar con el agente inactivo: `up` reinicia servicios y contadores del emisor, preservando volúmenes y conversaciones. Para repetir la prueba aislada del receiver y privacidad con la imagen fijada: `mise exec -- task observability:cache:test`. Ver [diagnóstico y ejemplo real](diagnostics/tokens-2026-10-06.md).
+Apply with the agent inactive: `up` restarts the emitter's services and counters, preserving volumes and conversations. To repeat the isolated receiver test and privacy with the pinned image: `mise exec -- task observability:cache:test`. See [diagnosis and real example](diagnostics/tokens-2026-10-06.md).
 
-Verificación final de archivos y visualización: Grafana cargó ambos dashboards provisionados (Platform Overview: 48 paneles incluyendo filas/texto, versión de archivo 5; LLM: 18, versión 3). Las 59 consultas fueron aceptadas por Prometheus/Loki reales; no hay superposición de paneles. El callback actualizado ya está activo: la prueba integral del host pasó el 6 de octubre a las 09:57 Europe/Berlin y Grafana devuelve una serie real de Cache Hit (1.626 al consultar). La función oficial de normalización de LiteLLM v1.104.0 interpretó los dos `usage` reales de Ollama como 1 y 1.623 tokens cacheados. El chequeo del contenedor actualizado consta en los reportes locales de aceptación.
+Final file and visualization verification: Grafana loaded both provisioned dashboards (Platform Overview: 48 panels including rows/text, file version 5; LLM: 18, version 3). The 59 queries were accepted by real Prometheus/Loki; there is no panel overlap. The updated callback is already active: the host's full test passed October 6 at 09:57 Europe/Berlin and Grafana returns a real Cache Hit series (1,626 when queried). The official normalization function of LiteLLM v1.104.0 interpreted the two `usage` real Ollama metrics as 1 and 1,623 cached tokens. The updated container check is included in the local acceptance reports.
