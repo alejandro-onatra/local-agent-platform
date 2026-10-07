@@ -1,6 +1,6 @@
 # Local Agent Platform
 
-A model-agnostic local agent platform with OpenHands, Ollama, Docker Compose, and OpenTelemetry observability. The current implementation provides GPU-backed inference, agent execution, authenticated model routing, and provisioned Grafana dashboards. Decoupled runtime/provider contracts, policy enforcement, and multi-user deployment are planned extensions.
+A model-agnostic local agent platform with OpenHands, Ollama, Docker Compose, and OpenTelemetry observability. The current implementation provides GPU-backed inference, agent execution, authenticated model routing, and provisioned Grafana dashboards. An offline reference runtime now exercises interchangeable provider contracts, default-deny policy and explicit synthetic approval. Persistent state, live runtime telemetry and multi-user deployment remain planned extensions.
 
 ## Getting started
 
@@ -38,6 +38,7 @@ To prepare Docker/NVIDIA Container Toolkit on a new host, review `mise run env:p
 - [Infrastructure explained with code](docs/infrastructure_walkthrough.md)
 - [Changelog](docs/changelog.md)
 - [Implementation plan](docs/plan.md)
+- [Synthetic workflow: runtime contracts and approvals](docs/synthetic_workflow.md)
 - [Environment, mise, uv, and Task](docs/environment.md)
 - [Git commit validation](docs/git_hooks.md)
 - [Secret detection and security coverage](docs/security.md)

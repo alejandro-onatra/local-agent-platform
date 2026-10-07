@@ -236,8 +236,24 @@ tasks:
       - task: repo:test
       - task: observability:test
       - task: security:test
+      - task: workflow:test
 
   repo:hooks:test:
     desc: Verify real commit acceptance and rejection in a disposable clone
     cmds:
       - bash scripts/repo/test-hooks.sh
+
+  workflow:demo:
+    desc: Run offline synthetic triage; keep record actions waiting for explicit approval
+    cmds:
+      - bash scripts/workflows/demo.sh
+
+  workflow:demo:approved:
+    desc: Explicitly approve synthetic in-memory record actions; no external effects
+    cmds:
+      - bash scripts/workflows/demo.sh --approve
+
+  workflow:test:
+    desc: Test runtime contracts, provider replacement, denial, approvals and safe resumption
+    cmds:
+      - bash scripts/workflows/test.sh

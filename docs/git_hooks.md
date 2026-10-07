@@ -24,6 +24,7 @@ replace a different existing hooks path. It does not alter global Git settings.
 4. LLM validation tests (`repo:test`).
 5. Proxy authentication, routing and stream parsing tests (`observability:test`).
 6. Secret gate acceptance tests using disposable Git repositories (`security:test`).
+7. Synthetic workflow routing, denial, approval and resumption checks (`workflow:test`).
 
 Commands run sequentially. Any failure returns a nonzero status and aborts the
 commit. The hook does not install dependencies, invoke sudo, download models or

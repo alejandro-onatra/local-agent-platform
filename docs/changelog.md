@@ -105,3 +105,15 @@ The [code guide](infrastructure_walkthrough.md) relates these decisions to the c
 - Added versioned `.githooks/pre-commit`, safe local installation/check scripts and corresponding mise tasks. Task owns the sequential environment/code/security validation calls. The hook is active in this checkout and performs no package installation or Docker operations.
 - Added disposable-clone tests for clean commits, rejected secrets, invalid shell syntax and preservation of a different existing hooks path. Isolated inherited Git environment variables in the nested secret tests.
 - Initial commits were pushed to `origin/main` over SSH. No runtime configuration, model weights or running containers were changed for documentation or hooks.
+
+## October 7, 2026 — First offline runtime contract slice
+
+- Added Python component protocols and a synchronous synthetic-triage runtime, independent of OpenHands and provider SDKs.
+- Added two offline model substitutes, deterministic decision rules, default-deny policy and explicit action-bound, expiring one-use approvals.
+- Added in-memory state/audit/receipts and safe repeated resume of completed runs; no database, external tool effects or restart persistence.
+- Added synthetic YAML fixtures, categorized workflow scripts, Task demos/tests and workflow checks in the pre-commit sequence.
+- Documented current scope, diagram, ADR 002 and pending PostgreSQL/model/OTel integrations. Existing Docker services and Python dependency pins are unchanged.
+
+Validation: both provider variants passed the four synthetic fixture outcomes. The default demo produced zero record receipts; explicitly approving the pending action produced one. Waiting requests remain waiting on premature resume. Documentation links and shell syntax were checked.
+
+The 21 workflow tests and 31 existing tests passed through the expanded pre-commit sequence in a disposable clone. Real commit acceptance/rejection checks passed; no new dependencies, model calls or Docker changes were required.

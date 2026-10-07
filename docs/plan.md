@@ -1,7 +1,7 @@
 # Implementation Plan — Model-Agnostic Local Agent Platform
 
 Date: October 4, 2026
-Status as of October 6, 2026: GPU, Docker, Ollama/Qwen3 and two OpenHands exercises validated on the host; the bugfix required human guidance. Observability stack deployed and general overview plus six specialized dashboards provisioned; the nine probes, callback LLM, ingestion and privacy canaries passed on the host; validation of the first observed OpenHands conversation is pending. The complete agnostic platform and its policies remain pending.
+Status as of October 7, 2026: GPU, Docker, Ollama/Qwen3 and two OpenHands exercises validated on the host; the bugfix required human guidance. Observability stack deployed and general overview plus six specialized dashboards provisioned; the nine probes, callback LLM, ingestion and privacy canaries passed on the host; validation of the first observed OpenHands conversation is pending. The complete agnostic platform and its policies remain pending.
 
 ## 1. Objective
 
@@ -361,3 +361,15 @@ October 7, 2026: fixed the separation of responsibilities of the environment. mi
 
 
 Python dependencies centralized in pyproject.toml/uv.lock with uv pinned by mise. The separation of environment/operation and document names in lowercase are preserved.
+
+## Runtime contract slice — October 7, 2026
+
+The first offline synthetic triage workflow implements typed runtime/provider/router/
+decision/state/policy/approval/tool interfaces with two interchangeable model test
+substitutes. Read-only preview completes, synthetic recording waits for explicit
+approval, disallowed tools are denied and ambiguous input abstains. See
+[workflow guide](synthetic_workflow.md) and [ADR 002](architecture/adr-002-runtime-contracts.md).
+
+This is a reference contract slice, not closure of phases 3–7. The in-memory store
+is deliberately temporary; PostgreSQL persistence/restart recovery, real local model
+integration, OTel export, authenticated approvals and worker isolation remain pending.
