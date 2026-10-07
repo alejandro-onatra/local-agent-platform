@@ -2,7 +2,7 @@
 
 ## Resultado verificado desde Work
 
-- Se resolvieron manifests y digests Linux amd64 publicados para las seis imágenes; el lock está en `infra/observability/versions.json`.
+- Se resolvieron manifests y digests Linux amd64 publicados para las seis imágenes; el lock está en `infra/observability/versions.yaml`.
 - Compose resuelto y validado: backends internos, solo Grafana publicada en loopback, sin Docker socket, imágenes coincidentes con el lock, mounts de configuración de lectura y límites declarados.
 - Collector 0.162.0, Tempo 3.1.0, Loki 3.7.8 y promtool 3.15.0 aceptaron sus configuraciones. Los binarios se extrajeron de layers verificados contra sus digests en un directorio temporal; no se instalaron servicios en el host.
 - La prueba del Collector ejecutó de verdad receivers OTLP y filelog, processors, spanmetrics y exporters de archivo/Prometheus sobre datos sintéticos. Pasó la exclusión de canarias en cuerpos, atributos, nombres/scope, mensajes de estado y eventos, con rechazo de spans con links y datapoints con exemplars. Se conservó información operativa y se ingirió un archivo Docker sintético.
@@ -14,7 +14,7 @@
 ## Repetir comprobaciones
 
 ```bash
-mise exec -- task repo:check
+mise run repo:check
 mise exec -- task repo:test
 mise exec -- task observability:plan
 # En host con Docker: validadores dentro de las imágenes fijadas
@@ -27,7 +27,7 @@ python3 scripts/observability/test-privacy.py --collector /ruta/al/otelcol-contr
 
 Ejecutar `task observability:setup`; verificar el reporte del smoke test, readiness y lectura de nuevos logs reales. Activar el perfil observado, comprobar una conversación real y explorar los seis dashboards. El tracing nativo OpenHands es optativo para datos sintéticos: confirmar dependencia, spans y propagación real de contexto antes de declarar trazabilidad completa.
 
-No se declara validada la ejecución Docker completa, el callback dentro de la imagen LiteLLM, la correlación del agente ni la interfaz Grafana. Los controles de origen del callback se corroboraron también leyendo el código de la versión 1.104.0; esa inspección no sustituye el smoke test del despliegue. La [guía](../OBSERVABILITY.md) describe estos límites y el almacenamiento local que todavía puede contener contenido.
+No se declara validada la ejecución Docker completa, el callback dentro de la imagen LiteLLM, la correlación del agente ni la interfaz Grafana. Los controles de origen del callback se corroboraron también leyendo el código de la versión 1.104.0; esa inspección no sustituye el smoke test del despliegue. La [guía](../observability.md) describe estos límites y el almacenamiento local que todavía puede contener contenido.
 
 ## Primer despliegue en host — 21:32–21:34 UTC
 
@@ -68,3 +68,5 @@ Por tanto, ingestión sintética y callback LLM se tratan como aceptaciones sepa
 Se confirmó en logs que `gen_ai.token.type` en el filtro de atributos impedía inicializar el callback nativo de LiteLLM. Se corrigió sin desactivar privacidad ni autenticación. Se añade dashboard general provisionado, Blackbox Exporter fijado, nueve sondas, métricas internas del Collector y dos reglas locales con espera de 2 minutos. Validaciones nativas, canarias de privacidad y siete pruebas de autenticación/contexto pasan. Grafana reconoce el dashboard como provisionado; las consultas se comprueban mediante sus fuentes reales. Pendiente reaplicar Compose y demostrar traza/métricas reales y nueve sondas sanas con el chequeo del host.
 
 Verificación final: dashboard `platform-overview` reconocido como provisionado, 24 paneles (incluye secciones y texto), 23 consultas sin errores en las APIs reales de Prometheus/Loki. Ensayo temporal confirmó métricas internas RSS/colas/envíos/fallos del Collector y sondas Blackbox sanas en OpenHands/Grafana/Ollama más un HTTP 503 controlado. No se afirma que las nueve sondas nuevas ni el callback corregido estén activos antes del siguiente `observability:up` en el host.
+
+Nota de reorganización (7 de octubre): la comprobación de estructura del ejemplo usa ahora mise; el resultado histórico se conserva.

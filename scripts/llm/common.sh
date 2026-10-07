@@ -2,7 +2,7 @@
 # Shared functions; callers must enable set -euo pipefail.
 llm_repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 llm_compose_file="$llm_repo_root/infra/llm/compose.yaml"
-llm_lock_file="$llm_repo_root/infra/llm/versions.json"
+llm_lock_file="$llm_repo_root/infra/llm/versions.yaml"
 
 llm_init_docker() {
     command -v docker >/dev/null || { printf 'Docker is not installed.\n' >&2; return 2; }
@@ -24,7 +24,8 @@ llm_compose() {
 llm_model() {
     python3 - "$llm_lock_file" <<'PYCODE'
 import json, sys
-print(json.load(open(sys.argv[1]))['model']['name'])
+import yaml
+print(yaml.safe_load(open(sys.argv[1]))['model']['name'])
 PYCODE
 }
 

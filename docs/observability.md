@@ -1,6 +1,6 @@
 # Observabilidad local: integración y operación
 
-Actualización: 5 de octubre de 2026. Configuración preparada; el despliegue completo en Docker y la primera conversación observada requieren validación en el host. Ver [diagramas](architecture/OBSERVABILITY_DIAGRAMS.md) y [decisión de arquitectura](architecture/ADR-001-OBSERVABILITY.md).
+Actualización: 5 de octubre de 2026. Configuración preparada; el despliegue completo en Docker y la primera conversación observada requieren validación en el host. Ver [diagramas](architecture/observability_diagrams.md) y [decisión de arquitectura](architecture/adr-001-observability.md).
 
 ## Qué añadimos y por qué
 
@@ -23,7 +23,7 @@ La infraestructura se encuentra en `infra/observability/`; las tareas llaman a `
 | Loki | Almacena registros sanitizados | `loki:3100` | Mediante Grafana |
 | Grafana | Explora los tres backends | `grafana:3000` | `http://127.0.0.1:3000` |
 
-Se fijaron digests Linux amd64: Collector 0.162.0, Prometheus 3.15.0, Tempo 3.1.0, Loki 3.7.8, Grafana 13.2.3 y LiteLLM 1.104.0. Las referencias exactas y tamaños están en `infra/observability/versions.json`. Las siete imágenes, incluyendo Blackbox Exporter 0.28.0, suman aproximadamente **1.22 GB comprimidos**, además del laboratorio instalado. Los límites de RAM de la nueva pila suman aproximadamente 2.81 GiB; no representan consumo medido.
+Se fijaron digests Linux amd64: Collector 0.162.0, Prometheus 3.15.0, Tempo 3.1.0, Loki 3.7.8, Grafana 13.2.3 y LiteLLM 1.104.0. Las referencias exactas y tamaños están en `infra/observability/versions.yaml`. Las siete imágenes, incluyendo Blackbox Exporter 0.28.0, suman aproximadamente **1.22 GB comprimidos**, además del laboratorio instalado. Los límites de RAM de la nueva pila suman aproximadamente 2.81 GiB; no representan consumo medido.
 
 Tempo se configura en modo monolítico con disco local, sin Kafka. Los backends y LiteLLM usan redes internas. Grafana añade una red normal para publicar su UI en loopback. Este diseño no constituye una política de autorización para herramientas.
 
@@ -130,7 +130,7 @@ Prometheus: 7 días, límite de datos de 1 GB. Loki: retención de 7 días media
 
 ## Dashboards provisionados
 
-La entrada principal es [Plataforma de agentes · Vista general](http://127.0.0.1:3000/d/platform-overview). Diseño, métricas, sondas, alertas y runbook: [DASHBOARDS.md](DASHBOARDS.md).
+La entrada principal es [Plataforma de agentes · Vista general](http://127.0.0.1:3000/d/platform-overview). Diseño, métricas, sondas, alertas y runbook: [dashboards.md](dashboards.md).
 
 No es necesario importar JSON a mano. Las fuentes tienen UID estable `prometheus`, `tempo` y `loki`; los siete archivos están en `infra/observability/grafana/dashboards/`.
 
@@ -161,7 +161,7 @@ mise exec -- task observability:stop
 
 `observability:check` se ejecuta con el Python de LiteLLM en la red interna, sin publicar puertos de diagnóstico. Comprueba nueve endpoints, una respuesta del modelo con traza nativa correlacionada y métricas de tokens, además de señales canarias enviadas a los tres backends. El reporte JSON se guarda en `artifacts/diagnostics/`; no contiene la respuesta del modelo ni el texto de la canaria. La prueba no sustituye la aceptación de una conversación real ni la comprobación de un evento recién escrito en los logs Docker.
 
-Ver el [registro de validación](diagnostics/OBSERVABILITY-2026-10-05.md). Validación de preparación: Compose resuelto, digests oficiales, configuraciones comprobadas con los binarios de las mismas imágenes, y prueba local del Collector con señales/filelog sintéticos. La prueba local se puede repetir con `python3 scripts/observability/test-privacy.py --collector /ruta/al/binario/otelcol-contrib` de la versión fijada. `observability:validate` repite la validación de archivos con los binarios dentro de las imágenes. El estado del despliegue en el host debe actualizarse después de recibir su resultado. El tracing nativo y la correlación real siguen pendientes.
+Ver el [registro de validación](diagnostics/observability-2026-10-05.md). Validación de preparación: Compose resuelto, digests oficiales, configuraciones comprobadas con los binarios de las mismas imágenes, y prueba local del Collector con señales/filelog sintéticos. La prueba local se puede repetir con `python3 scripts/observability/test-privacy.py --collector /ruta/al/binario/otelcol-contrib` de la versión fijada. `observability:validate` repite la validación de archivos con los binarios dentro de las imágenes. El estado del despliegue en el host debe actualizarse después de recibir su resultado. El tracing nativo y la correlación real siguen pendientes.
 
 ## Fuentes oficiales
 
@@ -194,7 +194,7 @@ Los logs del primer arranque confirmaron `UnsafeMasterKeyError`, salida 3 y `OOM
 
 `observability:up` ahora genera una clave aleatoria de 32 bytes (prefijo `sk-`) en el directorio privado junto a la contraseña Grafana. Conserva las claves existentes y los volúmenes; sudo preserva únicamente las variables Compose necesarias. El smoke test autentica la llamada al modelo y exige rechazo de una petición sin clave. No se habilita la excepción que permite arrancar sin autenticación.
 
-Reintentar `mise exec -- task observability:up` seguido de `mise exec -- task observability:check`. La corrección fue aceptada en el host el 6 de octubre; ver [evidencia](diagnostics/OBSERVABILITY-2026-10-06.md).
+Reintentar `mise exec -- task observability:up` seguido de `mise exec -- task observability:check`. La corrección fue aceptada en el host el 6 de octubre; ver [evidencia](diagnostics/observability-2026-10-06.md).
 
 Fuente: [Cambio de autenticación en LiteLLM 1.104.0](https://docs.litellm.ai/release_notes/v1.104.0/v1-104-0), [API sin base de datos](https://docs.litellm.ai/docs/proxy/docker_quick_start).
 
@@ -210,11 +210,11 @@ Se retiró `gen_ai.token.type` de `callback_settings.otel.attributes.include_lis
 
 ## Estado validado — 6 de octubre de 2026
 
-`observability:check` pasó completo en el host: nueve sondas sanas, rechazo de solicitudes sin clave, respuesta autenticada del modelo, traza nativa correlacionada de la petición de prueba, tokens LLM y canarias de las tres señales sin contenido sensible en los campos comprobados. Grafana recibe datos de los nuevos paneles. La siguiente aceptación es una conversación real de OpenHands usando el perfil observado; el tracing del agente y su correlación completa siguen separados. Ver [registro de aceptación](diagnostics/OBSERVABILITY-2026-10-06.md).
+`observability:check` pasó completo en el host: nueve sondas sanas, rechazo de solicitudes sin clave, respuesta autenticada del modelo, traza nativa correlacionada de la petición de prueba, tokens LLM y canarias de las tres señales sin contenido sensible en los campos comprobados. Grafana recibe datos de los nuevos paneles. La siguiente aceptación es una conversación real de OpenHands usando el perfil observado; el tracing del agente y su correlación completa siguen separados. Ver [registro de aceptación](diagnostics/observability-2026-10-06.md).
 
 ## Golden signals y totales — actualización del dashboard
 
-La vista general incluye una fila explícita de tráfico, errores, latencia p95 exitosa y saturación de colas OTel; la saturación de GPU/servidor LLM sigue pendiente. Se añadieron acumulados actuales y totales estimados del período de solicitudes, errores y tokens (entrada, salida, total). El dashboard LLM incluye también ambos tipos de totales. Las tasas se conservan. Los acumulados incluyen pruebas y pueden reiniciarse; los incrementos no recuperan automáticamente una primera muestra perdida. Grafana recargó los archivos sin reiniciar la pila; las 43 consultas fueron aceptadas por las fuentes reales. Ver [semántica y límites](DASHBOARDS.md#golden-signals-y-totales).
+La vista general incluye una fila explícita de tráfico, errores, latencia p95 exitosa y saturación de colas OTel; la saturación de GPU/servidor LLM sigue pendiente. Se añadieron acumulados actuales y totales estimados del período de solicitudes, errores y tokens (entrada, salida, total). El dashboard LLM incluye también ambos tipos de totales. Las tasas se conservan. Los acumulados incluyen pruebas y pueden reiniciarse; los incrementos no recuperan automáticamente una primera muestra perdida. Grafana recargó los archivos sin reiniciar la pila; las 43 consultas fueron aceptadas por las fuentes reales. Ver [semántica y límites](dashboards.md#golden-signals-y-totales).
 
 ## Uso de caché reportado por Ollama
 
@@ -224,6 +224,27 @@ Además del callback OTel, LiteLLM usa su callback Prometheus existente restring
 
 `observability:cache:check` hace dos llamadas sintéticas por el proxy y coteja `cached_tokens` con el contador observado. `observability:cache:test` verifica de forma aislada autenticación, privacidad, acumulados sin doble suma y detección de fallo de scrape usando el Collector fijado. El fallo de scrape es visible como `litellm_cache_scrape_up=0`; los valores retenidos no prueban actividad nueva.
 
-La implementación está preparada y validada aisladamente; el chequeo integral del nuevo callback requiere aplicar `observability:up` en la terminal del host. No se reescribe la conversación ni se rellena Grafana con cifras históricas de capturas. Ver [diagramas](architecture/OBSERVABILITY_DIAGRAMS.md) y [evidencia](diagnostics/TOKENS-2026-10-06.md).
+La implementación está preparada y validada aisladamente; el chequeo integral del nuevo callback requiere aplicar `observability:up` en la terminal del host. No se reescribe la conversación ni se rellena Grafana con cifras históricas de capturas. Ver [diagramas](architecture/observability_diagrams.md) y [evidencia](diagnostics/tokens-2026-10-06.md).
 
 Aceptación de caché del 6 de octubre, 09:57 Europe/Berlin: la prueba integral del host cotejó 1.623 tokens reutilizados con un aumento idéntico del contador; el chequeo general posterior también pasó. Las tarjetas de Grafana ya devuelven datos reales de caché. La ruta efectiva de una nueva llamada de la conversación OpenHands se verifica por separado; no se recupera su uso histórico anterior al proxy.
+
+Configuración mantenida en YAML: `collector.yaml` y `versions.yaml`. Los scripts leen con `yaml.safe_load` en el entorno Python fijado de mise; los overrides filelog generados siguen en JSON. Ejecutar `mise install --locked` y `mise run env:python:setup` para preparar un checkout nuevo. No se cambian digests, filtros de privacidad, credenciales ni nombres de métricas por esta migración.
+
+### Conversación existente que omite el proxy
+
+Un perfil guardado puede apuntar a LiteLLM mientras la conversación abierta conserva `http://ollama:11434/v1`. En ese caso el agente consume tokens pero el proxy no recibe las llamadas. Confirmar con `openhands:usage:check`; no confundir el nombre visible del perfil con la ruta efectiva.
+
+Con el agente terminado o pausado:
+
+```bash
+mise exec -- task openhands:route:proxy CONVERSATION_ID=<uuid>
+mise exec -- task openhands:usage:check CONVERSATION_ID=<uuid>
+mise exec -- task observability:stream:check
+```
+
+La reparación reutiliza la credencial del perfil `local-qwen3-8b` mediante la API de loopback dentro del contenedor; no la imprime. Verifica la autenticación del proxy, usa `switch_llm` con `usage_id` nuevo (el registro de SDK 1.49.6 reutiliza entradas con el mismo ID), verifica la conversación y activa el perfil para conversaciones futuras. No reinicia servicios. El script requiere la versión fijada y rechaza un perfil dirigido a otro servidor.
+
+La prueba de streaming solicita `include_usage`, descarta el texto y compara los tokens reportados con el incremento de contadores OTel. Es una prueba sintética; la aceptación del tráfico del agente requiere una nueva consulta real después del cambio. Los tokens anteriores de la conversación se conservan en OpenHands; no se importan como nuevas llamadas de Prometheus. Fuente del comportamiento del registro: [SDK 1.49.6](https://github.com/OpenHands/software-agent-sdk/blob/v1.49.6/openhands-sdk/openhands/sdk/conversation/impl/local_conversation.py).
+
+
+Aceptación de la reparación: el host confirmó conversación y default por LiteLLM, streaming activo, y cotejo SSE exacto de 23 tokens de entrada y 8 de salida. Las consultas de tarjetas Grafana posteriores devolvieron 16.646 de entrada, 2.243 de salida, total 18.889 y Cache Hit 1.630. Son instantáneas acumuladas del emisor, no el total de vida de una conversación. La ausencia de incremento quedó resuelta sin editar los paneles; la correlación por conversación continúa como trabajo separado. Ver [diagnóstico](diagnostics/tokens-2026-10-06.md).

@@ -6,7 +6,8 @@ llm_init_docker
 docker_root="$("${llm_docker[@]}" info --format '{{.DockerRootDir}}')"
 python3 - "$llm_lock_file" "$docker_root" <<'PYCODE'
 import json, shutil, sys
-x=json.load(open(sys.argv[1]))
+import yaml
+x=yaml.safe_load(open(sys.argv[1]))
 try:
     free=shutil.disk_usage(sys.argv[2]).free
 except (PermissionError, FileNotFoundError):

@@ -3,6 +3,7 @@
 import argparse
 import datetime
 import json
+import yaml
 import os
 from pathlib import Path
 import tempfile
@@ -62,7 +63,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-only", action="store_true")
     args = parser.parse_args()
-    lock = json.loads((ROOT / "infra/llm/versions.json").read_text())
+    lock = yaml.safe_load((ROOT / "infra/llm/versions.yaml").read_text())
     # Exact loopback destination; ignore environment proxy settings.
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 

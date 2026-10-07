@@ -87,7 +87,7 @@ La auditoría persistente conservará las decisiones y aprobaciones necesarias p
 **Trabajo**
 
 - Preparar Docker Compose con OTel Collector, Prometheus, Tempo, Loki y Grafana. En el laboratorio existente, añadir LiteLLM Proxy mediante su callback OTel; reutilizar tracing nativo de OpenHands y filelog antes de plantear adaptadores propios. PostgreSQL llegará con el state store, cuando exista el runtime.
-- Documentar cobertura efectiva, riesgos de captura en origen, propagación de contexto pendiente y métricas futuras; ver [observabilidad](OBSERVABILITY.md), [ADR 001](architecture/ADR-001-OBSERVABILITY.md) y [diagramas](architecture/OBSERVABILITY_DIAGRAMS.md).
+- Documentar cobertura efectiva, riesgos de captura en origen, propagación de contexto pendiente y métricas futuras; ver [observabilidad](observability.md), [ADR 001](architecture/adr-001-observability.md) y [diagramas](architecture/observability_diagrams.md).
 - Añadir persistencia, health checks, versiones fijadas y un archivo de ejemplo de configuración sin credenciales.
 - Exponer en localhost solo los puertos necesarios; mantener los backends en redes internas y separar el acceso saliente a proveedores.
 - Definir métricas, atributos y eventos de baja cardinalidad antes de instrumentar los componentes.
@@ -241,7 +241,7 @@ Esta fase comenzará después de validar el MVP local.
 ```text
 agent-platform/
 ├── README.md
-├── PLAN.md
+├── plan.md
 ├── compose.yaml
 ├── .env.example
 ├── apps/
@@ -332,7 +332,7 @@ La carpeta de trabajo contiene las instrucciones del proyecto y este plan; no ha
 - `infra/`: configuración declarativa y versiones de infraestructura.
 - `docs/`: documentación detallada y diagnósticos revisados.
 
-El primer entorno GPU/Docker está validado en el host. La migración de tareas mise a go-task pasó la validación de plan y sintaxis; su comprobación GPU completa se ejecutará en el host. Ver [entorno](ENVIRONMENT.md).
+El primer entorno GPU/Docker está validado en el host. La migración de tareas mise a go-task pasó la validación de plan y sintaxis; su comprobación GPU completa se ejecutará en el host. Ver [entorno](environment.md).
 
 ## Avance de observabilidad — 5 de octubre de 2026
 
@@ -342,12 +342,22 @@ Se validan configuraciones con los binarios fijados y una prueba del Collector q
 
 El principio de no capturar contenido en origen se aplica al proxy LLM. El tracing nativo del SDK puede capturar entradas/resultados antes del Collector; por eso no se activa en el arranque normal. Antes de usar datos personales hay que resolver esa diferencia y revisar estado/logs locales, además de los backends.
 
-La vista general añade nueve sondas HTTP con Blackbox Exporter, métricas internas del Collector y dos alertas locales comprobadas con escenarios de activación/recuperación. Las métricas de GPU/host, calidad, políticas y negocio continúan pendientes. Ver [dashboards](DASHBOARDS.md).
+La vista general añade nueve sondas HTTP con Blackbox Exporter, métricas internas del Collector y dos alertas locales comprobadas con escenarios de activación/recuperación. Las métricas de GPU/host, calidad, políticas y negocio continúan pendientes. Ver [dashboards](dashboards.md).
 
-Aceptación del 6 de octubre: `observability:up` y `observability:check` completaron con éxito en el host. Confirmadas nueve sondas sanas, respuesta del modelo autenticada, traza/métricas nativas LLM y canarias sanitizadas; Grafana muestra datos reales. Pendiente conversación OpenHands por LiteLLM y correlación completa del agente. Evidencia: [diagnóstico](diagnostics/OBSERVABILITY-2026-10-06.md).
+Aceptación del 6 de octubre: `observability:up` y `observability:check` completaron con éxito en el host. Confirmadas nueve sondas sanas, respuesta del modelo autenticada, traza/métricas nativas LLM y canarias sanitizadas; Grafana muestra datos reales. Pendiente conversación OpenHands por LiteLLM y correlación completa del agente. Evidencia: [diagnóstico](diagnostics/observability-2026-10-06.md).
 
 Dashboards actualizados con golden signals de alcance explícito y totales de solicitudes/errores/tokens: acumulados actuales y estimaciones por período. Tasas conservadas. Recarga y 43 consultas verificadas en Grafana; saturación de GPU/servidor LLM e histórico durable de uso siguen pendientes.
 
 ### Ajuste de observabilidad de caché — 6 de octubre de 2026
 
-Se comprobó reutilización real de prefijo en Ollama y se prepararon paneles de cache-read/write mediante el callback Prometheus nativo LiteLLM y receiver autenticado del Collector. Configuración, privacidad y ausencia de doble suma verificadas aisladamente. Aplicado al host: `observability:cache:check` pasó el 6 de octubre a las 09:57 Europe/Berlin, con 1.623 tokens reutilizados cotejados. Pendiente confirmar una nueva llamada de la conversación reportada después de volver a seleccionar su perfil. No se considera resuelto el cotejo histórico OpenHands/proxy hasta disponer de esa evidencia. Detalle en `docs/diagnostics/TOKENS-2026-10-06.md`.
+Se comprobó reutilización real de prefijo en Ollama y se prepararon paneles de cache-read/write mediante el callback Prometheus nativo LiteLLM y receiver autenticado del Collector. Configuración, privacidad y ausencia de doble suma verificadas aisladamente. Aplicado al host: `observability:cache:check` pasó el 6 de octubre a las 09:57 Europe/Berlin, con 1.623 tokens reutilizados cotejados. Pendiente confirmar una nueva llamada de la conversación reportada después de volver a seleccionar su perfil. No se considera resuelto el cotejo histórico OpenHands/proxy hasta disponer de esa evidencia. Detalle en `docs/diagnostics/tokens-2026-10-06.md`.
+
+Migración de configuración, 6 de octubre: fuentes Collector/manifiestos de versiones en YAML; entorno Python/PyYAML fijado con mise, venv y hashes. Los dashboards y artefactos generados conservan JSON. Próximo cierre del laboratorio: confirmar uso real de una conversación OpenHands por el proxy (incluido streaming), antes de ampliar el runtime y el primer workflow de triage sintético.
+
+Hallazgo de ruta: el diagnóstico del host confirmó `direct Ollama` en la conversación afectada. Preparadas reparación por API y prueba de streaming, con tests de validación. La reparación por API fue aplicada con éxito en el host: conversación/default por LiteLLM y streaming activo. La prueba SSE cotejó exactamente 23 tokens de entrada y 8 de salida; después Grafana mostró entrada 16.646, salida 2.243 y tres llamadas adicionales, incluyendo la prueba. El fallo de ruta queda cerrado. La correlación detallada por conversación sigue pendiente; el siguiente paso del plan es el primer workflow sintético con decisiones y aprobación explícitas.
+
+
+7 de octubre de 2026: corregida la separación de responsabilidades del ambiente. mise declara instalación y validación del entorno, Task declara operación de servicios/tests de código y scripts categorizados contienen la implementación. Esta reorganización no reinstala Docker ni reinicia servicios.
+
+
+Dependencias Python centralizadas en pyproject.toml/uv.lock con uv fijado por mise. Se conserva la separación ambiente/operación y los nombres de documentos en minúsculas.

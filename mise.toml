@@ -1,6 +1,55 @@
-# mise owns development tool versions and environment activation.
-# Taskfile.yml owns task orchestration; scripts/ owns implementation.
-# Host packages and image digests are pinned in infra/host/versions.json.
+# mise owns environment versions, preparation and validation.
+# Taskfile.yml owns service operations and code tests; scripts/ owns implementation.
+# Host packages and image digests are pinned in infra/host/versions.yaml.
 
+# Versiones exactas; artefactos y checksums en mise.lock.
 [tools]
 task = "3.54.0"
+python = "3.14.4"
+uv = "0.12.23"
+# Detector de secretos; reglas incluidas fijadas por versión y checksum del binario.
+gitleaks = "8.30.1"
+
+# mise activa el venv del proyecto; uv instala allí lo definido en pyproject.toml.
+[env]
+_.python.venv = { path = ".venv", create = true }
+
+[tasks."env:plan"]
+description = "Comprueba Python/uv/dependencias y estructura; muestra el plan Docker/Toolkit sin instalar."
+run = "bash scripts/environment/plan.sh"
+
+[tasks."env:setup"]
+description = "Sincroniza Python con uv, valida GPU e instala Docker/Toolkit; requiere sudo y puede reiniciar Docker."
+run = "bash scripts/environment/setup.sh"
+
+[tasks."env:check"]
+description = "Valida Python/uv/lock, estructura, driver GPU y Docker/GPU; ejecutar en la terminal del host."
+run = "bash scripts/environment/check.sh"
+
+[tasks."env:python:setup"]
+description = "Sincroniza .venv desde pyproject.toml y uv.lock con uv sync --locked; sin sudo."
+run = "bash scripts/environment/setup-python.sh"
+
+[tasks."env:python:check"]
+description = "Comprueba versiones y sincronización de .venv contra uv.lock; no instala dependencias."
+run = "bash scripts/environment/check-python.sh"
+
+[tasks."repo:check"]
+description = "Comprueba archivos requeridos y sintaxis de todos los scripts shell del repositorio."
+run = "bash scripts/repo/check-repo.sh"
+
+[tasks."gpu:check"]
+description = "Consulta GPU, driver NVIDIA y dispositivos del host; guarda un diagnóstico local."
+run = "bash scripts/host/check-gpu.sh"
+
+[tasks."docker:plan"]
+description = "Muestra paquetes fijados y acciones del instalador Docker/Toolkit; sin instalar."
+run = "bash scripts/host/install-docker-gpu.sh --plan"
+
+[tasks."docker:install"]
+description = "Instala paquetes fijados y configura NVIDIA/Docker; requiere sudo y revisa servicios activos."
+run = "bash scripts/host/install-docker-gpu.sh --apply"
+
+[tasks."docker:check"]
+description = "Comprueba Docker/Compose/Buildx y GPU en un contenedor temporal; puede requerir sudo."
+run = "bash scripts/host/check-docker-gpu.sh"

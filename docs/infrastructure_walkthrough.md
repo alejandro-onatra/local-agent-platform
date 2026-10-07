@@ -2,11 +2,11 @@
 
 Fecha: 6 de octubre de 2026. Repositorio: `/home/alejandro/CloudDrive/Engineering/agent-platform`.
 
-Esta guía explica los archivos reales inspeccionados. Separa el código preparado de su activación y de las pruebas registradas. Las revisiones anteriores a esta instantánea inicial no tenían commits; por tanto, la explicación retrospectiva no es un diff histórico exacto. En este turno se prepara el primer commit local, que establece una base para revisar las próximas modificaciones. El registro de cambios está en [CHANGELOG.md](CHANGELOG.md).
+Esta guía explica los archivos reales inspeccionados. Separa el código preparado de su activación y de las pruebas registradas. Las revisiones anteriores a esta instantánea inicial no tenían commits; por tanto, la explicación retrospectiva no es un diff histórico exacto. En este turno se prepara el primer commit local, que establece una base para revisar las próximas modificaciones. El registro de cambios está en [changelog.md](changelog.md).
 
 **1. Lo que hemos construido y su recorrido**
 
-Un laboratorio local donde OpenHands ejecuta herramientas y consulta Qwen3 servido por Ollama. LiteLLM proporciona una frontera API para observar las llamadas que pasan por él. Collector, Prometheus, Tempo, Loki y Grafana recolectan y muestran telemetría. Las sondas HTTP comprueban disponibilidad. Esta es la base experimental de la plataforma agnóstica; los contratos propios de runtime, adapters, DecisionProvider, state store, MCP gateway y políticas aún están en el [plan](PLAN.md).
+Un laboratorio local donde OpenHands ejecuta herramientas y consulta Qwen3 servido por Ollama. LiteLLM proporciona una frontera API para observar las llamadas que pasan por él. Collector, Prometheus, Tempo, Loki y Grafana recolectan y muestran telemetría. Las sondas HTTP comprueban disponibilidad. Esta es la base experimental de la plataforma agnóstica; los contratos propios de runtime, adapters, DecisionProvider, state store, MCP gateway y políticas aún están en el [plan](plan.md).
 
 ```mermaid
 flowchart LR
@@ -31,39 +31,44 @@ El perfil directo salta LiteLLM. No produce sus métricas de consumo. La ruta ef
 
 **2. mise, Task y scripts: tres responsabilidades**
 
-mise fija herramientas del entorno. Actualmente fija Task; no administra por sí mismo el daemon Docker ni el driver del kernel. El bootstrap de mise verifica hashes y su versión está en `infra/host/mise-version.json`. `mise.lock` conserva el artefacto y checksum de Task para cada plataforma.
+mise fija herramientas del entorno. Actualmente fija Task, Python y uv, y activa `.venv`; no administra por sí mismo el daemon Docker ni el driver del kernel. El bootstrap de mise verifica hashes y su versión está en `infra/host/mise-version.json`. `mise.lock` conserva el artefacto y checksums de las herramientas; Python apunta al objetivo Linux x86_64.
 
-Fuente: [mise.toml](../mise.toml), líneas 1–6. Fragmento literal del archivo actual.
+Fuente: [mise.toml](../mise.toml). Fragmento literal del archivo actual.
 
 ```toml
-# mise owns development tool versions and environment activation.
-# Taskfile.yml owns task orchestration; scripts/ owns implementation.
-# Host packages and image digests are pinned in infra/host/versions.json.
+# mise owns environment versions, preparation and validation.
+# Taskfile.yml owns service operations and code tests; scripts/ owns implementation.
+# Host packages and image digests are pinned in infra/host/versions.yaml.
 
 [tools]
 task = "3.54.0"
+python = "3.14.4"
+uv = "0.12.23"
+
+[env]
+_.python.venv = { path = ".venv", create = true }
 ```
 
-Fuente: [Taskfile.yml](../Taskfile.yml), líneas 60–67. Fragmento literal del archivo actual.
+Fuente: [Taskfile.yml](../Taskfile.yml). Fragmento literal del archivo actual.
 
 ```yaml
   llm:setup:
     desc: Start local Ollama, download model and test inference on GPU
     cmds:
-      - task: repo:check
+      - mise run repo:check
       - task: llm:plan
       - task: llm:up
       - task: llm:pull
       - task: llm:check
 ```
 
-Task encadena pasos en orden. Las tareas llaman scripts en `scripts/bootstrap/`, `host/`, `llm/`, `openhands/`, `observability/` y `repo/`. Los bloques extensos viven en esos scripts. El shell coordina Docker y permisos; los helpers Python manejan JSON, API y comprobaciones estructuradas.
+Task encadena pasos en orden. Las tareas llaman scripts en `scripts/bootstrap/`, `host/`, `llm/`, `openhands/`, `observability/` y `repo/`. Los bloques extensos viven en esos scripts. El shell coordina Docker y permisos; los helpers Python leen configuración YAML, manejan JSON de API y comprobaciones estructuradas.
 
 **3. Docker y acceso a la GPU**
 
-`infra/host/versions.json` fija nueve paquetes de Docker/Compose/Buildx/containerd y NVIDIA Container Toolkit para Ubuntu 26.04 amd64. El instalador verifica el sistema y conflictos, hace backups de configuraciones existentes, instala desde repositorios APT firmados y verifica las versiones resultantes. Reutiliza el driver NVIDIA del host; no lo sustituye ni agrega automáticamente usuarios al grupo Docker.
+`infra/host/versions.yaml` fija nueve paquetes de Docker/Compose/Buildx/containerd y NVIDIA Container Toolkit para Ubuntu 26.04 amd64. El instalador verifica el sistema y conflictos, hace backups de configuraciones existentes, instala desde repositorios APT firmados y verifica las versiones resultantes. Reutiliza el driver NVIDIA del host; no lo sustituye ni agrega automáticamente usuarios al grupo Docker.
 
-Fuente: [scripts/host/install-docker-gpu.sh](../scripts/host/install-docker-gpu.sh), líneas 79–82. Fragmento literal del archivo actual.
+Fuente: [scripts/host/install-docker-gpu.sh](../scripts/host/install-docker-gpu.sh). Fragmento literal del archivo actual.
 
 ```bash
     sudo apt-get install -y --no-install-recommends "${package_specs[@]}"
@@ -78,9 +83,9 @@ Las operaciones Docker usan explícitamente `--context default`. Desde esta sesi
 
 **4. Ollama: servicio, modelo, límites y persistencia**
 
-Ollama corre en un contenedor fijado por digest, no como instalación global de inferencia. Los pesos de `qwen3:8b` se descargan dentro del volumen `agent-platform-local_ollama-data`, montado en `/root/.ollama`. El volumen lo administra Docker y no se guarda en Git/CloudDrive. `infra/llm/versions.json` fija también el digest del modelo, porque el tag puede cambiar.
+Ollama corre en un contenedor fijado por digest, no como instalación global de inferencia. Los pesos de `qwen3:8b` se descargan dentro del volumen `agent-platform-local_ollama-data`, montado en `/root/.ollama`. El volumen lo administra Docker y no se guarda en Git/CloudDrive. `infra/llm/versions.yaml` fija también el digest del modelo, porque el tag puede cambiar.
 
-Fuente: [infra/llm/compose.yaml](../infra/llm/compose.yaml), líneas 7–27. Fragmento literal del archivo actual.
+Fuente: [infra/llm/compose.yaml](../infra/llm/compose.yaml). Fragmento literal del archivo actual.
 
 ```yaml
     ports:
@@ -112,7 +117,7 @@ Se pasó de contexto 8192 a 32768 en el laboratorio. Se mantiene una petición p
 
 `pull-model.sh` revisa espacio, descarga y comprueba el digest; `check-inference.py` prueba generación, tool call sintético, API compatible y residencia en VRAM. No demuestra por sí solo que cualquier tarea de agente funcione. Se corrigió la medición de velocidad para dividir tokens por tiempo de generación, separando carga del modelo y procesamiento del prompt.
 
-Fuente: [scripts/llm/check-inference.py](../scripts/llm/check-inference.py), líneas 34–37. Fragmento literal del archivo actual.
+Fuente: [scripts/llm/check-inference.py](../scripts/llm/check-inference.py). Fragmento literal del archivo actual.
 
 ```python
     count, duration = data.get("eval_count", 0), data.get("eval_duration", 0)
@@ -127,7 +132,7 @@ El agente organiza pasos y ejecuta herramientas; el modelo genera texto y propue
 
 `infra/openhands/compose.yaml` se combina con el Compose de Ollama, conservando el proyecto y su volumen. OpenHands está en `agent-link`, una red interna, sin Docker socket ni puertos publicados directamente. Nginx recibe el navegador por localhost:8000 y reenvía HTTP/WebSocket al servicio interno.
 
-Fuente: [infra/openhands/compose.yaml](../infra/openhands/compose.yaml), líneas 9–29. Fragmento literal del archivo actual.
+Fuente: [infra/openhands/compose.yaml](../infra/openhands/compose.yaml). Fragmento literal del archivo actual.
 
 ```yaml
     networks: [agent-link]
@@ -153,7 +158,7 @@ Fuente: [infra/openhands/compose.yaml](../infra/openhands/compose.yaml), líneas
     security_opt: [no-new-privileges:true]
 ```
 
-Fuente: [infra/openhands/nginx.conf](../infra/openhands/nginx.conf), líneas 19–26. Fragmento literal del archivo actual.
+Fuente: [infra/openhands/nginx.conf](../infra/openhands/nginx.conf). Fragmento literal del archivo actual.
 
 ```nginx
         location / {
@@ -172,16 +177,17 @@ Fuente: [infra/openhands/nginx.conf](../infra/openhands/nginx.conf), líneas 19�
 
 Se usa el grupo del host y permisos 2770 para dar acceso al usuario no root del contenedor. Una corrección importante fue preservar las dos variables al cruzar sudo: sin esto Compose fallaba por valores ausentes.
 
-Fuente: [scripts/openhands/common.sh](../scripts/openhands/common.sh), líneas 4–17. Fragmento literal del archivo actual.
+Fuente: [scripts/openhands/common.sh](../scripts/openhands/common.sh). Fragmento literal del archivo actual.
 
 ```bash
 oh_root="$llm_repo_root"
 export OH_HOST_GID="$(id -g)"
 export OH_WORKSPACE="$oh_root/artifacts/openhands/projects"
 oh_image() {
-    python3 - "$oh_root/infra/openhands/versions.json" <<'PYCODE'
+    python3 - "$oh_root/infra/openhands/versions.yaml" <<'PYCODE'
 import json, sys
-print(json.load(open(sys.argv[1]))['image'])
+import yaml
+print(yaml.safe_load(open(sys.argv[1]))['image'])
 PYCODE
 }
 oh_compose() {
@@ -197,7 +203,7 @@ Los scripts comprueban que el usuario de la imagen no sea root y pueda escribir 
 
 El perfil observado de OpenHands debe usar modelo `openai/qwen3:8b`, base URL `http://litellm:4000/v1` y la clave privada del proxy. El prefijo `openai/` selecciona el protocolo compatible en esta integración; el destino configurado sigue siendo Ollama local. El perfil anterior usa `http://ollama:11434/v1` y accede directamente.
 
-Fuente: [infra/observability/litellm.yaml](../infra/observability/litellm.yaml), líneas 1–34. Fragmento literal del archivo actual.
+Fuente: [infra/observability/litellm.yaml](../infra/observability/litellm.yaml). Fragmento literal del archivo actual.
 
 ```yaml
 model_list:
@@ -240,7 +246,7 @@ El alias `qwen3:8b` se dirige al backend `openai/qwen3:8b` en `http://ollama:114
 
 Los callbacks `otel` y `prometheus` ya se validaron en el host. La prueba de caché del 6 de octubre a las 09:57 Europe/Berlin cotejó 1.623 tokens reutilizados con un aumento idéntico del contador. No debe confundirse código en disco con configuración cargada en el proceso.
 
-Fuente: [infra/observability/compose.yaml](../infra/observability/compose.yaml), líneas 164–175. Fragmento literal del archivo actual.
+Fuente: [infra/observability/compose.yaml](../infra/observability/compose.yaml). Fragmento literal del archivo actual.
 
 ```yaml
       OTEL_SERVICE_NAME: litellm-proxy
@@ -267,7 +273,7 @@ LiteLLM rechazó arrancar sin una master key. Se corrigió con una clave fuerte 
 
 `prepare-secrets.py` conserva las credenciales existentes, comprueba propiedad y formato y rechaza symlinks.
 
-Fuente: [scripts/observability/prepare-secrets.py](../scripts/observability/prepare-secrets.py), líneas 15–24. Fragmento literal del archivo actual.
+Fuente: [scripts/observability/prepare-secrets.py](../scripts/observability/prepare-secrets.py). Fragmento literal del archivo actual.
 
 ```python
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -288,26 +294,21 @@ Los servicios usan imágenes fijadas, límites de memoria/CPU, capacidades retir
 
 **8. Collector: recepción, privacidad y tres destinos**
 
-`infra/observability/collector.json` recibe OTLP HTTP 4318 y gRPC 4317, aplica límites de memoria, filtros y procesamiento por lotes. Su pipeline de trazas entrega spans sanitizados a Tempo y a `spanmetrics`, un conector existente que produce métricas de número/duración de spans. Prometheus lee el exporter de métricas en 8889; también lee telemetría interna del Collector en 8888.
+`infra/observability/collector.yaml` recibe OTLP HTTP 4318 y gRPC 4317, aplica límites de memoria, filtros y procesamiento por lotes. Su pipeline de trazas entrega spans sanitizados a Tempo y a `spanmetrics`, un conector existente que produce métricas de número/duración de spans. Prometheus lee el exporter de métricas en 8889; también lee telemetría interna del Collector en 8888.
 
-Fragmento estructural de `service.pipelines.traces`, extraído del JSON actual:
+Fragmento estructural de `service.pipelines.traces`, extraído del YAML actual:
 
-```json
-{
-  "receivers": [
-    "otlp"
-  ],
-  "processors": [
-    "memory_limiter",
-    "filter/no_events",
-    "transform/privacy",
-    "batch"
-  ],
-  "exporters": [
-    "otlphttp/tempo",
-    "spanmetrics"
-  ]
-}
+```yaml
+receivers:
+- otlp
+processors:
+- memory_limiter
+- filter/no_events
+- transform/privacy
+- batch
+exporters:
+- otlphttp/tempo
+- spanmetrics
 ```
 
 La privacidad usa listas permitidas: recurso `service.name`, modelo normalizado, números de uso y etiquetas operativas limitadas. Elimina nombres libres, texto de errores, eventos y spans con links. En logs conserva categorías, por ejemplo `tool_validation_error`, y reemplaza el cuerpo completo.
@@ -326,7 +327,7 @@ Esto sanitiza lo exportado, no los originales del host ni todo lo que pasa por m
 
 `configure-logs.sh` consulta solo ID, LogPath y driver de OpenHands, Ollama y LiteLLM desde la terminal con permisos Docker. `configure-logs.py` genera mounts read-only de sus directorios específicos y receivers filelog, con offsets persistidos. El Collector usa UID 0 para poder leerlos, conserva capacidades retiradas y no recibe `docker.sock`.
 
-Los archivos generados son `artifacts/observability/collector-with-logs.json` y `logs-compose.json`; el JSON de `infra/` es la fuente canónica. Se regeneran tras recrear contenedores para no seguir IDs/logpaths antiguos. `start_at: end` captura nuevos registros del archivo activo; no es una importación histórica completa.
+Los archivos generados son `artifacts/observability/collector-with-logs.json` y `logs-compose.json`; el YAML de `infra/` es la fuente canónica. Se regeneran tras recrear contenedores para no seguir IDs/logpaths antiguos. `start_at: end` captura nuevos registros del archivo activo; no es una importación histórica completa.
 
 **10. Prometheus, Tempo, Loki y Grafana**
 
@@ -334,7 +335,7 @@ Prometheus guarda métricas en su volumen, con retención de 7 días y tamaño m
 
 Los backends están en una red `data` interna y no publican puertos del host. Grafana publica `127.0.0.1:3000`; LiteLLM comparte `data` y `agent-link` para conectar agente y modelo. Loki/Tempo carecen de autenticación propia en esta configuración interna; esa frontera no permite exponerlos directamente a la familia.
 
-Fuente: [infra/observability/grafana/provisioning/datasources/sources.yaml](../infra/observability/grafana/provisioning/datasources/sources.yaml), líneas 1–21. Fragmento literal del archivo actual.
+Fuente: [infra/observability/grafana/provisioning/datasources/sources.yaml](../infra/observability/grafana/provisioning/datasources/sources.yaml). Fragmento literal del archivo actual.
 
 ```yaml
 apiVersion: 1
@@ -360,7 +361,7 @@ datasources:
   editable: false
 ```
 
-Fuente: [infra/observability/grafana/provisioning/dashboards/dashboards.yaml](../infra/observability/grafana/provisioning/dashboards/dashboards.yaml), líneas 1–10. Fragmento literal del archivo actual.
+Fuente: [infra/observability/grafana/provisioning/dashboards/dashboards.yaml](../infra/observability/grafana/provisioning/dashboards/dashboards.yaml). Fragmento literal del archivo actual.
 
 ```yaml
 apiVersion: 1
@@ -409,59 +410,36 @@ El callback OTel fijado no cubre correctamente el campo anidado de caché de Oll
 
 Fragmento del receiver actual, con credencial referenciada y sin revelar su valor:
 
-```json
-{
-  "config": {
-    "scrape_configs": [
-      {
-        "job_name": "litellm-cache",
-        "scrape_interval": "15s",
-        "scrape_timeout": "5s",
-        "metrics_path": "/metrics/",
-        "follow_redirects": false,
-        "authorization": {
-          "type": "Bearer",
-          "credentials": "${env:LITELLM_MASTER_KEY}"
-        },
-        "static_configs": [
-          {
-            "targets": [
-              "litellm:4000"
-            ]
-          }
-        ],
-        "metric_relabel_configs": [
-          {
-            "source_labels": [
-              "__name__"
-            ],
-            "regex": "litellm_input_(cached|cache_creation)_tokens_metric_total",
-            "action": "keep"
-          },
-          {
-            "source_labels": [
-              "model"
-            ],
-            "regex": "(openai/)?qwen3:8b",
-            "action": "keep"
-          },
-          {
-            "source_labels": [
-              "model"
-            ],
-            "regex": "(openai/)?qwen3:8b",
-            "replacement": "qwen3:8b",
-            "target_label": "gen_ai.request.model"
-          },
-          {
-            "regex": "__name__|gen_ai.request.model",
-            "action": "labelkeep"
-          }
-        ]
-      }
-    ]
-  }
-}
+```yaml
+config:
+  scrape_configs:
+  - job_name: litellm-cache
+    scrape_interval: 15s
+    scrape_timeout: 5s
+    metrics_path: /metrics/
+    follow_redirects: false
+    authorization:
+      type: Bearer
+      credentials: ${env:LITELLM_MASTER_KEY}
+    static_configs:
+    - targets:
+      - litellm:4000
+    metric_relabel_configs:
+    - source_labels:
+      - __name__
+      regex: litellm_input_(cached|cache_creation)_tokens_metric_total
+      action: keep
+    - source_labels:
+      - model
+      regex: (openai/)?qwen3:8b
+      action: keep
+    - source_labels:
+      - model
+      regex: (openai/)?qwen3:8b
+      replacement: qwen3:8b
+      target_label: gen_ai.request.model
+    - regex: __name__|gen_ai.request.model
+      action: labelkeep
 ```
 
 El Collector también recibe el master key en su entorno para esa lectura interna. El filtro acepta solo el modelo local y elimina etiquetas privadas. `transform/cache-monitor` renombra `up` como `litellm.cache.scrape.up`: si la lectura falla, el panel muestra fallo aunque un contador previo siga visible. El callback omite series de caché ausentes/cero; “Sin datos” no equivale a cero. No se importan los 95.780 de la captura como telemetría nueva.
@@ -470,7 +448,7 @@ El Collector también recibe el master key en su entorno para esa lectura intern
 
 `observability:up` valida configuración, prepara credenciales persistentes, arranca servicios, comprueba procesos/readiness y regenera filelog. Fue necesario usar `--force-recreate`: cambiar el contenido de un archivo bind-mounted no garantiza que Compose reinicie el proceso que debe volver a leerlo.
 
-Fuente: [scripts/observability/up.sh](../scripts/observability/up.sh), líneas 18–18. Fragmento literal del archivo actual.
+Fuente: [scripts/observability/up.sh](../scripts/observability/up.sh). Fragmento literal del archivo actual.
 
 ```bash
 obs_compose up -d --force-recreate
@@ -488,7 +466,7 @@ Otras correcciones documentadas: preservar variables al usar sudo; tratar tools 
 | Nuevo scrape de caché | Binario Collector fijado: auth, redacción, acumulados, fallo HTTP y ausencia de cero inventado pasaron | Prueba integral del host aprobada el 6 de octubre a las 09:57 Europe/Berlin |
 | Uso histórico de esa conversación | Captura y diagnóstico preparado | Perfil guardado apunta a LiteLLM; se volvió a seleccionar en la conversación. Falta observar una llamada nueva para confirmar la ruta efectiva |
 
-Evidencia: [GPU](diagnostics/GPU-2026-10-04.md), [aceptación de observabilidad](diagnostics/OBSERVABILITY-2026-10-06.md), [tokens/caché](diagnostics/TOKENS-2026-10-06.md), [OpenHands](OPENHANDS.md).
+Evidencia: [GPU](diagnostics/gpu-2026-10-04.md), [aceptación de observabilidad](diagnostics/observability-2026-10-06.md), [tokens/caché](diagnostics/tokens-2026-10-06.md), [OpenHands](openhands.md).
 
 Para validar la ampliación de caché, cuando el agente esté inactivo:
 
@@ -540,3 +518,17 @@ El código del workflow permanece separado de los pesos y el servidor de inferen
 **15. Cómo verás los próximos cambios**
 
 Antes de editar mostraré archivos, propósito y alcance. Después mostraré diff real o fragmentos concretos, validaciones y lo que falta aplicar. Las decisiones de infraestructura seguirán en `infra/`, la operación en Task/scripts y la documentación en `docs/`. Nunca se incluirán claves o contenido de conversaciones en un diff. La regla queda guardada en el `AGENTS.md` del repositorio.
+
+
+### Separación de tareas — 7 de octubre de 2026
+
+La preparación/validación del ambiente usa `mise run env:plan`, `mise run env:setup`, `mise run env:check` y las comprobaciones individuales GPU/Docker/Python/repositorio. mise declara llamadas breves; `scripts/environment/` conserva la secuencia y `scripts/host/` implementa las acciones del host. Task conserva despliegues, estado, logs, inferencia y pruebas de observabilidad. Un preflight de repositorio dentro de un despliegue invoca `mise run repo:check`, con una sola definición pública de esa validación.
+
+```toml
+[tasks."env:check"]
+description = "Valida Python/uv/lock, estructura, driver GPU y Docker/GPU; ejecutar en la terminal del host."
+run = "bash scripts/environment/check.sh"
+```
+
+
+Las dependencias Python se declaran en `pyproject.toml`, con resolución/hashes en `uv.lock`. `scripts/environment/setup-python.sh` ejecuta `uv sync --locked --no-dev --python "$repo_root/.venv/bin/python3"`; la comprobación usa `uv sync --locked --check` y no modifica el entorno. uv gestiona paquetes Python; mise fija los binarios de Python/uv/Task. No se conserva un requirements duplicado en infra.

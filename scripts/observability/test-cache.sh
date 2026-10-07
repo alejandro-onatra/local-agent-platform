@@ -11,9 +11,10 @@ cleanup() {
     rm -rf -- "$cache_test_dir"
 }
 trap cleanup EXIT
-cache_test_image="$(python3 - "$obs_dir/versions.json" <<'JSON'
+cache_test_image="$(python3 - "$obs_dir/versions.yaml" <<'JSON'
 import json,sys
-print(json.load(open(sys.argv[1]))['components']['collector']['image'])
+import yaml
+print(yaml.safe_load(open(sys.argv[1]))['components']['collector']['image'])
 JSON
 )"
 # Extract the pinned binary from a stopped container; no network or published ports.

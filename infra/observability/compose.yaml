@@ -23,7 +23,7 @@ services:
     command:
     - --config=/etc/otel/config.yaml
     volumes:
-    - ${OBS_COLLECTOR_CONFIG:-./collector.json}:/etc/otel/config.yaml:ro
+    - ${OBS_COLLECTOR_CONFIG:-./collector.yaml}:/etc/otel/config.yaml:ro
     read_only: true
   prometheus:
     image: prom/prometheus@sha256:86b17a25c2db1d16a61b16b3c8f336679eb19e26333d03e808da387206e40faa

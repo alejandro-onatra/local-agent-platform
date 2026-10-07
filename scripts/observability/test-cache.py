@@ -2,6 +2,7 @@
 """Test authenticated native-cache scraping and privacy with the pinned Collector."""
 import argparse
 import json
+import yaml
 import os
 from pathlib import Path
 import secrets
@@ -63,7 +64,7 @@ def main():
     try:
         with tempfile.TemporaryDirectory(prefix='agent-cache-test-') as directory:
             temp = Path(directory)
-            config = json.loads((ROOT/'infra/observability/collector.json').read_text())
+            config = yaml.safe_load((ROOT/'infra/observability/collector.yaml').read_text())
             prom = port()
             config['receivers']['otlp']['protocols'] = {'http': {'endpoint': f'127.0.0.1:{port()}'}}
             config['extensions']['health_check']['endpoint'] = f'127.0.0.1:{port()}'

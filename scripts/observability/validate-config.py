@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Validate published ports, exact images and network/mount boundaries."""
 import json
+import yaml
 from pathlib import Path
 import sys
 root = Path(__file__).resolve().parents[2]
 config = json.load(sys.stdin)
-locks = json.loads((root/'infra/observability/versions.json').read_text())['components']
+locks = yaml.safe_load((root/'infra/observability/versions.yaml').read_text())['components']
 assert config['name'] == 'agent-platform-observability'
 assert config['networks']['data']['internal'] is True
 for name, service in config['services'].items():

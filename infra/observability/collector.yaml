@@ -1,0 +1,215 @@
+# Collector source configuration. Generated filelog overrides live in artifacts/.
+# Privacy allowlists intentionally discard free-form content before export.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
+  prometheus/litellm-cache:
+    config:
+      scrape_configs:
+      - job_name: litellm-cache
+        scrape_interval: 15s
+        scrape_timeout: 5s
+        metrics_path: /metrics/
+        follow_redirects: false
+        authorization:
+          type: Bearer
+          credentials: ${env:LITELLM_MASTER_KEY}
+        static_configs:
+        - targets:
+          - litellm:4000
+        metric_relabel_configs:
+        - source_labels:
+          - __name__
+          regex: litellm_input_(cached|cache_creation)_tokens_metric_total
+          action: keep
+        - source_labels:
+          - model
+          regex: (openai/)?qwen3:8b
+          action: keep
+        - source_labels:
+          - model
+          regex: (openai/)?qwen3:8b
+          replacement: qwen3:8b
+          target_label: gen_ai.request.model
+        - regex: __name__|gen_ai.request.model
+          action: labelkeep
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+    spike_limit_mib: 64
+  filter/no_events:
+    error_mode: propagate
+    traces:
+      spanevent:
+      - 'true'
+      span:
+      - Len(links) > 0
+  transform/privacy:
+    error_mode: propagate
+    trace_statements:
+    - context: resource
+      statements:
+      - keep_keys(attributes, ["service.name"])
+      - set(attributes["service.name"], "unknown") where attributes["service.name"] != "litellm-proxy" and attributes["service.name"] != "openhands" and attributes["service.name"] != "ollama" and attributes["service.name"] != "observability-smoke"
+    - context: scope
+      statements:
+      - set(name, "instrumentation")
+      - set(version, "")
+      - keep_keys(attributes, [])
+    - context: span
+      statements:
+      - keep_keys(attributes, ["gen_ai.request.model", "gen_ai.usage.input_tokens", "gen_ai.usage.output_tokens", "gen_ai.usage.total_tokens"])
+      - set(attributes["gen_ai.request.model"], "unknown") where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.request.model"] != "qwen3:8b"
+      - delete_key(attributes, "gen_ai.usage.input_tokens") where attributes["gen_ai.usage.input_tokens"] != nil and not IsInt(attributes["gen_ai.usage.input_tokens"])
+      - delete_key(attributes, "gen_ai.usage.output_tokens") where attributes["gen_ai.usage.output_tokens"] != nil and not IsInt(attributes["gen_ai.usage.output_tokens"])
+      - delete_key(attributes, "gen_ai.usage.total_tokens") where attributes["gen_ai.usage.total_tokens"] != nil and not IsInt(attributes["gen_ai.usage.total_tokens"])
+      - set(status.message, "")
+      - set(name, "operation") where name != "Received Proxy Server Request" and name != "litellm_request" and name != "tool.call" and name != "agent.run" and name != "privacy.smoke"
+    log_statements:
+    - context: resource
+      statements:
+      - keep_keys(attributes, ["service.name"])
+      - set(attributes["service.name"], "unknown") where attributes["service.name"] != "litellm-proxy" and attributes["service.name"] != "openhands" and attributes["service.name"] != "ollama" and attributes["service.name"] != "observability-smoke"
+    - context: scope
+      statements:
+      - set(name, "instrumentation")
+      - set(version, "")
+      - keep_keys(attributes, [])
+    - context: log
+      statements:
+      - keep_keys(attributes, [])
+      - set(attributes["event.category"], "operational")
+      - set(attributes["event.category"], "tool_validation_error") where IsString(body) and IsMatch(body, "(?i)(validating tool|validation error|field required)")
+      - set(attributes["event.category"], "error") where IsString(body) and IsMatch(body, "(?i)(exception|traceback|error)") and attributes["event.category"] != "tool_validation_error"
+      - set(body, "operational record")
+      - set(severity_text, "")
+    metric_statements:
+    - context: resource
+      statements:
+      - keep_keys(attributes, ["service.name"])
+      - set(attributes["service.name"], "unknown") where attributes["service.name"] != "litellm-proxy" and attributes["service.name"] != "openhands" and attributes["service.name"] != "ollama" and attributes["service.name"] != "observability-smoke"
+    - context: scope
+      statements:
+      - set(name, "instrumentation")
+      - set(version, "")
+      - keep_keys(attributes, [])
+    - context: metric
+      statements:
+      - set(description, "")
+    - context: datapoint
+      statements:
+      - keep_keys(attributes, ["gen_ai.request.model", "gen_ai.token.type", "service.name", "span.name", "span.kind", "status.code", "collector.instance.id"])
+      - set(attributes["gen_ai.request.model"], "unknown") where attributes["gen_ai.request.model"] != nil and attributes["gen_ai.request.model"] != "qwen3:8b"
+      - set(attributes["gen_ai.token.type"], "unknown") where attributes["gen_ai.token.type"] != nil and attributes["gen_ai.token.type"] != "input" and attributes["gen_ai.token.type"] != "output"
+      - set(attributes["service.name"], "unknown") where attributes["service.name"] != nil and attributes["service.name"] != "litellm-proxy" and attributes["service.name"] != "openhands" and attributes["service.name"] != "ollama" and attributes["service.name"] != "observability-smoke"
+      - set(attributes["span.name"], "operation") where attributes["span.name"] != nil and attributes["span.name"] != "Received Proxy Server Request" and attributes["span.name"] != "litellm_request" and attributes["span.name"] != "tool.call" and attributes["span.name"] != "agent.run" and attributes["span.name"] != "privacy.smoke"
+      - set(attributes["span.kind"], "unknown") where attributes["span.kind"] != nil and attributes["span.kind"] != "SPAN_KIND_SERVER" and attributes["span.kind"] != "SPAN_KIND_INTERNAL" and attributes["span.kind"] != "SPAN_KIND_CLIENT"
+      - set(attributes["status.code"], "unknown") where attributes["status.code"] != nil and attributes["status.code"] != "STATUS_CODE_ERROR" and attributes["status.code"] != "STATUS_CODE_OK" and attributes["status.code"] != "STATUS_CODE_UNSET"
+      - delete_key(attributes, "collector.instance.id")
+  batch:
+    timeout: 2s
+    send_batch_size: 256
+  filter/known_metrics:
+    error_mode: propagate
+    metrics:
+      metric:
+      - name != "gen_ai.client.operation.duration" and name != "gen_ai.client.token.usage" and name != "gen_ai.client.response.duration" and name != "gen_ai.server.time_to_first_token" and name != "gen_ai.server.time_per_output_token" and name != "gen_ai.usage.cost" and name != "agent.calls" and name != "agent.duration" and name != "privacy_smoke" and name != "litellm_input_cached_tokens_metric" and name != "litellm_input_cached_tokens_metric_total" and name != "litellm_input_cache_creation_tokens_metric" and name != "litellm_input_cache_creation_tokens_metric_total" and name != "litellm.cache.scrape.up"
+      datapoint:
+      - Len(exemplars) > 0
+  resource/litellm-cache:
+    attributes:
+    - key: service.name
+      value: litellm-proxy
+      action: upsert
+  transform/cache-monitor:
+    error_mode: propagate
+    metric_statements:
+    - context: metric
+      statements:
+      - set(name, "litellm.cache.scrape.up") where name == "up"
+connectors:
+  spanmetrics:
+    namespace: agent
+    histogram:
+      unit: s
+    dimensions_cache_size: 200
+    aggregation_cardinality_limit: 500
+exporters:
+  otlphttp/tempo:
+    endpoint: http://tempo:4318
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    add_metric_suffixes: false
+    enable_open_metrics: true
+    resource_to_telemetry_conversion:
+      enabled: false
+service:
+  pipelines:
+    traces:
+      receivers:
+      - otlp
+      processors:
+      - memory_limiter
+      - filter/no_events
+      - transform/privacy
+      - batch
+      exporters:
+      - otlphttp/tempo
+      - spanmetrics
+    metrics:
+      receivers:
+      - otlp
+      - spanmetrics
+      processors:
+      - memory_limiter
+      - filter/known_metrics
+      - transform/privacy
+      - batch
+      exporters:
+      - prometheus
+    logs:
+      receivers:
+      - otlp
+      processors:
+      - memory_limiter
+      - transform/privacy
+      - batch
+      exporters:
+      - otlphttp/loki
+    metrics/cache:
+      receivers:
+      - prometheus/litellm-cache
+      processors:
+      - memory_limiter
+      - resource/litellm-cache
+      - transform/cache-monitor
+      - filter/known_metrics
+      - transform/privacy
+      - batch
+      exporters:
+      - prometheus
+  extensions:
+  - health_check
+  telemetry:
+    resource:
+      service.instance.id: null
+    metrics:
+      level: normal
+      readers:
+      - pull:
+          exporter:
+            prometheus:
+              host: 0.0.0.0
+              port: 8888
+              without_type_suffix: true
+              without_units: true
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133

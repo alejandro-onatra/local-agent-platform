@@ -3,6 +3,7 @@
 import argparse
 import importlib.util
 import json
+import yaml
 from pathlib import Path
 import socket
 import subprocess
@@ -28,7 +29,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='agent-otel-test-') as temp:
         temp = Path(temp)
         (temp/'file').mkdir()
-        config = json.loads((root/'infra/observability/collector.json').read_text())
+        config = yaml.safe_load((root/'infra/observability/collector.yaml').read_text())
         port, metric_port = free_port(), free_port()
         config['extensions']['health_check']['endpoint'] = '127.0.0.1:'+str(free_port())
         config['service']['telemetry']['metrics']['readers'][0]['pull']['exporter']['prometheus'].update(host='127.0.0.1', port=free_port())

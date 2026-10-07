@@ -9,9 +9,10 @@ else
     sudo -v
     docker_cmd=(sudo docker)
 fi
-mapfile -t images < <(python3 - "$repo_root/infra/host/versions.json" <<'PYCODE'
+mapfile -t images < <(python3 - "$repo_root/infra/host/versions.yaml" <<'PYCODE'
 import json, sys
-images=json.load(open(sys.argv[1]))['smoke_images']
+import yaml
+images=yaml.safe_load(open(sys.argv[1]))['smoke_images']
 print(images['hello-world'])
 print(images['ubuntu'])
 PYCODE

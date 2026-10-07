@@ -3,7 +3,7 @@ set -euo pipefail
 source "$(dirname -- "${BASH_SOURCE[0]}")/common.sh"
 # Always start the core config first: recorded LogPaths may be stale after recreation.
 obs_args=(-f "$obs_dir/compose.yaml")
-export OBS_COLLECTOR_CONFIG="$obs_dir/collector.json"
+export OBS_COLLECTOR_CONFIG="$obs_dir/collector.yaml"
 OBS_IGNORE_LOG_CONFIG=1 bash "$llm_repo_root/scripts/observability/plan.sh"
 llm_init_docker
 "${llm_docker[@]}" network inspect agent-platform-local_agent-link >/dev/null || { printf 'Run task openhands:up first.\n' >&2; exit 1; }

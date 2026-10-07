@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Reject dangerous or inconsistent deployment configuration before startup."""
 import json
+import yaml
 from pathlib import Path
 import sys
 r = Path(__file__).resolve().parents[2]
 c = json.load(sys.stdin)
 s = c['services']['openhands']
-lock = json.loads((r/'infra/openhands/versions.json').read_text())
+lock = yaml.safe_load((r/'infra/openhands/versions.yaml').read_text())
 assert s['image'] == lock['image'], 'Image differs from lock'
 assert s['platform'] == 'linux/amd64'
 assert set(s['networks']) == {'agent-link'}, 'Agent must use internal network only'
@@ -32,5 +33,5 @@ workspace = next(v for v in volumes if v['target'] == '/projects')
 assert workspace['type'] == 'bind'
 assert Path(workspace['source']) == r/'artifacts/openhands/projects'
 assert set(c['services']['ollama']['networks']) == {'default', 'agent-link'}
-assert c['services']['ollama']['image'] == json.loads((r/'infra/llm/versions.json').read_text())['ollama']['image']
+assert c['services']['ollama']['image'] == yaml.safe_load((r/'infra/llm/versions.yaml').read_text())['ollama']['image']
 print('OpenHands image, loopback port, mounts and internal network verified.')

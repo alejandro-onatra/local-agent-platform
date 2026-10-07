@@ -4,7 +4,7 @@
 
 El 5 de octubre de 2026 el repositorio oficial publica Agent Canvas 1.24.0 como release estable. La antigua Local GUI aparece como proyecto deprecado en la documentación. Se utiliza la imagen oficial all-in-one de Agent Canvas, que incluye Agent Server 1.49.6 y Automation 1.15.1. El frontend sigue ejecutando el agente OpenHands; no hace falta un proveedor cloud.
 
-Imagen Linux amd64 fijada por digest en `infra/openhands/versions.json`; aproximadamente 1.40 GB comprimidos. El digest identifica toda la imagen y sus componentes. No se añade Node/Python/uv al entorno del host, porque están dentro de la imagen. mise mantiene Task; go-task coordina y `scripts/openhands/` implementa.
+Imagen Linux amd64 fijada por digest en `infra/openhands/versions.yaml`; aproximadamente 1.40 GB comprimidos. El digest identifica toda la imagen y sus componentes. Node y el runtime Python de OpenHands están dentro de la imagen. El Python del host, fijado por mise, solo se utiliza para los scripts de configuración y validación del repositorio. mise mantiene Task y Python; go-task coordina y `scripts/openhands/` implementa.
 
 ## Arranque
 
@@ -163,10 +163,10 @@ Este hito comprueba el funcionamiento básico, no calidad sostenida, seguridad c
 
 Siguiente experimento propuesto: corregir un bug pequeño en un proyecto de ejemplo con tests existentes, comprobando fallo previo y éxito posterior, y registrar duración, errores de herramientas y cambios de archivos. Mantener un agente, perfil fijo y datos sintéticos para comparar con esta referencia.
 
-La segunda prueba está descrita en [OPENHANDS_BUGFIX.md](OPENHANDS_BUGFIX.md), con tareas `openhands:bugfix:prepare`, `baseline` y `check`.
+La segunda prueba está descrita en [openhands_bugfix.md](openhands_bugfix.md), con tareas `openhands:bugfix:prepare`, `baseline` y `check`.
 
 ## Siguiente etapa — observabilidad con integraciones existentes
 
-La [guía de observabilidad](OBSERVABILITY.md) explica cómo intercalar LiteLLM entre OpenHands y Ollama, activar los tres backends y provisionar Grafana. Incluye el perfil `local-qwen3-8b-observed`, comandos de aceptación, ubicación de logs, privacidad y vuelta al perfil directo. Los [diagramas](architecture/OBSERVABILITY_DIAGRAMS.md) muestran la ruta LLM, redes, almacenamiento y evolución.
+La [guía de observabilidad](observability.md) explica cómo intercalar LiteLLM entre OpenHands y Ollama, activar los tres backends y provisionar Grafana. Incluye el perfil `local-qwen3-8b-observed`, comandos de aceptación, ubicación de logs, privacidad y vuelta al perfil directo. Los [diagramas](architecture/observability_diagrams.md) muestran la ruta LLM, redes, almacenamiento y evolución.
 
 La configuración está preparada; no se afirma desplegada. El callback LiteLLM excluye mensajes; el Collector sanitiza trazas y logs. El tracing nativo de OpenHands es optativo para datos sintéticos porque puede capturar argumentos/resultados antes del filtro. El exporter de telemetría de producto `none` es un control distinto de OTLP del SDK. No habilitarlo pensando que la captura en origen ya está completamente eliminada.

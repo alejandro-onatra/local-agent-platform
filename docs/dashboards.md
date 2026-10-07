@@ -103,7 +103,7 @@ CPU/RAM/disco del host y otros contenedores; métricas de GPU/VRAM/temperatura; 
 
 Se validan con binarios oficiales fijados las configuraciones del Collector, Prometheus y Blackbox, junto con las dos reglas y sus escenarios de activación/recuperación. La prueba real del Collector con señales sintéticas conserva metadatos operativos y elimina canarias sensibles de trazas, logs, métricas y filelog. Las pruebas de autenticación y contexto de trazas comprueban aislamiento de credenciales.
 
-Grafana local cargó la vista desde provisioning. Sus consultas se verifican contra las APIs reales de Prometheus/Loki. Esto validó inicialmente carga y sintaxis. El 6 de octubre se reaplicó `observability:up` y `observability:check` pasó en el host: nueve sondas sanas y telemetría nativa de la petición de prueba al modelo. Grafana muestra datos de los nuevos paneles; la conversación OpenHands y las áreas pendientes mantienen su aceptación separada. Ver [evidencia](diagnostics/OBSERVABILITY-2026-10-06.md).
+Grafana local cargó la vista desde provisioning. Sus consultas se verifican contra las APIs reales de Prometheus/Loki. Esto validó inicialmente carga y sintaxis. El 6 de octubre se reaplicó `observability:up` y `observability:check` pasó en el host: nueve sondas sanas y telemetría nativa de la petición de prueba al modelo. Grafana muestra datos de los nuevos paneles; la conversación OpenHands y las áreas pendientes mantienen su aceptación separada. Ver [evidencia](diagnostics/observability-2026-10-06.md).
 
 Además, una ejecución temporal con el binario oficial confirmó los nombres de RSS, colas, señales enviadas y señales con fallo del Collector. Blackbox devolvió éxito para los endpoints locales actuales de OpenHands, Grafana y Ollama y fallo para un HTTP 503 controlado. Las 23 consultas de la vista final fueron aceptadas por las fuentes reales. Estos ensayos no arrancaron ni modificaron los contenedores del usuario.
 
@@ -125,6 +125,6 @@ mise exec -- task observability:cache:check
 mise exec -- task observability:check
 ```
 
-Aplicar con el agente inactivo: `up` reinicia servicios y contadores del emisor, preservando volúmenes y conversaciones. Para repetir la prueba aislada del receiver y privacidad con la imagen fijada: `mise exec -- task observability:cache:test`. Ver [diagnóstico y ejemplo real](diagnostics/TOKENS-2026-10-06.md).
+Aplicar con el agente inactivo: `up` reinicia servicios y contadores del emisor, preservando volúmenes y conversaciones. Para repetir la prueba aislada del receiver y privacidad con la imagen fijada: `mise exec -- task observability:cache:test`. Ver [diagnóstico y ejemplo real](diagnostics/tokens-2026-10-06.md).
 
 Verificación final de archivos y visualización: Grafana cargó ambos dashboards provisionados (Platform Overview: 48 paneles incluyendo filas/texto, versión de archivo 5; LLM: 18, versión 3). Las 59 consultas fueron aceptadas por Prometheus/Loki reales; no hay superposición de paneles. El callback actualizado ya está activo: la prueba integral del host pasó el 6 de octubre a las 09:57 Europe/Berlin y Grafana devuelve una serie real de Cache Hit (1.626 al consultar). La función oficial de normalización de LiteLLM v1.104.0 interpretó los dos `usage` reales de Ollama como 1 y 1.623 tokens cacheados. El chequeo del contenedor actualizado consta en los reportes locales de aceptación.

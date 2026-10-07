@@ -1,56 +1,12 @@
 version: '3'
 
-# Explicit task calls in cmds run sequentially. Avoid deps for ordered host setup.
+# Service operations and code tests only. Environment tasks live in mise.toml.
+# Explicit task calls in cmds run sequentially.
 tasks:
   default:
     desc: List available tasks
     cmds:
       - task --list
-
-  env:plan:
-    desc: Validate repository and preview host setup
-    cmds:
-      - task: repo:check
-      - task: docker:plan
-
-  env:setup:
-    desc: Prepare host GPU/Docker baseline (sudo required; may restart Docker)
-    cmds:
-      - task: repo:check
-      - task: gpu:check
-      - task: docker:install
-
-  env:check:
-    desc: Check repository, host GPU and GPU inside Docker
-    cmds:
-      - task: repo:check
-      - task: gpu:check
-      - task: docker:check
-
-  repo:check:
-    desc: Validate repository structure and shell syntax
-    cmds:
-      - bash scripts/repo/check-repo.sh
-
-  gpu:check:
-    desc: Inspect host GPU without changing drivers
-    cmds:
-      - bash scripts/host/check-gpu.sh
-
-  docker:plan:
-    desc: Preview pinned Docker and Toolkit installation
-    cmds:
-      - bash scripts/host/install-docker-gpu.sh --plan
-
-  docker:install:
-    desc: Install pinned Docker and Toolkit on host (sudo required)
-    cmds:
-      - bash scripts/host/install-docker-gpu.sh --apply
-
-  docker:check:
-    desc: Check Docker, Compose and GPU inside container
-    cmds:
-      - bash scripts/host/check-docker-gpu.sh
 
   llm:plan:
     desc: Show pinned Ollama/model configuration and validate Compose
@@ -60,7 +16,7 @@ tasks:
   llm:setup:
     desc: Start local Ollama, download model and test inference on GPU
     cmds:
-      - task: repo:check
+      - mise run repo:check
       - task: llm:plan
       - task: llm:up
       - task: llm:pull
@@ -101,12 +57,6 @@ tasks:
     cmds:
       - bash scripts/repo/check-llm-tests.sh
 
-  dev:check:
-    desc: Check host baseline and local LLM inference
-    cmds:
-      - task: env:check
-      - task: llm:check
-
   openhands:plan:
     desc: Validate pinned OpenHands Compose configuration
     cmds:
@@ -140,7 +90,7 @@ tasks:
   openhands:setup:
     desc: Validate local inference and start OpenHands
     cmds:
-      - task: repo:check
+      - mise run repo:check
       - task: llm:up
       - task: llm:check
       - task: openhands:up
@@ -163,6 +113,16 @@ tasks:
       OH_CONVERSATION_ID: '{{.CONVERSATION_ID}}'
     cmds:
       - bash scripts/openhands/usage-check.sh
+
+  openhands:route:proxy:
+    desc: Apply the saved local proxy profile to an idle conversation and future defaults
+    requires:
+      vars: [CONVERSATION_ID]
+    env:
+      OH_CONVERSATION_ID: '{{.CONVERSATION_ID}}'
+      OH_LLM_PROFILE: '{{.PROFILE | default "local-qwen3-8b"}}'
+    cmds:
+      - bash scripts/openhands/route-proxy.sh
 
   openhands:bugfix:prepare:
     desc: Create a separate buggy exercise and verify expected failures
@@ -227,7 +187,7 @@ tasks:
   observability:setup:
     desc: Start existing agent and add the observability stack
     cmds:
-      - task: repo:check
+      - mise run repo:check
       - task: openhands:up
       - task: observability:up
       - task: observability:check
@@ -251,3 +211,18 @@ tasks:
     desc: Compare two real proxy calls with provider cached-token counters
     cmds:
       - bash scripts/observability/check-cache.sh
+
+  observability:stream:check:
+    desc: Verify streamed proxy usage reaches the dashboard token counters
+    cmds:
+      - bash scripts/observability/check-stream.sh
+
+  security:secrets:
+    desc: Scan publishable files, staged content and local Git history; redact findings
+    cmds:
+      - bash scripts/security/check-secrets.sh
+
+  security:test:
+    desc: Test real secret detection in files, staging and history using temporary repos
+    cmds:
+      - bash scripts/security/test-secrets.sh

@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """Generate filelog mounts/config using selected container LogPath only."""
+import argparse
 import json
+import yaml
 from pathlib import Path
 import re
 root = Path(__file__).resolve().parents[2]
-artifacts = root/'artifacts/observability'
-# JSON config is the canonical source; no host YAML dependency is needed.
-config = json.loads((root/'infra/observability/collector.json').read_text())
+parser = argparse.ArgumentParser()
+parser.add_argument('--artifacts-dir', type=Path, default=root/'artifacts/observability')
+artifacts = parser.parse_args().artifacts_dir
+# YAML is the maintained source; generated Collector/Compose output stays JSON.
+config = yaml.safe_load((root/'infra/observability/collector.yaml').read_text())
 mounts = []
 for service, resource in [('openhands','openhands'),('ollama','ollama'),('litellm','litellm-proxy')]:
     info = json.loads((artifacts/('inspect-'+service+'.json')).read_text())

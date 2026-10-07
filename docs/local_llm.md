@@ -35,7 +35,7 @@ La primera ejecución descarga la imagen Ollama y unos 5.23 GB de pesos. Comprob
 
 ## Versiones fijadas
 
-`infra/llm/versions.json` conserva versión y digest Linux amd64 de Ollama, digest del manifiesto del modelo y opciones de la prueba. Compose fija la imagen por digest.
+`infra/llm/versions.yaml` conserva versión y digest Linux amd64 de Ollama, digest del manifiesto del modelo y opciones de la prueba. Compose fija la imagen por digest.
 
 El tag del modelo se descarga mediante Ollama y se compara con el digest esperado. Si el upstream modifica el tag, el proceso falla antes de inferencia; no actualiza el lock automáticamente. No garantizamos disponibilidad eterna del tag fijado. Para preservar una copia reproducible conservar los pesos y su manifiesto en el volumen o un backup revisado.
 
@@ -62,7 +62,8 @@ mise exec -- task llm:down
 # Reanudar conservando pesos:
 mise exec -- task llm:up
 # Comprobar host y modelo:
-mise exec -- task dev:check
+mise run env:check
+mise exec -- task llm:check
 ```
 
 - **sudo bloqueado en Work:** ejecutar desde la terminal normal del host.

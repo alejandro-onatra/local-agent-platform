@@ -5,9 +5,10 @@ oh_root="$llm_repo_root"
 export OH_HOST_GID="$(id -g)"
 export OH_WORKSPACE="$oh_root/artifacts/openhands/projects"
 oh_image() {
-    python3 - "$oh_root/infra/openhands/versions.json" <<'PYCODE'
+    python3 - "$oh_root/infra/openhands/versions.yaml" <<'PYCODE'
 import json, sys
-print(json.load(open(sys.argv[1]))['image'])
+import yaml
+print(yaml.safe_load(open(sys.argv[1]))['image'])
 PYCODE
 }
 oh_compose() {

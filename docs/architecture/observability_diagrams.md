@@ -1,6 +1,6 @@
 # Diagramas de observabilidad
 
-5 de octubre de 2026. Diagramas Mermaid versionados; visibles en lectores Markdown con soporte Mermaid, incluido GitHub. La pila está preparada; el arranque y la aceptación del agente observado siguen pendientes. Las líneas discontinuas indican integración optativa o trabajo futuro.
+5 de octubre de 2026. Diagramas Mermaid versionados; visibles en lectores Markdown con soporte Mermaid, incluido GitHub. El host pasó la aceptación sintética de la pila. La conversación diagnosticada fue reparada para usar LiteLLM y pasó la comprobación SSE; se observaron incrementos adicionales en las tarjetas Grafana. La correlación detallada por conversación sigue pendiente. Las líneas discontinuas indican integración optativa o trabajo futuro.
 
 ## 1. Ruta del modelo y telemetría
 
@@ -167,3 +167,21 @@ sequenceDiagram
 ```
 
 La entrada y salida también llegan por el callback OTel existente. La caché es un subconjunto de entrada; no se suma otra vez. Lecturas repetidas de un contador no equivalen a uso adicional. `litellm_cache_scrape_up` indica si el Collector puede leer el exportador autenticado. Una conversación que accede directamente a Ollama salta LiteLLM y queda fuera de estos contadores. La ruta actual de la conversación se verifica con `openhands:usage:check`; su historial anterior no se importa automáticamente.
+
+## 6. Ruta efectiva: por qué no crecían los tokens
+
+```mermaid
+flowchart LR
+    Conversation[Conversación existente] --> Actual{Ruta efectiva del modelo}
+    Actual -->|Detectada: direct Ollama| Direct[Ollama]
+    Direct --> Usage[Uso acumulado visible en OpenHands]
+    Direct -.->|LiteLLM no recibe estas llamadas| Flat[Contadores del proxy sin incremento]
+    Saved[Perfil guardado con URL LiteLLM] --> Apply[route:proxy: switch_llm con usage_id nuevo]
+    Apply --> Verify[GET de conversación verifica URL efectiva]
+    Verify --> Future[Consultas futuras por LiteLLM]
+    Future --> Col[Collector: uso OTel y caché nativa]
+    Col --> Prom[Prometheus]
+    Prom --> Dashboard[Grafana: incrementos y acumulados del emisor]
+```
+
+El perfil guardado y el modelo efectivo de una conversación son estados diferentes. La reparación usa la API existente de OpenHands, no un adaptador nuevo. Los 301.409 tokens de vida de la conversación no se importan en Prometheus; este contador solo refleja tráfico observado. `observability:stream:check` pasó con uso numérico e incremento exacto 23/8. Tras reparar la ruta se observaron dos llamadas adicionales del proxy, además de esa prueba; la consulta agregada no atribuye cada llamada a una conversación.

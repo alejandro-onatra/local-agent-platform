@@ -8,9 +8,10 @@ mode="${1:---plan}"
 }
 command -v python3 >/dev/null || { printf 'Python 3 is required.\n' >&2; exit 1; }
 # Host packages are pinned separately from development tools managed by mise.
-mapfile -t package_specs < <(python3 - "$repo_root/infra/host/versions.json" <<'PYCODE'
+mapfile -t package_specs < <(python3 - "$repo_root/infra/host/versions.yaml" <<'PYCODE'
 import json, sys
-for package, version in json.load(open(sys.argv[1]))['packages'].items():
+import yaml
+for package, version in yaml.safe_load(open(sys.argv[1]))['packages'].items():
     print(f'{package}={version}')
 PYCODE
 )

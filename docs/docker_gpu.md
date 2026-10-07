@@ -9,19 +9,19 @@ Work tiene activado `no_new_privs`, que impide elevar privilegios con sudo, y no
 ## Punto de entrada con mise
 
 ```bash
-mise exec -- task env:plan
-mise exec -- task env:setup  # solo cuando haga falta instalar/configurar el host
-mise exec -- task env:check  # comprobación habitual del entorno ya instalado
+mise run env:plan
+mise run env:setup  # solo cuando haga falta instalar/configurar el host
+mise run env:check  # comprobación habitual del entorno ya instalado
 ```
 
-Ver [bootstrap de mise y tareas](ENVIRONMENT.md). Los comandos directos de scripts siguientes son la alternativa para diagnóstico y para equipos que aún no tengan mise.
+Ver [bootstrap de mise y tareas](environment.md). Los scripts siguen siendo la implementación. Ejecutarlos directamente requiere activar el entorno Python/PyYAML preparado; para un checkout nuevo seguir primero environment.md.
 
 ## Revisar e instalar
 
 ```bash
 cd /home/alejandro/CloudDrive/Engineering/agent-platform
-bash scripts/host/install-docker-gpu.sh --plan
-bash scripts/host/install-docker-gpu.sh --apply
+mise run docker:plan
+mise run docker:install
 ```
 
 El script se ejecuta como Alejandro y pide la contraseña mediante sudo donde corresponde. No pegues la contraseña en el chat. Si APT propone una operación inesperada, interrumpe y revisa el resultado.
@@ -32,7 +32,7 @@ El script se ejecuta como Alejandro y pide la contraseña mediante sudo donde co
 - Se detiene ante paquetes de contenedores incompatibles; no los elimina automáticamente.
 - Se detiene si encuentra contenedores activos antes de modificar el runtime/reiniciar Docker.
 - Añade los repositorios oficiales estables Docker/NVIDIA y claves con `signed-by`.
-- Instala las nueve versiones de `infra/host/versions.json`, verificadas en los índices oficiales el 4 de octubre de 2026.
+- Instala las nueve versiones de `infra/host/versions.yaml`, verificadas en los índices oficiales el 4 de octubre de 2026.
 - Configura NVIDIA en `/etc/docker/daemon.json`, habilita y reinicia Docker.
 - Conserva las configuraciones previas, si existen, en `/var/backups/agent-platform/` con acceso restringido.
 - Comprueba versiones y ejecuta hello-world y una consulta `nvidia-smi` dentro de un contenedor.
@@ -44,16 +44,14 @@ Los paquetes del sistema requieren privilegios. El grupo docker da acceso equiva
 
 ## Versiones y límites de reproducibilidad
 
-Las versiones directas están fijadas en `infra/host/versions.json`. Las dos imágenes de prueba están fijadas por digest para Linux amd64; Ubuntu corresponde al tag 24.04 en la resolución inicial. APT valida firmas de repositorios. Los índices consultados al preparar el lock son evidencia de disponibilidad, no una validación de instalación.
+Las versiones directas están fijadas en `infra/host/versions.yaml`. Las dos imágenes de prueba están fijadas por digest para Linux amd64; Ubuntu corresponde al tag 24.04 en la resolución inicial. APT valida firmas de repositorios. Los índices consultados al preparar el lock son evidencia de disponibilidad, no una validación de instalación.
 
 Las dependencias transitivas, los paquetes base y el kernel no están congelados. El script registra lo verificado y falla si una versión fijada deja de estar disponible; no cambia automáticamente a latest. No se usan apt holds para impedir futuras actualizaciones de seguridad; los upgrades deben revisar y actualizar el lock.
 
 ## Comprobar de nuevo
 
 ```bash
-bash scripts/host/check-docker-gpu.sh
-# Si mise ya está instalado:
-mise exec -- task docker:check
+mise run docker:check
 ```
 
 Una consulta GPU satisfactoria dentro de Docker verifica acceso al dispositivo y al driver. La carga CUDA y la inferencia con un modelo serán pruebas posteriores.

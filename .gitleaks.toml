@@ -1,0 +1,11 @@
+# Reglas oficiales del binario fijado en mise.lock; no suprimirlas.
+title = "Local agent platform: secret detection"
+[extend]
+useDefault = true
+
+# La master key local usa sk- seguido de 32 bytes en hexadecimal.
+[[rules]]
+id = "local-litellm-master-key"
+description = "Formato de master key generado para el proxy local"
+regex = '''\bsk-[a-f0-9]{64}\b'''
+keywords = ["sk-"]

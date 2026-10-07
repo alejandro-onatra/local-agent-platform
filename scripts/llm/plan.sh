@@ -3,7 +3,8 @@ set -euo pipefail
 source "$(dirname -- "${BASH_SOURCE[0]}")/common.sh"
 python3 - "$llm_lock_file" <<'PYCODE'
 import json, sys
-x=json.load(open(sys.argv[1]))
+import yaml
+x=yaml.safe_load(open(sys.argv[1]))
 print('Ollama version:', x['ollama']['version'])
 print('Pinned image:', x['ollama']['image'])
 print('Model:', x['model']['name'])
@@ -16,9 +17,10 @@ PYCODE
 # Parsing Compose does not contact the daemon or install anything.
 docker --context default compose -f "$llm_compose_file" config --format json | python3 -c '
 import json,sys
+import yaml
 from pathlib import Path
 x=json.load(sys.stdin)
-lock=json.loads(Path(sys.argv[1]).read_text())
+lock=yaml.safe_load(Path(sys.argv[1]).read_text())
 s=x["services"]["ollama"]
 assert s["image"]==lock["ollama"]["image"]
 assert s["environment"]["OLLAMA_NO_CLOUD"]=="1"

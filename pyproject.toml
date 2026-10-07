@@ -1,0 +1,25 @@
+# Entorno Python de los scripts del repositorio, gestionado por uv.
+# mise fija Python/uv/Task; Task opera servicios; infra/ contiene configuraciones
+# Docker/OTel y versiones del host. Las dependencias Python pertenecen aquí.
+[project]
+name = "agent-platform"
+version = "0.1.0"
+description = "Laboratorio pedagógico de agentes agnósticos de modelo: herramientas de configuración, validación y observabilidad para Ollama, OpenHands y OpenTelemetry."
+readme = "README.md"
+license = "MIT"
+# La versión exacta coincide con mise y evita cambiar el intérprete al sincronizar.
+requires-python = "==3.14.4"
+dependencies = [
+  # Lectura segura de los archivos YAML de configuración. No ejecuta modelos.
+  "PyYAML==6.0.3",
+]
+
+[tool.uv]
+# Es un repositorio de scripts: no construir ni instalar un paquete distribuible.
+package = false
+# Python lo suministra mise; uv solo resuelve/sincroniza las dependencias del venv.
+python-downloads = "never"
+# Usar wheels del lock y sus hashes; evitar compilación de dependencias en el host.
+no-build = true
+# Plataforma validada actualmente para este laboratorio y sus scripts del host.
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]

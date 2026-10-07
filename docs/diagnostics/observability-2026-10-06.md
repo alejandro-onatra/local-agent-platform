@@ -29,7 +29,7 @@ La ausencia de series de alerta o fallo de exportación no debe sustituirse por 
 
 La llamada al modelo comprobada fue la petición de prueba del chequeo. **Aún no se ha demostrado que una conversación real de OpenHands esté usando LiteLLM**, ni una traza completa que una spans del agente y del proxy.
 
-Siguiente paso: crear/seleccionar `local-qwen3-8b-observed`, modelo `openai/qwen3:8b`, base URL `http://litellm:4000/v1`, clave del archivo privado local `litellm-master-key`; iniciar una conversación nueva y ejecutar la tarea de lectura en `/projects/demo` descrita en [OBSERVABILITY.md](../OBSERVABILITY.md). Mantener subagentes y cambio automático de perfiles desactivados.
+Siguiente paso: crear/seleccionar `local-qwen3-8b-observed`, modelo `openai/qwen3:8b`, base URL `http://litellm:4000/v1`, clave del archivo privado local `litellm-master-key`; iniciar una conversación nueva y ejecutar la tarea de lectura en `/projects/demo` descrita en [observability.md](../observability.md). Mantener subagentes y cambio automático de perfiles desactivados.
 
 El tracing nativo del agente sigue siendo un paso optativo posterior; no se presume activado por esta validación. GPU/host, calidad evaluada, auditoría/políticas, tools/MCP tipados y resultados de negocio siguen pendientes de instrumentación.
 
