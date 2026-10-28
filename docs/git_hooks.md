@@ -49,8 +49,8 @@ mise exec -- task repo:commit:check
 
 These hooks are local safeguards. Git can bypass them with `--no-verify`; CI and
 branch protection must enforce the same checks for a shared repository. A remote
-workflow is now prepared; branch enforcement and the first GitHub run remain
-unverified.
+workflow is now prepared; the first GitHub run remains unverified and the public API
+reported main as unprotected on October 28.
 
 
 The optional `repo:hooks:test` exercises actual commits in a disposable clone:
@@ -75,3 +75,7 @@ A pull request's success is not evidence of deployed tenant or firewall controls
 The rehearsal creates a harmless text change inside the disposable clone so it
 can exercise a real clean commit even when the source checkout has no changes.
 Failures return a fixed phase name, not potentially sensitive command output.
+
+The October 28 public API readback reports `main.protected: false`. Treat branch
+enforcement as a pending hardening action, not an active safeguard. Detailed
+repository access/security settings still require authenticated review.

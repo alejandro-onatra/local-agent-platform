@@ -11,6 +11,7 @@ This log records implementation decisions and scoped validation evidence. Entrie
 - Publish a scoped security policy and a prioritized hardening plan; retain incomplete OAuth, effective egress, per-user dynamic acceptance, recovery and telemetry gaps.
 - Remove trailing spaces from copied MIT license comment headers in test fixtures; keep reference function bodies unchanged.
 - Repair hook rehearsal on clean checkouts: create a harmless nonempty fixture commit inside the temporary clone and report only a fixed failure phase.
+- Public GitHub API readback reports the default main branch as unprotected; record required-check enforcement as a concrete pending action, with detailed access/security settings still unverified.
 
 **October 28, 2026 — recover services and repair local Qwen thinking control**
 

@@ -57,5 +57,6 @@ agent turn or prove tenant-wide trace correlation.
 Do not add `artifacts/`, `.env`, keys, recovery files, model weights or state to
 Git. Review the staged file list and redacted scanner output. Keep new public
 network exposure and the agent Internet switch blocked until their own acceptance.
-Branch protections and GitHub security settings require a separate remote readback;
-SSH push access alone does not demonstrate that those settings are enabled.
+The October 28 public API readback reports main as unprotected. Detailed GitHub
+security/access settings require authenticated readback; SSH push access alone
+does not demonstrate that those settings are enabled.

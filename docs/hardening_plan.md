@@ -12,8 +12,9 @@ Keep public Internet exposure and general agent egress disabled until accepted.
 Local tooling is sufficient to inspect the source, lockfiles, image declarations
 and live host controls. SSH access was verified against the GitHub main branch;
 it does not provide evidence about branch protections, repository permissions,
-Actions policy, alerts or available security products. Those require authenticated
-GitHub API/UI access. No integration is required to create or execute this plan's
+Actions policy, alerts or available security products. Detailed settings require authenticated
+GitHub API/UI access. The public API does expose the main-branch protection flag
+recorded below. No integration is required to create or execute this plan's
 local checks; a connector or GitHub CLI can support the remote readback later.
 
 ## Review evidence and gaps
@@ -25,8 +26,18 @@ local checks; a connector or GitHub CLI can support the remote readback later.
 | Runtime source | Pinned images, resource restrictions, non-root agents, readonly roots, network/mount allowlists and negative fixtures are present. | Pinning is not a vulnerability scan. Tests and source declarations do not certify escape resistance. |
 | Authentication | Alejandro completed MFA and entered personal Canvas; recent invalid TOTP attempts and an incomplete OAuth continuation were distinguished. | Root cause of the lost continuation is unresolved; Kimberly and repeated phone/browser acceptance are incomplete. |
 | Telemetry | Synthetic pipeline verifies token metrics, traces, logs and privacy canaries after recovery. | Household relays bypass LiteLLM; security-event retention and full family correlation need separate acceptance. |
-| Repository enforcement | Local hooks run the complete gate; a least-privilege GitHub workflow is prepared. | The workflow has not run on GitHub and required-check/branch settings are not verified. |
+| Repository enforcement | Local hooks run the complete gate; a least-privilege GitHub workflow is prepared. | The workflow has not run on GitHub. The public API reports `main.protected: false`; detailed access/security settings are not visible without authentication. |
 | Recovery | Encrypted identity backup, rewrapped key and isolated SQL restore were exercised. | Full application decryption/login/MFA, user data and host disaster recovery remain pending. |
+
+## Remote readback — October 28, 2026
+
+Unauthenticated GET requests to GitHub's repository and `/branches/main` API
+reported a public repository, default branch `main`, and `protected: false`.
+This is a concrete protection gap, not a completed permissions audit. The public
+response did not expose `security_and_analysis`; secret-scanning/alert settings,
+collaborator roles and administrative bypass permissions remain unverified.
+The SSH dry run confirms the prepared ref can be proposed for update; it does not
+turn on a required check or prove that all remote safeguards are enabled.
 
 ## Prioritized work
 

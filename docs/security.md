@@ -43,7 +43,7 @@ Each report records commit, hash of analyzed files, configuration,
 version and hash of the binary. The rules do not consult an API or a model. To
 repeat a result, exactly those same inputs are needed. The gate can be run explicitly and is included in the installed pre-commit hook.
 Enable the hook per checkout with `mise run repo:hooks:install`; see
-[Git commit validation](git_hooks.md). A pinned, least-privilege CI workflow is prepared under `.github/workflows/validate.yml`; its first remote run and required-check branch protection are not verified yet. It does not guarantee finding secrets of any format.
+[Git commit validation](git_hooks.md). A pinned, least-privilege CI workflow is prepared under `.github/workflows/validate.yml`; its first remote run is not verified yet, and the public API reports main as unprotected. It does not guarantee finding secrets of any format.
 
 ## Proposed Controls, Still Not Installed or Executed
 
@@ -54,7 +54,7 @@ Enable the hook per checkout with `mise run repo:hooks:install`; see
 | Container Images | Trivy over existing digests; pin the scanner and vulnerability database |
 | Infrastructure Configuration | Trivy config for supported formats; custom tests for our policies of Compose/Collector |
 | Application Controls | Versioned OWASP ASVS 5.0.0 matrix and tests for authentication, permissions, isolation, redaction and auditing |
-| Publishing | CI runs the current local gate when published; first remote run and branch protection remain unverified. Additional scanners are planned, not active. |
+| Publishing | CI runs the current local gate when published; first remote run is pending and main currently reports no protection. Additional scanners are planned, not active. |
 
 A hash or a scanner version does not fix the vulnerability database. We must
 preserve its snapshot/digest and date to reproduce SCA; refresh it deliberately
