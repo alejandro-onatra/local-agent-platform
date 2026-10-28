@@ -6,6 +6,7 @@ This log records implementation decisions and scoped validation evidence. Entrie
 
 - Read the authenticated first-run logs: three native PKI/gateway tests failed because the Ubuntu 24.04 OpenSSL did not match the pinned 3.5.5 host contract.
 - Select the officially available Ubuntu 26.04 runner, add a fail-fast PKI tooling check and pin checkout v6 by commit. Keep the actual PKI version guard and all native tests.
+- Scope the CI preflight to target OS and the unchanged native crypto version guards; do not require desktop/offline-ceremony tools on a hosted runner. Keep full host ceremony requirements unchanged.
 - The linked account has repository administrator permissions, but the connector exposes no administrative write endpoint. Browser configuration requires the owner's separate GitHub sign-in; no branch/security setting is claimed changed yet.
 
 **October 28, 2026 — prepare repository publication and security hardening**

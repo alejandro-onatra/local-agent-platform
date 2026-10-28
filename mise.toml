@@ -122,3 +122,7 @@ run = "bash scripts/gateway/environment.sh check"
 [tasks."env:household:setup"]
 description = "Prepare separate 2 GiB workspaces/512 MiB state filesystems for alejandro and kimberly, cache pinned images and validate native modules; no users or service startup. Requires sudo."
 run = "bash scripts/household/run.sh environment"
+
+[tasks."env:ci:check"]
+description = "Verify the target runner OS and pinned native crypto tools; no desktop ceremony, keys or services."
+run = "bash scripts/environment/check-ci.sh"
