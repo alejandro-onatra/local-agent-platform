@@ -2,6 +2,15 @@
 
 This log records implementation decisions and scoped validation evidence. Entries are not a commit log: several changes accumulated after the October 7 Git baseline before being prepared together for publication. Deployment and acceptance statements apply only to their stated checks and dates.
 
+**October 28, 2026 — prepare repository publication and security hardening**
+
+- Record accumulated work in local commits with the complete hook sequence; do not invent historical incremental commits or publish runtime data.
+- Reject forced private backup/key-container paths, including absent working-copy files still staged in Git; cover the bypass with real temporary-repository tests.
+- Prepare GitHub validation using full history, a commit-pinned checkout, checksum-verified mise and a read-only token; first remote execution and branch protection remain unverified.
+- Query OSV for PyYAML 6.0.3 in the host uv.lock: no advisories returned on this date. This excludes container/OS/tool dependencies and is not a frozen database scan.
+- Publish a scoped security policy and a prioritized hardening plan; retain incomplete OAuth, effective egress, per-user dynamic acceptance, recovery and telemetry gaps.
+- Remove trailing spaces from copied MIT license comment headers in test fixtures; keep reference function bodies unchanged.
+
 **October 28, 2026 — recover services and repair local Qwen thinking control**
 
 - Remount existing bounded household filesystems before starting stopped services. Preserve accounts, keys, certificates and user data; do not start disposable isolation pilots.

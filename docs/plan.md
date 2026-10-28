@@ -1,5 +1,8 @@
 # Implementation Plan — Model-Agnostic Local Agent Platform
 
+Prioritized security work now has a separate [hardening plan](hardening_plan.md),
+with publication, identity/isolation, egress, supply-chain and recovery acceptance.
+
 ## Current delivery checkpoint — October 28, 2026
 
 Implemented and partially accepted: separate bounded household instances, private

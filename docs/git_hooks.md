@@ -48,11 +48,26 @@ mise exec -- task repo:commit:check
 ```
 
 These hooks are local safeguards. Git can bypass them with `--no-verify`; CI and
-branch protection must enforce the same checks for a shared repository. Those
-remote enforcement settings are not enabled yet.
+branch protection must enforce the same checks for a shared repository. A remote
+workflow is now prepared; branch enforcement and the first GitHub run remain
+unverified.
 
 
 The optional `repo:hooks:test` exercises actual commits in a disposable clone:
 clean changes pass; synthetic secrets, unsafe wildcard Compose exposure and
 invalid shell syntax are rejected. It never commits to the project checkout.
 The hook uses source guards only; it does not connect to the household portal.
+
+## GitHub validation workflow
+
+`.github/workflows/validate.yml` uses the same `repo:commit:check` gate on main
+pushes, pull requests and manual runs. It fetches complete history, does not
+persist checkout credentials, gives the job only read access to contents, and
+uses the existing checksum-verified pinned mise bootstrap plus locked tools.
+It does not deploy, use runtime credentials or request an OIDC token. The hosted
+Ubuntu runner image itself is maintained by GitHub, not frozen by this repository.
+
+The workflow file being present does not make it a required check. After its first
+successful remote run, verify required `Repository validation` checks, review
+requirements and bypass/force-push rules through authenticated GitHub settings.
+A pull request's success is not evidence of deployed tenant or firewall controls.

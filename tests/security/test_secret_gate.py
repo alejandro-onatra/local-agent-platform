@@ -75,6 +75,19 @@ class SecretGateTests(unittest.TestCase):
         self.assertFalse(report["findings"]["staged_content"])
         self.assertTrue(report["findings"]["local_history_all_refs"])
 
+    def test_force_added_private_archives_and_key_containers_are_rejected(self):
+        for suffix in ('.age','.agekey','.p12','.pfx','.KEY'):
+            with self.subTest(suffix=suffix):
+                name='private'+suffix
+                (self.repo/'.gitignore').write_text('.env\nartifacts/\n'+name+'\n')
+                path=self.repo/name;path.write_bytes(b'synthetic binary container; no real credentials')
+                self.git('add','--force',name)
+                self.run_gate(2)
+                # The index still contains the file even after working-copy removal.
+                path.unlink()
+                self.run_gate(2)
+                self.git('rm','--cached','--',name)
+
     def test_symlink_fails_closed(self):
         (self.repo / "external-link").symlink_to(ROOT / "README.md")
         self.run_gate(2)

@@ -43,7 +43,7 @@ Each report records commit, hash of analyzed files, configuration,
 version and hash of the binary. The rules do not consult an API or a model. To
 repeat a result, exactly those same inputs are needed. The gate can be run explicitly and is included in the installed pre-commit hook.
 Enable the hook per checkout with `mise run repo:hooks:install`; see
-[Git commit validation](git_hooks.md). CI and branch protection do not enforce it yet. It does not guarantee finding secrets of any format.
+[Git commit validation](git_hooks.md). A pinned, least-privilege CI workflow is prepared under `.github/workflows/validate.yml`; its first remote run and required-check branch protection are not verified yet. It does not guarantee finding secrets of any format.
 
 ## Proposed Controls, Still Not Installed or Executed
 
@@ -54,7 +54,7 @@ Enable the hook per checkout with `mise run repo:hooks:install`; see
 | Container Images | Trivy over existing digests; pin the scanner and vulnerability database |
 | Infrastructure Configuration | Trivy config for supported formats; custom tests for our policies of Compose/Collector |
 | Application Controls | Versioned OWASP ASVS 5.0.0 matrix and tests for authentication, permissions, isolation, redaction and auditing |
-| Publishing | CI gate with pinned scanners and branch protection; not enabled yet |
+| Publishing | CI runs the current local gate when published; first remote run and branch protection remain unverified. Additional scanners are planned, not active. |
 
 A hash or a scanner version does not fix the vulnerability database. We must
 preserve its snapshot/digest and date to reproduce SCA; refresh it deliberately
@@ -128,3 +128,18 @@ The owner selected host containers. The optional [hardening profile and runtime
 checks](container_isolation.md) add readonly-root preparation and effective process/
 cgroup observations. They do not certify tenant separation, persistent disk limits
 or egress isolation; all household SEC acceptance remains pending.
+
+## Publication hardening checkpoint — October 28, 2026
+
+The publishable-path gate now rejects `.age`, `.agekey`, `.p12` and `.pfx`
+containers (case-insensitive suffix matching), including forced index additions
+whose working copy is absent. This is a path policy, not decryption or binary
+secret analysis. Historical encrypted archives remain outside Gitleaks' full
+content-analysis guarantee. Tests use disposable Git repositories and synthetic
+data only.
+
+An OSV API review returned no advisories for PyYAML 6.0.3, the only registry
+package in the host `uv.lock`, on October 28. Container/OS/tool vulnerability
+scans and full SAST are still pending; this result is not a whole-platform scan.
+See [the prioritized hardening plan](hardening_plan.md) for evidence, remaining
+risks, acceptance criteria and required GitHub settings readback.

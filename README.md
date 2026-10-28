@@ -43,6 +43,8 @@ To prepare Docker/NVIDIA Container Toolkit on a new host, review `mise run env:p
 - [Environment, mise, uv, and Task](docs/environment.md)
 - [Git commit validation](docs/git_hooks.md)
 - [Secret detection and security coverage](docs/security.md)
+- [Security review and prioritized hardening](docs/hardening_plan.md)
+- [Publication scope and validation limits](docs/release_review.md)
 - [Automated SEC checks and their limits](docs/security_checks.md)
 - [Household setup, invitations and operational limits](docs/household_access.md)
 - [Household LAN requirements, MFA, isolation and key custody](docs/lan_access.md)

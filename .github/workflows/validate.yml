@@ -1,0 +1,39 @@
+name: Repository validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repository-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Repository validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      PYTHONOPTIMIZE: '0'
+    steps:
+      - name: Check out complete history without persisted credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install checksum-verified pinned mise
+        run: |
+          bash scripts/bootstrap/install-mise.sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Prepare locked environment
+        run: |
+          mise trust mise.toml
+          mise install --locked
+          mise run env:python:setup
+      - name: Run the same validation as local commits
+        run: mise exec -- task repo:commit:check

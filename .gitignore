@@ -8,6 +8,8 @@ mise.local.toml
 # Native backup identities and ciphertext belong outside this checkout.
 *.agekey
 *.age
+*.p12
+*.pfx
 
 # Local outputs and model weights
 artifacts/

@@ -26,7 +26,7 @@ def forbidden(name):
     return (path.parts[0] in {"artifacts", "models", ".venv", ".idea", "node_modules"}
             or path.name == "mise.local.toml"
             or (path.name.startswith(".env") and path.name != ".env.example")
-            or path.suffix in {".key", ".pem", ".gguf", ".safetensors"})
+            or path.suffix.lower() in {".key", ".pem", ".age", ".agekey", ".p12", ".pfx", ".gguf", ".safetensors"})
 
 
 def scan(tool, scratch, label, command):
@@ -79,9 +79,12 @@ def main():
             source = ROOT / name
             if source.is_symlink():
                 raise RuntimeError(f"Symlink requires explicit review: {name}")
-            if not source.exists():  # Tracked deletion; history/staged scans still cover it.
+            # Reject an unsafe index path even if its working copy was removed.
+            if forbidden(name):
+                raise RuntimeError(f"Unexpected publishable path: {name}")
+            if not source.exists():  # Other tracked deletions still receive history/staged scans.
                 continue
-            if forbidden(name) or not source.is_file():
+            if not source.is_file():
                 raise RuntimeError(f"Unexpected publishable path: {name}")
             data = source.read_bytes()
             target = candidate / name
