@@ -1,0 +1,13 @@
+# Derive the reviewed local Compose, replacing only these explicit boundaries.
+schema_version: 1
+purpose: isolated_identity_restore_rehearsal
+project: agent-platform-identity-rehearsal
+listen:
+  address: 127.0.0.2
+  port: 19000
+state_tmpfs_mib: 768
+networks_internal:
+  - database
+  - frontend
+logging: none
+reuse_live_state: false

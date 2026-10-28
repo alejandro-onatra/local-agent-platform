@@ -20,11 +20,13 @@ replace a different existing hooks path. It does not alter global Git settings.
 
 1. Repository files and shell syntax (`mise run repo:check`).
 2. Existing Python environment and uv lock consistency (`mise run env:python:check`).
-3. Secrets in publishable files, staged content and local history (`security:secrets`).
-4. LLM validation tests (`repo:test`).
-5. Proxy authentication, routing and stream parsing tests (`observability:test`).
-6. Secret gate acceptance tests using disposable Git repositories (`security:test`).
-7. Synthetic workflow routing, denial, approval and resumption checks (`workflow:test`).
+3. Offline Compose baseline regression guards (`security:config`); this is not SEC deployment approval.
+4. Secrets in publishable files, staged content and local history (`security:secrets`).
+5. Host inventory privacy/capacity regression tests (`repo:environment:test`).
+6. LLM validation tests (`repo:test`).
+7. Proxy authentication, routing and stream parsing tests (`observability:test`).
+8. Secret gate and SEC source/TLS guard tests using disposable fixtures (`security:test`).
+9. Synthetic workflow routing, denial, approval and resumption checks (`workflow:test`).
 
 Commands run sequentially. Any failure returns a nonzero status and aborts the
 commit. The hook does not install dependencies, invoke sudo, download models or
@@ -48,3 +50,9 @@ mise exec -- task repo:commit:check
 These hooks are local safeguards. Git can bypass them with `--no-verify`; CI and
 branch protection must enforce the same checks for a shared repository. Those
 remote enforcement settings are not enabled yet.
+
+
+The optional `repo:hooks:test` exercises actual commits in a disposable clone:
+clean changes pass; synthetic secrets, unsafe wildcard Compose exposure and
+invalid shell syntax are rejected. It never commits to the project checkout.
+The hook uses source guards only; it does not connect to the household portal.

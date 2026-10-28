@@ -1,0 +1,53 @@
+from django.utils.timezone import now
+from django.contrib.auth.password_validation import validate_password
+from authentik.core.models import User, Group
+from authentik.flows.views.executor import SESSION_KEY_PLAN
+# Prompt validation supplies prompt_data, not the binding-policy flow_plan context.
+http_request = getattr(request, "http_request", None)
+session = getattr(http_request, "session", {})
+plan = session.get(SESSION_KEY_PLAN)
+invite = plan.context.get("invitation") if plan else None
+if not invite or not plan.context.get("invitation_in_effect"):
+    ak_message("No se puede continuar este registro. Solicita una invitación nueva si cerraste la sesión.")
+    return False
+route = getattr(http_request, "resolver_match", None)
+if not route or route.kwargs.get("flow_slug") != "family-enroll-__USER__":
+    ak_message("Este registro no corresponde a la invitación abierta. Usa el enlace más reciente.")
+    return False
+if (invite.name != "family-invite-__USER__" or not invite.single_use
+    or not invite.expiring or not invite.expires or invite.expires <= now()
+    or not invite.flow or invite.flow.slug != "family-enroll-__USER__"
+    or plan.flow_pk != invite.flow.pk.hex):
+    ak_message("La invitación no es válida o ha vencido. Solicita una nueva.")
+    return False
+group = Group.objects.get(name="family-group-__USER__")
+generation = invite.fixed_data.get("generation")
+if (group.is_superuser or not isinstance(generation, str) or len(generation) != 64
+    or generation != group.attributes.get("invitation_generation")):
+    ak_message("La invitación fue reemplazada o revocada. Usa el correo más reciente.")
+    return False
+if User.objects.filter(username="__USER__").exists():
+    ak_message("La cuenta ya existe. Entra con tu contraseña para continuar la configuración.")
+    return False
+data = request.context.get("prompt_data", {})
+password = data.get("password", "")
+if not isinstance(password, str) or len(password) < 16:
+    ak_message("La contraseña debe tener al menos 16 caracteres. Puedes usar una frase larga.")
+    return False
+if password != data.get("password_repeat"):
+    ak_message("Las contraseñas no coinciden. Revisa la confirmación.")
+    return False
+try:
+    validate_password(password, User(username="__USER__", name="__USER__"))
+except Exception:
+    ak_message("La contraseña no cumple la validación de seguridad. Prueba otra frase larga que no incluya tu nombre.")
+    return False
+# Discard all client-supplied identity, role, group and attribute fields.
+plan.context["prompt_data"] = {}
+plan.context.pop("groups", None)
+data.clear()
+data.update(username="__USER__", name="__USER__", password=password,
+            attributes={"agent_platform_managed": "household-v1"})
+# Consumed only by FlowExecutor after all remaining stages, including TOTP/login.
+plan.context["redirect"] = "__APPLICATION_URL__"
+return True

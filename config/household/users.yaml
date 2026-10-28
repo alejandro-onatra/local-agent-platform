@@ -1,0 +1,8 @@
+# Individual application accounts, not host/Linux users or administrators.
+schema_version: 1
+purpose: household_user_instances
+host_reserve_gib: 20
+volumes_mib: {workspace: 2048, state: 512}
+tenants:
+  - {id: alejandro, uid: 200101, gid: 200101, https_port: 8444}
+  - {id: kimberly, uid: 200102, gid: 200102, https_port: 8445}

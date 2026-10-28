@@ -1,0 +1,12 @@
+# Synthetic acceptance only. These slots are not family identities or application instances.
+# Paths are fixed in the implementation, outside Git/CloudDrive; no path overrides.
+schema_version: 1
+purpose: synthetic_storage_probe
+# Leave at least this much free on the backing filesystem before allocation.
+host_reserve_gib: 20
+# Four fixed-size ext4 images: 512 MiB total. Metadata reduces usable capacity.
+# No sparse files, automatic expansion, fstab edits or existing-data migration.
+volumes_mib: {workspace: 128, state: 128}
+tenants:
+  - {id: probe-a, uid: 200001, gid: 200001}
+  - {id: probe-b, uid: 200002, gid: 200002}

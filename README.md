@@ -1,6 +1,6 @@
 # Local Agent Platform
 
-A model-agnostic local agent platform with OpenHands, Ollama, Docker Compose, and OpenTelemetry observability. The current implementation provides GPU-backed inference, agent execution, authenticated model routing, and provisioned Grafana dashboards. An offline reference runtime now exercises interchangeable provider contracts, default-deny policy and explicit synthetic approval. Persistent state, live runtime telemetry and multi-user deployment remain planned extensions.
+A model-agnostic local agent platform with OpenHands, Ollama, Docker Compose, and OpenTelemetry observability. The current implementation provides GPU-backed inference, agent execution, authenticated model routing, and provisioned Grafana dashboards. An offline reference runtime now exercises interchangeable provider contracts, default-deny policy and explicit synthetic approval. Separate household instances and Authentik/Caddy LAN access are implemented. Complete security acceptance and end-to-end household telemetry remain pending.
 
 ## Getting started
 
@@ -28,7 +28,8 @@ To prepare Docker/NVIDIA Container Toolkit on a new host, review `mise run env:p
 - `Taskfile.yml`: service operations, code tests, and commit validation through short task calls.
 - `scripts/bootstrap/`, `scripts/environment/`, `scripts/host/`, `scripts/repo/`: implementation of bootstrap, environment, host, and repository checks.
 - `scripts/llm/`, `scripts/openhands/`, `scripts/observability/`: service deployment and functional checks.
-- `scripts/security/`: redacted secret detection and acceptance tests.
+- `scripts/security/`: redacted secret detection, Compose regression guards and SEC readiness checks.
+- `config/security/`: versioned SEC evidence requirements.
 - `infra/`: host/service configuration, pinned versions, image digests, and Grafana provisioning.
 - `docs/`: architecture, operating procedures, and recorded validation evidence.
 - `artifacts/`: local reports and workspaces, excluded from Git.
@@ -42,16 +43,39 @@ To prepare Docker/NVIDIA Container Toolkit on a new host, review `mise run env:p
 - [Environment, mise, uv, and Task](docs/environment.md)
 - [Git commit validation](docs/git_hooks.md)
 - [Secret detection and security coverage](docs/security.md)
+- [Automated SEC checks and their limits](docs/security_checks.md)
+- [Household setup, invitations and operational limits](docs/household_access.md)
+- [Household LAN requirements, MFA, isolation and key custody](docs/lan_access.md)
+- [Phase-A host inventory and isolation decision](docs/architecture/adr-003-household-isolation.md)
+- [Host-container hardening, runtime checks and rollback](docs/container_isolation.md)
 - [Docker/GPU installation](docs/docker_gpu.md)
 - [Local LLM inference](docs/local_llm.md)
+- [Model tiers, browser onboarding and native connection diagnosis](docs/model_catalog.md)
+- [Planned owner Internet switch and egress acceptance](docs/internet_access.md)
 - [Local OpenHands](docs/openhands.md)
 - [Observability: deployment, profiles, logs, and privacy](docs/observability.md)
+- [Household connection maps, published ports and Docker networks](docs/architecture/household_gateway.md)
 - [Observability diagrams](docs/architecture/observability_diagrams.md)
 - [ADR 001: existing integrations](docs/architecture/adr-001-observability.md)
 - [GPU diagnostics](docs/diagnostics/gpu-2026-10-04.md)
 - [Project scope and warranty](docs/project_scope.md)
 
 ## Current validation status
+
+As of October 28, 2026, Alejandro has completed a browser MFA login into his
+personal OpenHands instance. Kimberly's separate instance and model settings are
+prepared; her account enrollment and browser acceptance remain pending. The
+restart recovery restored bounded storage mounts, identity, agents, the gateway
+and observability. The synthetic telemetry test passed after refreshing stale
+Collector log mounts and restoring Ollama's declared internal model network.
+
+The local Qwen profiles now use `reasoning_effort: none` for Ollama's
+OpenAI-compatible endpoint. A bounded direct request completed in 5.66 seconds;
+this is not an OpenHands latency benchmark. Existing conversations retain their
+settings; validate the change in a new conversation. Household agents currently
+use their local Ollama relays directly, so their requests do not pass through
+LiteLLM telemetry. See [release review](docs/release_review.md) for scope and gaps.
+
 
 The host GPU/Docker stack and Ollama/Qwen3 passed the recorded checks; the current model context is 32768 and GPU residency was verified. OpenHands completed the arithmetic demo and Decimal bug repair with independent acceptance checks. The repair required guidance after an invalid tool call.
 

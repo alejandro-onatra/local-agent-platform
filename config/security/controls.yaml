@@ -1,0 +1,50 @@
+# Required evidence, not operator-supplied pass/fail declarations.
+# Source guards preserve today's loopback baseline. Deployed controls need live tests.
+schema_version: 1
+portal: portal.home.arpa
+controls:
+  SEC-01:
+    title: LAN exposure and effective firewall
+    required: [compose.loopback, live.lan_firewall_ipv4_ipv6, manual.router_exposure_review]
+  SEC-02:
+    title: Verified HTTPS and client trust
+    required: [tls.root_fingerprint, tls.portal, live.device_dns_trust]
+  SEC-03:
+    title: Individual identities and administrator separation
+    required: [live.registration_denied, live.user_admin_denied, live.disabled_user_denied]
+  SEC-04:
+    title: Mandatory MFA and recovery
+    required: [live.mfa_enrollment_required, live.invalid_factor_denied, live.recovery_one_use]
+  SEC-05:
+    title: Default-deny application authorization
+    required: [live.cross_user_http_denied, live.cross_user_websocket_denied, live.forged_identity_denied]
+  SEC-06:
+    title: Separate state, workspace and networks
+    required: [live.tenant_mount_inspection, live.cross_user_agent_canary_denied]
+  SEC-07:
+    title: Host protection and sandbox limits
+    required: [compose.hardening, compose.hardening_candidate, compose.mounts, live.container_uid_mounts, manual.host_isolation_decision]
+  SEC-08:
+    title: Agent egress and tool authorization
+    required: [compose.agent_network, live.agent_egress_denied, live.tool_injection_denied]
+  SEC-09:
+    title: Secret and private-key custody
+    required: [compose.secret_delivery, secrets.scan, live.key_access_permissions, manual.offline_root_custody]
+  SEC-10:
+    title: Sessions and revocation
+    required: [live.cookies_expiry, live.logout_revocation, live.login_throttling]
+  SEC-11:
+    title: Resource bounds and shared inference
+    required: [compose.resources, live.disk_limits, live.fair_inference_load]
+  SEC-12:
+    title: Pinned and maintained software
+    required: [compose.digests, live.dated_vulnerability_scan, live.upgrade_rollback]
+  SEC-13:
+    title: Private security audit
+    required: [live.auth_audit_privacy, live.audit_access_retention]
+  SEC-14:
+    title: Encrypted backups and restoration
+    required: [live.backup_restore, manual.separate_encrypted_root_copies]
+  SEC-15:
+    title: Renewal and incident recovery
+    required: [live.certificate_renewal_failure, live.old_trust_removed, manual.incident_exercise]

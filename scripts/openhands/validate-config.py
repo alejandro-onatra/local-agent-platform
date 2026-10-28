@@ -28,7 +28,14 @@ assert not s.get('privileged') and s.get('network_mode') != 'host'
 assert s['environment']['OH_TELEMETRY_EXPORTER'] == 'none'
 assert s['environment']['OH_WORKSPACE_PATH'] == '/projects/demo'
 volumes = s['volumes']
-assert {v['target'] for v in volumes} == {'/projects', '/home/openhands/.openhands'}
+expected = {'/projects', '/home/openhands/.openhands'}
+launcher = [v for v in volumes if v['target'] == '/usr/local/bin/openhands-agent-server']
+if launcher:
+    expected.add('/usr/local/bin/openhands-agent-server')
+    assert len(launcher) == 1 and launcher[0]['type'] == 'bind'
+    assert launcher[0].get('read_only') is True and s.get('read_only') is True
+    assert Path(launcher[0]['source']) == r/'scripts/openhands/start-agent-server.py'
+assert len(volumes) == len(expected) and {v['target'] for v in volumes} == expected
 workspace = next(v for v in volumes if v['target'] == '/projects')
 assert workspace['type'] == 'bind'
 assert Path(workspace['source']) == r/'artifacts/openhands/projects'

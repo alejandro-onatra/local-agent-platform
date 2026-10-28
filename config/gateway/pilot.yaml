@@ -1,0 +1,13 @@
+# Household Authentik + individually authorized OpenHands origins.
+schema_version: 1
+purpose: household_users_https
+hostnames: [login.home.arpa, portal.home.arpa]
+https_port: 8443
+public_trust_port: 8080
+leaf_lifetime_hours: 720
+root_fingerprint_sha256: e08db0333e0e5efee452e90a56688ecf3f02157496541e56372638f48762d8bc
+intermediate_fingerprint_sha256: d83278b69d446d697f5a14fc1f226d9cd7be670c65e2b3cbf66f6e1939d2ef1e
+root_key_mounted: false
+access_logs: false
+openhands_routes: true
+renewal: supervised_task

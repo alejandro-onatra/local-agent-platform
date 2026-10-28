@@ -5,6 +5,9 @@
 mise.local.toml
 *.pem
 *.key
+# Native backup identities and ciphertext belong outside this checkout.
+*.agekey
+*.age
 
 # Local outputs and model weights
 artifacts/

@@ -1,0 +1,172 @@
+/* Native Authentik brand CSS: local assets only, light minimal login. */
+:root, :host {
+    color-scheme: light;
+    --pf-global--primary-color--100: #2458c5;
+    --pf-global--primary-color--200: #19469f;
+    --pf-global--link--Color: #2458c5;
+    --ak-c-login--MaxWidth: 30rem;
+    --ak-c-login__main--BackgroundColor: #ffffff;
+    --ak-c-login__main--Color: #182235;
+    --ak-c-login__main--BoxShadow: 0 16px 48px rgb(24 34 53 / 8%);
+    --ak-c-login__footer--Color: #526176;
+    --ak-c-flow-executor__locale-select--Color: #526176;
+    --ak-global--BackgroundContrastFilter: none;
+    --ak-c-login--spacer: 2rem;
+}
+body {
+    background: #f5f7fb !important;
+    color: #182235;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.pf-c-login, .pf-c-background-image {
+    background: #f5f7fb !important;
+    background-image: none !important;
+}
+.pf-c-background-image::before {
+    background-image: none !important;
+    background-color: #f5f7fb;
+}
+ak-flow-card, .pf-c-login__main {
+    background-color: #ffffff;
+    color: #182235;
+    border: 1px solid #e0e6ef;
+    border-radius: 18px;
+    box-shadow: 0 16px 48px rgb(24 34 53 / 8%);
+}
+.pf-c-button.pf-m-primary {
+    border-radius: 8px;
+    font-weight: 600;
+}
+input, select { border-radius: 7px; }
+/* Native components adopt this sheet independently; use their exported tokens. */
+[part="locale-select"] {
+    --pf-global--Color--100: #526176 !important;
+    --ak-c-flow-executor__locale-select--Color: #526176 !important;
+    --ak-c-locale-select--label--Color: #526176;
+    color: #526176 !important;
+    filter: none !important;
+    text-shadow: none;
+    inset-inline-start: auto;
+    inset-inline-end: 1rem;
+}
+.pf-c-login__header {
+    position: relative;
+    padding: 1.5rem 2rem;
+    margin-top: 0 !important;
+}
+.pf-c-login__header::before {
+    content: "Local Agent Platform";
+    padding-inline-start: 2rem;
+    color: #182235;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+/* Local vector mark: three layers, no image requests or external fonts.
+   The even-odd inner diamond keeps the top layer outlined. */
+.pf-c-login__header::after {
+    content: "";
+    position: absolute;
+    inset-inline-start: 2rem;
+    inset-block-start: 1.4rem;
+    width: 24px;
+    height: 24px;
+    background: #2458c5;
+    clip-path: path(evenodd, "M12 1 L23 7 L12 13 L1 7 Z M12 3.4 L5.4 7 L12 10.6 L18.6 7 Z M1 10 L12 16 L23 10 L23 12.4 L12 18.4 L1 12.4 Z M1 15 L12 21 L23 15 L23 17.4 L12 23.4 L1 17.4 Z");
+    pointer-events: none;
+}
+/* Keep provider attribution visible, subordinate to the product heading. */
+.pf-c-login__main-header.pf-c-brand {
+    padding: 1.5rem 2rem 0.5rem;
+    justify-content: flex-start;
+}
+.pf-c-login__main-header.pf-c-brand .branding-logo {
+    width: 6rem;
+    max-width: 6rem;
+    height: auto;
+}
+.pf-c-login__main-header:not(.pf-c-brand) {
+    padding: 1rem 2rem;
+}
+.pf-c-login__main-footer {
+    padding-bottom: 2rem;
+}
+.pf-c-login__footer {
+    filter: none !important;
+    text-shadow: none;
+}
+.pf-c-form-control {
+    min-height: 2.8rem;
+    border: 1px solid #c8d2e0;
+    background: #ffffff;
+    color: #182235;
+}
+.pf-c-button.pf-m-primary {
+    min-height: 2.8rem;
+}
+:focus-visible { outline: 3px solid #2458c5; outline-offset: 3px; }
+/* Error messages, TOTP instructions and native form controls stay visible. */
+
+/* Approved "Panel lateral" adaptation: decorative copy only, native form on the right.
+   Native layout falls back to one column on small/short screens. */
+.pf-c-login[data-layout="content_right"]::before,
+.pf-c-login[data-layout="content_right"]::after {
+    content: none;
+}
+@media (min-width: 56rem) and (min-height: 30rem) {
+    .pf-c-login[data-layout="content_right"] {
+        grid-template-columns: minmax(1.5rem, 1fr) minmax(0, 24rem) minmax(0, 26rem) minmax(1.5rem, 1fr);
+        grid-template-rows: auto minmax(min-content, 1fr) auto;
+        grid-template-areas: "header header header header" ". aside main ." "footer footer footer footer";
+        column-gap: 2.5rem;
+    }
+    .pf-c-login[data-layout="content_right"]::before {
+        content: "Trabaja con tus agentes,\A desde casa.";
+        white-space: pre-line;
+        grid-area: aside;
+        align-self: center;
+        height: auto;
+        z-index: 0;
+        margin-block-end: 9rem;
+        color: #182235;
+        font-size: clamp(1.8rem, 2.6vw, 2.2rem);
+        font-weight: 500;
+        line-height: 1.2;
+        letter-spacing: -0.035em;
+        pointer-events: none;
+        background: transparent !important;
+        box-shadow: none;
+    }
+    .pf-c-login[data-layout="content_right"]::after {
+        content: "Un lugar para crear, explorar\A y continuar tus proyectos.\A\A Tus archivos, en tu propio espacio.";
+        white-space: pre-line;
+        grid-area: aside;
+        align-self: center;
+        height: auto;
+        z-index: 0;
+        margin-block-start: 5rem;
+        color: #526176;
+        font-size: 0.9rem;
+        line-height: 1.8;
+        pointer-events: none;
+    }
+    .pf-c-login[data-layout="content_right"] .pf-c-login__main {
+        align-self: center;
+        max-width: 26rem;
+        width: 100%;
+        z-index: 1;
+    }
+    .pf-c-login[data-layout="content_right"] .pf-c-login__footer,
+    ak-flow-executor[data-layout="content_right"]::part(footer) {
+        grid-area: footer;
+        justify-self: stretch;
+        align-self: end;
+    }
+}
+
+@media (max-width: 35rem) {
+    .pf-c-login__header { padding: 1.25rem; }
+    .pf-c-login__header::before { font-size: 0.85rem; }
+    .pf-c-login__header::after { inset-inline-start: 1.25rem; inset-block-start: 1.1rem; }
+    .pf-c-login__main { margin-inline: 1rem; width: calc(100% - 2rem); }
+}

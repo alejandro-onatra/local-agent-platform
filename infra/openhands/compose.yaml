@@ -3,7 +3,7 @@ services:
   ollama:
     networks: [default, agent-link]
   openhands:
-    image: ghcr.io/openhands/agent-canvas@sha256:65b9dd60572a8f489d157998637d9aa58ccbc454878eeef62152d67399e962ac
+    image: ghcr.io/openhands/agent-canvas@sha256:ce4526401c08b47d74fd0be5ebf97e8219d6a02955cb6710e8cc3335f01291a6
     platform: linux/amd64
     restart: "no"
     networks: [agent-link]
@@ -14,6 +14,9 @@ services:
       OH_TELEMETRY_EXPORTER: none
       OH_TELEMETRY_CONSENT: "denied"
       DO_NOT_TRACK: "1"
+      # Use bundled public pricing metadata; the agent network has no internet.
+      LITELLM_LOCAL_MODEL_COST_MAP: "true"
+      OPENHANDS_SUPPRESS_BANNER: "1"
       OH_ENABLE_VSCODE: "false"
     volumes:
       - openhands-state:/home/openhands/.openhands

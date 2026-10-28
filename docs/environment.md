@@ -102,3 +102,71 @@ Validation of October 7: preparation/check with uv, environment preview, mise/Ta
 ## Git hooks
 
 Install the versioned hook for each checkout with `mise run repo:hooks:install`; verify it with `mise run repo:hooks:check`. The hook runs the code/security validation sequence from Task on every normal commit. See [Git commit validation](git_hooks.md) for the exact checks and local enforcement limits.
+
+
+## Phase-A household host inventory
+
+`mise run env:lan:inventory` reads CPU/RAM/storage, visible KVM prerequisites and
+local default-route addressing without installation, sudo or network changes.
+It stores addressing only in a local mode-0600 report under excluded artifacts.
+Host containers are the selected boundary; VM/KVM assessment is reported as
+`not_required`. Inventory success does not mean household SEC readiness. Code regressions use Task:
+`mise exec -- task repo:environment:test`. See [ADR 003](architecture/adr-003-household-isolation.md).
+
+Container service hardening and effective runtime inspection are operations in
+Task, not environment installers. See [container isolation](container_isolation.md).
+The inventory does not configure firmware, Docker security or quotas.
+
+
+## Synthetic bounded storage environment
+
+For the initial 2–3-person household, prepare two synthetic identities before
+any real-user migration. `mise run env:storage:plan` inspects ext4, installed
+filesystem tools, unused IDs and free capacity. `env:storage:setup` reserves and
+mounts four private 128 MiB images; `env:storage:check` verifies required mounts
+and ownership. Setup/check require host sudo. Existing host utilities are reused;
+uv dependencies and the tool lock are unchanged. Implementation stays under
+`scripts/storage/`.
+
+Live fill/cross-UID probes use `mise exec -- task storage:accept`; code tests use
+`security:storage:test`. Unmount operation uses `storage:unmount` and preserves
+images. See [procedure, diagram and evidence limits](storage_isolation.md).
+
+
+## Local identity environment preparation
+
+`mise run env:identity:setup` prepares the root-private persistent identity
+storage/credential files outside Git/CloudDrive without starting services. Repeat
+setup validates and preserves existing secrets; incomplete or changed state fails
+closed. `mise run env:identity:check` validates source only. Task owns
+`identity:plan`, `identity:up`, `identity:status`, `identity:check` and `identity:down`.
+See [persistent localhost identity bootstrap](identity_local.md) before applying.
+
+
+## Offline PKI tooling
+
+`mise run env:pki:setup` installs locked Smallstep CLI 0.30.6 and checks the
+existing reviewed OpenSSL 3.5.5 and host utilities. `env:pki:check` only validates
+tools/source. Task owns plan/offline-check/key-creation operations; no keys are
+created by an environment task. See [the owner-run ceremony](pki_ceremony.md).
+
+
+## Household HTTPS gateway tools
+
+`env:gateway:setup` installs locked Caddy and caches its immutable Docker image
+using owner-terminal sudo; it starts no services. `env:gateway:check` validates
+tools/source without credentials. Task owns `gateway:tls:issue`, `gateway:up`,
+`gateway:check` and `gateway:down`. [First LAN login](gateway_login.md).
+
+
+## Personal household storage environment
+
+`mise run env:household:setup` reserves/mounts distinct bounded real-user images,
+checks reserved UIDs, caches the pinned agent/proxy images and prepares reviewed
+control files. It does not create application users or start personal agents.
+Task `household:setup` prepares invitation-only enrollment, starts private
+instances/model defaults and enables the Caddy routes without requesting user
+passwords. Task `household:invite USERNAME=kimberly` issues a 24-hour single-use
+link in a private owner file; the recipient chooses their password and enrolls
+TOTP in the browser. Task `household:invite:revoke` revokes pending enrollment. See the
+[complete user-to-agent runbook](household_access.md).

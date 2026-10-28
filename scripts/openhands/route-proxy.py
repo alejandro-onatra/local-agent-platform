@@ -23,7 +23,7 @@ def profile_llm(profile):
     key = config.get('api_key')
     if not profile.get('api_key_set') or not isinstance(key, str) or not re.fullmatch(r'sk-[a-f0-9]{64}', key):
         raise RuntimeError('Saved profile needs the existing local proxy credential; no value displayed.')
-    # SDK 1.49.6 reuses a registry entry if usage_id already exists.
+    # SDK 1.53.0 reuses a registry entry if usage_id already exists.
     config.update(stream=True, usage_id='proxy-route:' + str(uuid4()))
     return config
 
@@ -40,8 +40,8 @@ def main():
     args = parser.parse_args()
     if not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}', args.profile):
         raise RuntimeError('Invalid saved profile name.')
-    if importlib.metadata.version('openhands-agent-server') != '1.49.6':
-        raise RuntimeError('This repair is validated for the locked agent-server 1.49.6.')
+    if importlib.metadata.version('openhands-agent-server') != '1.53.0':
+        raise RuntimeError('This repair is validated for the locked agent-server 1.53.0.')
     key = Path('/home/openhands/.openhands/agent-canvas/api-key.txt').read_text().strip()
     # Requests stay inside this container. Never follow redirects with credentials.
     class NoRedirect(urllib.request.HTTPRedirectHandler):

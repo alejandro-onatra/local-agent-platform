@@ -9,6 +9,12 @@ python = "3.14.4"
 uv = "0.12.23"
 # Secret detector; bundled rules are pinned by version and binary checksum.
 gitleaks = "8.30.1"
+# Native public-key backup encryption; no private recovery key is kept in Git.
+age = "1.3.2"
+# Stable offline PKI tooling; native CLI name is step.
+"aqua:smallstep/cli" = "0.30.6"
+# Native gateway configuration validation; deployment uses a digest-pinned image.
+caddy = "2.11.7"
 
 # mise activates the project venv; uv installs the dependencies from pyproject.toml.
 [env]
@@ -61,3 +67,58 @@ run = "bash scripts/repo/install-hooks.sh"
 [tasks."repo:hooks:check"]
 description = "Verify this checkout uses the executable versioned pre-commit hook."
 run = "bash scripts/repo/check-hooks.sh"
+
+# Phase-A environment inspection only; no VM allocation or network changes.
+[tasks."env:lan:inventory"]
+description = "Inspect host resources, visible KVM support and LAN networking without changing the host."
+run = "bash scripts/environment/inventory-lan.sh"
+
+# Synthetic storage environment; does not migrate the current single-agent demo.
+[tasks."env:storage:plan"]
+description = "Inspect storage tools and reserve budget for two synthetic fixed-size filesystems per UID; no allocation."
+run = "bash scripts/storage/run.sh plan"
+
+[tasks."env:storage:setup"]
+description = "Prepare/remount 512 MiB of private synthetic ext4 images outside CloudDrive; requires host sudo, preserves existing services/data."
+run = "bash scripts/storage/run.sh setup"
+
+[tasks."env:storage:check"]
+description = "Verify exact pilot backing files, active mounts, UID permissions and capacity; requires host sudo, no writes to filesystems."
+run = "bash scripts/storage/run.sh check"
+
+# Source-only Authentik configuration validation; no identity stack deployment.
+[tasks."env:identity:check"]
+description = "Validate candidate MFA blueprint, pinned images and disposable/persistent/rehearsal sources without Docker or credentials."
+run = "bash scripts/identity/check-source.sh"
+
+# Persistent loopback identity storage and file-based credentials only; starts no service.
+[tasks."env:identity:setup"]
+description = "Prepare root-private local identity storage/credentials outside Git and CloudDrive; preserve existing keys. Requires sudo."
+run = "bash scripts/identity/local.sh setup"
+
+[tasks."env:identity:backup:check"]
+description = "Verify pinned backup encryption tools and Linux descriptor support; no keys or service changes."
+run = "bash scripts/identity/check-backup-tools.sh"
+
+# Offline ceremony tools/source only; no root key or USB writes during setup/check.
+[tasks."env:pki:setup"]
+description = "Install the pinned Smallstep CLI and validate PKI tooling; no key generation, trust or media changes."
+run = "bash scripts/pki/environment.sh setup"
+
+[tasks."env:pki:check"]
+description = "Verify pinned Smallstep and offline ceremony source/host tools without creating keys or changing connectivity."
+run = "bash scripts/pki/environment.sh check"
+
+# HTTPS login gateway; setup caches the exact image but does not start services.
+[tasks."env:gateway:setup"]
+description = "Install locked native Caddy, verify PKI tools and cache the pinned gateway image using host sudo; no service startup or trust installation."
+run = "bash scripts/gateway/environment.sh setup"
+
+[tasks."env:gateway:check"]
+description = "Check gateway source, immutable image declaration and native Caddy/PKI tools; no credentials or Docker needed."
+run = "bash scripts/gateway/environment.sh check"
+
+# Dedicated real-user storage; never repurpose synthetic test images/UIDs.
+[tasks."env:household:setup"]
+description = "Prepare separate 2 GiB workspaces/512 MiB state filesystems for alejandro and kimberly, cache pinned images and validate native modules; no users or service startup. Requires sudo."
+run = "bash scripts/household/run.sh environment"

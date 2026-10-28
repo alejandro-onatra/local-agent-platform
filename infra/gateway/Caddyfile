@@ -1,0 +1,115 @@
+{
+    admin off
+    auto_https off
+    default_sni login.home.arpa
+    persist_config off
+    log {
+        output stderr
+        level ERROR
+    }
+    servers {
+        protocols h1 h2
+    }
+}
+
+https://login.home.arpa:8443, https://__ADDRESS__:8443 {
+    tls /run/gateway/fullchain.crt /run/gateway/server.key
+    @outside not remote_ip __NETWORK__
+    respond @outside 403
+    header X-Content-Type-Options nosniff
+    header Referrer-Policy same-origin
+    # Capture native form proof before stripping untrusted identity assertions.
+    vars authentik_csrf {http.request.header.X-Authentik-CSRF}
+    request_header -X-Authentik-*
+    reverse_proxy agent-platform-identity-local-server-1:9000 {
+        header_up -Forwarded
+        header_up X-Authentik-CSRF {vars.authentik_csrf}
+        header_up -Remote-*
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto https
+        header_up X-Forwarded-Host {http.request.hostport}
+    }
+}
+
+https://portal.home.arpa:8443 {
+    tls /run/gateway/fullchain.crt /run/gateway/server.key
+    respond "Application access is not enabled yet." 503
+}
+
+http://__ADDRESS__:8080 {
+    @outside not remote_ip __NETWORK__
+    respond @outside 403
+    handle /root.crt {
+        root * /run/trust
+        header Content-Type application/x-x509-ca-cert
+        header Content-Disposition "attachment; filename=agent-platform-root.crt"
+        file_server
+    }
+    handle {
+        respond 404
+    }
+}
+
+https://__ADDRESS__:8444 {
+    tls /run/gateway/fullchain.crt /run/gateway/server.key
+    @outside not remote_ip __NETWORK__
+    @wrong_user not header X-Authentik-Username alejandro
+    header Cache-Control no-store
+    route {
+        respond @outside 403
+        request_header -X-Authentik-*
+        request_header -Remote-*
+        request_header -Forwarded
+        reverse_proxy /outpost.goauthentik.io/* agent-platform-identity-local-server-1:9000 {
+            header_up X-Forwarded-Proto https
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Host {http.request.hostport}
+        }
+        forward_auth agent-platform-identity-local-server-1:9000 {
+            uri /outpost.goauthentik.io/auth/caddy
+            copy_headers X-Authentik-Username
+            header_up X-Forwarded-Proto https
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Host {http.request.hostport}
+        }
+        respond @wrong_user 403
+        reverse_proxy agent-platform-household-alejandro-ingress-1:8080 {
+            header_up -X-Authentik-*
+            header_up -Remote-*
+            header_up X-Forwarded-Proto https
+            stream_timeout 5m
+        }
+    }
+}
+
+https://__ADDRESS__:8445 {
+    tls /run/gateway/fullchain.crt /run/gateway/server.key
+    @outside not remote_ip __NETWORK__
+    @wrong_user not header X-Authentik-Username kimberly
+    header Cache-Control no-store
+    route {
+        respond @outside 403
+        request_header -X-Authentik-*
+        request_header -Remote-*
+        request_header -Forwarded
+        reverse_proxy /outpost.goauthentik.io/* agent-platform-identity-local-server-1:9000 {
+            header_up X-Forwarded-Proto https
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Host {http.request.hostport}
+        }
+        forward_auth agent-platform-identity-local-server-1:9000 {
+            uri /outpost.goauthentik.io/auth/caddy
+            copy_headers X-Authentik-Username
+            header_up X-Forwarded-Proto https
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Host {http.request.hostport}
+        }
+        respond @wrong_user 403
+        reverse_proxy agent-platform-household-kimberly-ingress-1:8080 {
+            header_up -X-Authentik-*
+            header_up -Remote-*
+            header_up X-Forwarded-Proto https
+            stream_timeout 5m
+        }
+    }
+}

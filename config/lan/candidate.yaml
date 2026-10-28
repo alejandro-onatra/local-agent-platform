@@ -1,0 +1,13 @@
+# Selected host containers; household SEC acceptance remains pending.
+# Retain the VM budget only as an optional alternative; KVM is not required.
+# Machine addresses, credentials and custody details belong in private local records.
+schema_version: 1
+portal: portal.home.arpa
+decision: host_containers
+recommended_boundary: host_containers
+vm_candidate:
+  vcpus: 4
+  memory_gib: 8
+  disk_gib: 40
+  host_memory_reserve_gib: 8
+  storage_reserve_gib: 20

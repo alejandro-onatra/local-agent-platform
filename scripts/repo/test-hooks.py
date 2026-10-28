@@ -63,6 +63,16 @@ def main():
         assert git(repo, "rev-parse", "HEAD").stdout.strip() == head
         git(repo, "reset", "-q", "HEAD", "--", "unsafe.txt")
         unsafe.unlink()
+        compose = repo / "infra/openhands/compose.yaml"
+        baseline = compose.read_text()
+        unsafe_compose = baseline.replace("127.0.0.1:8000:8080", "0.0.0.0:8000:8080")
+        assert unsafe_compose != baseline
+        compose.write_text(unsafe_compose)
+        git(repo, "add", "infra/openhands/compose.yaml")
+        git(repo, "commit", "-qm", "Rejected unintended network exposure", expected=1)
+        assert git(repo, "rev-parse", "HEAD").stdout.strip() == head
+        compose.write_text(baseline)
+        git(repo, "reset", "-q", "HEAD", "--", "infra/openhands/compose.yaml")
         script = repo / "scripts/repo/check-repo.sh"
         script.write_text(script.read_text() + "\nif\n")
         git(repo, "add", "scripts/repo/check-repo.sh")
@@ -70,7 +80,7 @@ def main():
         assert git(repo, "rev-parse", "HEAD").stdout.strip() == head
     print(json.dumps({"status": "passed", "actual_git_commit_checks": {
         "clean_commit_accepted": True, "secret_commit_rejected_and_redacted": True,
-        "invalid_shell_commit_rejected": True, "existing_hooks_path_preserved": True},
+        "unsafe_compose_commit_rejected": True, "invalid_shell_commit_rejected": True, "existing_hooks_path_preserved": True},
         "scope": "Disposable clone; project history is untouched"}, indent=2))
 
 

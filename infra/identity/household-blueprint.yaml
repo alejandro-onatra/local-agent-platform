@@ -1,0 +1,271 @@
+# Candidate for a new dedicated identity stack only; never auto-apply to an existing IdP.
+# Empty groups deliberately deny pilot access until supervised account assignment.
+version: 1
+metadata:
+  name: Household isolated pilot access
+  labels:
+    blueprints.goauthentik.io/instantiate: 'false'
+entries:
+- id: login
+  model: authentik_flows.flow
+  identifiers:
+    slug: household-login
+  attrs:
+    name: Household login
+    title: Local Agent Platform
+    designation: authentication
+    authentication: none
+    denied_action: message
+- id: authorize
+  model: authentik_flows.flow
+  identifiers:
+    slug: household-authorize
+  attrs:
+    name: Household authorize
+    title: Local Agent Platform
+    designation: authorization
+    authentication: require_authenticated
+    denied_action: message
+- id: logout
+  model: authentik_flows.flow
+  identifiers:
+    slug: household-logout
+  attrs:
+    name: Household logout
+    title: Local Agent Platform
+    designation: invalidation
+    authentication: none
+    denied_action: message
+- id: identify
+  model: authentik_stages_identification.identificationstage
+  identifiers:
+    name: household-identify
+  attrs:
+    user_fields:
+    - username
+    sources: []
+    show_source_labels: false
+    enrollment_flow: null
+    recovery_flow: null
+    passwordless_flow: null
+- id: password
+  model: authentik_stages_password.passwordstage
+  identifiers:
+    name: household-password
+  attrs:
+    backends:
+    - authentik.core.auth.InbuiltBackend
+    configure_flow: null
+- id: totp
+  model: authentik_stages_authenticator_totp.authenticatortotpstage
+  identifiers:
+    name: household-totp
+  attrs:
+    digits: 6
+- id: webauthn
+  model: authentik_stages_authenticator_webauthn.authenticatorwebauthnstage
+  identifiers:
+    name: household-webauthn
+  attrs:
+    user_verification: required
+    resident_key_requirement: preferred
+- id: mfa-login
+  model: authentik_stages_authenticator_validate.authenticatorvalidatestage
+  identifiers:
+    name: household-mfa-login
+  attrs:
+    device_classes:
+    - webauthn
+    - totp
+    not_configured_action: configure
+    configuration_stages:
+    - !KeyOf 'webauthn'
+    - !KeyOf 'totp'
+    last_auth_threshold: seconds=0
+    webauthn_user_verification: required
+- id: mfa-access
+  model: authentik_stages_authenticator_validate.authenticatorvalidatestage
+  identifiers:
+    name: household-mfa-access
+  attrs:
+    device_classes:
+    - webauthn
+    - totp
+    not_configured_action: deny
+    configuration_stages: []
+    last_auth_threshold: seconds=0
+    webauthn_user_verification: required
+- id: session
+  model: authentik_stages_user_login.userloginstage
+  identifiers:
+    name: household-session
+  attrs:
+    session_duration: hours=1
+    remember_me_offset: seconds=0
+- id: end-session
+  model: authentik_stages_user_logout.userlogoutstage
+  identifiers:
+    name: household-end-session
+  attrs: {}
+- id: login-identify
+  model: authentik_flows.flowstagebinding
+  identifiers:
+    target: !KeyOf 'login'
+    stage: !KeyOf 'identify'
+    order: 10
+  attrs:
+    evaluate_on_plan: false
+    re_evaluate_policies: true
+- id: login-password
+  model: authentik_flows.flowstagebinding
+  identifiers:
+    target: !KeyOf 'login'
+    stage: !KeyOf 'password'
+    order: 20
+  attrs:
+    evaluate_on_plan: false
+    re_evaluate_policies: true
+- id: login-mfa-login
+  model: authentik_flows.flowstagebinding
+  identifiers:
+    target: !KeyOf 'login'
+    stage: !KeyOf 'mfa-login'
+    order: 30
+  attrs:
+    evaluate_on_plan: false
+    re_evaluate_policies: true
+- id: login-session
+  model: authentik_flows.flowstagebinding
+  identifiers:
+    target: !KeyOf 'login'
+    stage: !KeyOf 'session'
+    order: 40
+  attrs:
+    evaluate_on_plan: false
+    re_evaluate_policies: true
+- id: authorize-mfa-access
+  model: authentik_flows.flowstagebinding
+  identifiers:
+    target: !KeyOf 'authorize'
+    stage: !KeyOf 'mfa-access'
+    order: 10
+  attrs:
+    evaluate_on_plan: false
+    re_evaluate_policies: true
+- id: logout-end-session
+  model: authentik_flows.flowstagebinding
+  identifiers:
+    target: !KeyOf 'logout'
+    stage: !KeyOf 'end-session'
+    order: 10
+  attrs:
+    evaluate_on_plan: false
+    re_evaluate_policies: true
+- id: group-probe-a
+  model: authentik_core.group
+  identifiers:
+    name: household-group-probe-a
+  attrs:
+    is_superuser: false
+- id: provider-probe-a
+  model: authentik_providers_proxy.proxyprovider
+  identifiers:
+    name: household-provider-probe-a
+  attrs:
+    mode: forward_single
+    external_host: https://probe-a.home.arpa
+    authentication_flow: !KeyOf 'login'
+    authorization_flow: !KeyOf 'authorize'
+    invalidation_flow: !KeyOf 'logout'
+    skip_path_regex: ''
+    intercept_header_auth: false
+    basic_auth_enabled: false
+    cookie_domain: ''
+    access_token_validity: minutes=5
+    refresh_token_validity: hours=1
+- id: app-probe-a
+  model: authentik_core.application
+  identifiers:
+    slug: household-probe-a
+  attrs:
+    name: OpenHands probe-a
+    provider: !KeyOf 'provider-probe-a'
+    policy_engine_mode: all
+    meta_launch_url: https://probe-a.home.arpa
+- id: allow-probe-a
+  model: authentik_policies.policybinding
+  identifiers:
+    target: !KeyOf 'app-probe-a'
+    group: !KeyOf 'group-probe-a'
+    order: 10
+  attrs:
+    enabled: true
+    negate: false
+    failure_result: false
+- id: group-probe-b
+  model: authentik_core.group
+  identifiers:
+    name: household-group-probe-b
+  attrs:
+    is_superuser: false
+- id: provider-probe-b
+  model: authentik_providers_proxy.proxyprovider
+  identifiers:
+    name: household-provider-probe-b
+  attrs:
+    mode: forward_single
+    external_host: https://probe-b.home.arpa
+    authentication_flow: !KeyOf 'login'
+    authorization_flow: !KeyOf 'authorize'
+    invalidation_flow: !KeyOf 'logout'
+    skip_path_regex: ''
+    intercept_header_auth: false
+    basic_auth_enabled: false
+    cookie_domain: ''
+    access_token_validity: minutes=5
+    refresh_token_validity: hours=1
+- id: app-probe-b
+  model: authentik_core.application
+  identifiers:
+    slug: household-probe-b
+  attrs:
+    name: OpenHands probe-b
+    provider: !KeyOf 'provider-probe-b'
+    policy_engine_mode: all
+    meta_launch_url: https://probe-b.home.arpa
+- id: allow-probe-b
+  model: authentik_policies.policybinding
+  identifiers:
+    target: !KeyOf 'app-probe-b'
+    group: !KeyOf 'group-probe-b'
+    order: 10
+  attrs:
+    enabled: true
+    negate: false
+    failure_result: false
+- id: brand
+  model: authentik_brands.brand
+  identifiers:
+    domain: login.home.arpa
+  attrs:
+    default: true
+    branding_title: Local Agent Platform
+    flow_authentication: !KeyOf 'login'
+    flow_invalidation: !KeyOf 'logout'
+    flow_recovery: null
+    flow_unenrollment: null
+    flow_user_switch: null
+    flow_device_code: null
+- id: outpost
+  model: authentik_outposts.outpost
+  identifiers:
+    name: authentik Embedded Outpost
+  attrs:
+    type: proxy
+    service_connection: null
+    providers:
+    - !KeyOf 'provider-probe-a'
+    - !KeyOf 'provider-probe-b'
+    config:
+      authentik_host: https://login.home.arpa
+      authentik_host_browser: https://login.home.arpa

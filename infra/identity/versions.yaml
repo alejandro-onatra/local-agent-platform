@@ -1,0 +1,14 @@
+# Resolved from official registries; runtime pulls use immutable indexes only.
+resolved_at: '2026-10-18'
+platform: linux/amd64
+authentik:
+  version: 2026.8.4
+  image: ghcr.io/goauthentik/server@sha256:e7226ae116dac5aa0a5643803e735b010038f492c401e08e16b3bf1ac54c090c
+  amd64_manifest: sha256:26b13238a6ed51ed1b64f472acd5ccf1f0f18c05ae03bd7f3812cf66c3d31b56
+  compressed_bytes: 382538326
+postgres:
+  version: '18.6'
+  resolved_tag: 18.6-alpine
+  image: postgres@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+  amd64_manifest: sha256:d8703cd7fba306b9fec9268ecedfa8a966846c053036a60e3635791957eb2f66
+  compressed_bytes: 120037793

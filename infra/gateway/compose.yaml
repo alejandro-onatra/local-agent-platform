@@ -1,0 +1,35 @@
+# LAN address is detected and stored privately at issuance, never committed here.
+services:
+  gateway:
+    image: ${GATEWAY_IMAGE}
+    platform: linux/amd64
+    user: ${GATEWAY_USER}
+    entrypoint: [/bin/sh, /opt/gateway-entrypoint.sh]
+    command: [run, --config, /etc/caddy/Caddyfile, --adapter, caddyfile]
+    read_only: true
+    restart: 'no'
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true, apparmor:docker-default]
+    networks: [identity, alejandro, kimberly]
+    ports: ['${LAN_ADDRESS}:8443:8443', '${LAN_ADDRESS}:8080:8080', '${LAN_ADDRESS}:8444:8444', '${LAN_ADDRESS}:8445:8445']
+    volumes:
+      - {type: bind, source: '${GATEWAY_ENTRYPOINT}', target: /opt/gateway-entrypoint.sh, read_only: true, bind: {create_host_path: false}}
+      - {type: bind, source: '${RELEASE_DIR}/Caddyfile', target: /etc/caddy/Caddyfile, read_only: true, bind: {create_host_path: false}}
+      - {type: bind, source: '${RELEASE_DIR}/fullchain.crt', target: /run/gateway/fullchain.crt, read_only: true, bind: {create_host_path: false}}
+      - {type: bind, source: '${RELEASE_DIR}/server.key', target: /run/gateway/server.key, read_only: true, bind: {create_host_path: false}}
+      - {type: bind, source: '${RELEASE_DIR}/trust', target: /run/trust, read_only: true, bind: {create_host_path: false}}
+    tmpfs: ['/tmp:rw,nosuid,nodev,noexec,size=16m,mode=1777', '/data:rw,nosuid,nodev,noexec,size=8m,mode=1777', '/config:rw,nosuid,nodev,noexec,size=8m,mode=1777', '/run/caddy-bin:rw,exec,nosuid,nodev,size=96m,mode=0700,uid=${GATEWAY_UID},gid=${GATEWAY_GID}']
+    mem_limit: 256m
+    cpus: 1
+    pids_limit: 64
+    logging: {driver: json-file, options: {max-size: 2m, max-file: '2'}}
+networks:
+  identity:
+    external: true
+    name: agent-platform-identity-local_frontend
+  alejandro:
+    external: true
+    name: agent-platform-household-alejandro_frontend
+  kimberly:
+    external: true
+    name: agent-platform-household-kimberly_frontend

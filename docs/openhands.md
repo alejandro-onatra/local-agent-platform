@@ -2,9 +2,24 @@
 
 ## Version selection
 
-On October 5, 2026 the official repository publishes Agent Canvas 1.24.0 as a stable release. The old Local GUI appears as a deprecated project in the documentation. The official all-in-one image of Agent Canvas is used, which includes Agent Server 1.49.6 and Automation 1.15.1. The frontend continues to run the OpenHands agent; no cloud provider is needed.
+On October 10, 2026 the latest official stable release is Agent Canvas 1.26.0
+(published October 8), containing Agent Server/SDK 1.53.0 and Automation 1.19.0.
+The official all-in-one image is pinned by digest in `infra/openhands/versions.yaml`
+for Linux amd64; its compressed layers total approximately 1.57 GB. The source
+revision is verified against the release and registry image labels. The owner
+applied this upgrade on October 11: candidate/native cache-usage tests, private
+backups, UI, authenticated backend/proxy and Ollama model checks passed.
+Post-upgrade runtime restrictions passed all 14 selected checks; Collector log
+refresh and a synthetic proxy stream check passed. The owner reported successful
+read-only agent terminal execution in /projects/demo. Broader functionality and
+household acceptance remain pending; see [upgrade evidence](openhands_upgrade.md).
 
-Linux amd64 image pinned by digest in `infra/openhands/versions.yaml`; approximately 1.40 GB compressed. The digest identifies the entire image and its components. Node and the OpenHands Python runtime are inside the image. The host Python, pinned by mise, is only used for the configuration and validation scripts of the repository. mise maintains Task and Python; go-task coordinates and `scripts/openhands/` implements.
+Node and the OpenHands Python runtime are inside the image. The host Python,
+pinned by mise, is only used for repository configuration/validation scripts.
+mise maintains Task and Python; Task coordinates `scripts/openhands/` operations.
+For an existing 1.24.0 deployment use [the backed-up upgrade procedure](openhands_upgrade.md)
+instead of ordinary startup. The frontend continues to use the OpenHands agent;
+no cloud provider is required.
 
 ## Startup
 
@@ -55,6 +70,14 @@ Check that the two files appear in `artifacts/openhands/projects/demo/`, that th
 - No automations or connectors are enabled in this phase. The Automation component is included in the image, but no recurring jobs are created. The integrated editor is disabled for this test.
 - OpenHands does not receive GPU: Ollama is the service that uses it. It does not restart automatically on Docker startup; it is started explicitly.
 
+## Planned household access
+
+`https://portal.home.arpa` is the agreed future LAN entry point, with local Authentik
+accounts, mandatory MFA and separate state/workspaces/instances per user. This is
+not deployed; current access remains loopback. Authentik gates entry but does not
+create OpenHands tenant isolation by itself. See [LAN access and key custody](lan_access.md)
+and [SEC-01 through SEC-15](security.md) before changing network exposure.
+
 ## Operation and issues
 
 ```bash
@@ -78,10 +101,10 @@ The official amd64 digest was resolved and code, image configuration and compone
 
 ## Sources
 
-- [Release v1.24.0 and Official Quickstart](https://github.com/OpenHands/OpenHands/tree/v1.24.0)
-- [Dockerfile of the image](https://github.com/OpenHands/OpenHands/blob/v1.24.0/docker/Dockerfile)
-- [Entrypoint and persistence](https://github.com/OpenHands/OpenHands/blob/v1.24.0/docker/entrypoint.sh)
-- [Agent Server: configuration](https://github.com/OpenHands/software-agent-sdk/blob/v1.49.6/openhands-agent-server/openhands/agent_server/config.py)
+- [Release v1.26.0 and Official Quickstart](https://github.com/OpenHands/OpenHands/tree/v1.26.0)
+- [Dockerfile of the image](https://github.com/OpenHands/OpenHands/blob/v1.26.0/docker/Dockerfile)
+- [Entrypoint and persistence](https://github.com/OpenHands/OpenHands/blob/v1.26.0/docker/entrypoint.sh)
+- [Agent Server: configuration](https://github.com/OpenHands/software-agent-sdk/blob/v1.53.0/openhands-agent-server/openhands/agent_server/config.py)
 - [Local Models](https://docs.openhands.dev/openhands/usage/llms/local-llms)
 
 ## Fix for sudo step — October 5, 2026
@@ -170,3 +193,44 @@ The second test is described in [openhands_bugfix.md](openhands_bugfix.md), with
 The [observability guide](observability.md) explains how to interleave LiteLLM between OpenHands and Ollama, activate the three backends and provision Grafana. It includes the profile `local-qwen3-8b-observed`, acceptance commands, log location, privacy and return to the direct profile. The [diagrams](architecture/observability_diagrams.md) show the LLM path, networks, storage and evolution.
 
 The configuration is ready; it is not asserted as deployed. The LiteLLM callback excludes messages; the Collector sanitizes traces and logs. The native tracing of OpenHands is optional for synthetic data because it can capture arguments/results before the filter. The product telemetry exporter `none` is a distinct control from OTLP of the SDK. Do not disable it thinking that the capture at source is already completely removed.
+
+## Optional container hardening
+
+The owner selected host containers for the household path. The existing demo
+continues using its current profile until an explicit operational apply. See
+[container isolation](container_isolation.md) for the verified-identity, readonly
+root/AppArmor candidate, bounded tmpfs, runtime canaries and rollback procedure.
+Plan does not recreate services; apply recreates OpenHands and its UI proxy,
+retaining persistent workspace/state. Authentication, per-user separation,
+persistent quotas and egress acceptance remain pending before household exposure.
+
+
+## Cache-usage AttributeError with Agent Server 1.49.6
+
+`'PromptTokensDetailsWrapper' object has no attribute 'cache_creation_tokens'`
+is an upstream SDK telemetry regression. A provider can explicitly report a null
+cache-write detail; LiteLLM deletes that optional attribute but retains its name
+in `model_fields_set`. The SDK's presence check then permits an invalid attribute
+read. A successful HTTP/backend/model check does not exercise this code path.
+
+The owner successfully applied the version/source-guarded backport on October 10
+while running Agent Server 1.49.6: real normalization preflight and authenticated
+backend/proxy checks passed, with no recognized error indicators in the reviewed
+log tail. This did not establish an actual successful agent conversation.
+
+The repository now prepares Canvas 1.26.0 / SDK 1.53.0, whose native normalizer
+contains the upstream fix. The launcher no longer compiles or replaces function
+code. It checks the exact installed version/source and exercises null, absent and
+integer cache-write details before launching the installed Python module. The
+old reference function remains only as a regression reproducer under tests.
+The normalizer retains upstream absent/null-as-zero cache-write semantics;
+this is not independent evidence of measured provider cache writes, and input/
+output totals and proxy Prometheus accounting remain unchanged.
+
+Use [OpenHands upgrade operations](openhands_upgrade.md) to apply the new image;
+calling `security:apply` against the old image now fails its image/version guards.
+The owner applied the upgrade and all 14 selected runtime checks passed. A
+reported read-only agent terminal exercise in /projects/demo also passed.
+The owner reran the existing demo check successfully: three generated tests and
+additional arithmetic checks passed. Broader functionality and household
+acceptance remain separate checks.

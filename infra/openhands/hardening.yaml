@@ -1,0 +1,25 @@
+# Opt-in candidate. Validate real UID/GID and compatibility before recreation.
+# Persistent mounts still require disk quotas; this overlay does not provide them.
+services:
+  openhands:
+    user: ${OH_ISOLATED_USER:?Set the verified existing image user}
+    init: true
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:docker-default
+    # Avoid the one-file PyInstaller backend: Docker tmpfs defaults to noexec.
+    # The same pinned Python package must exist; hardening plan checks it first.
+    volumes:
+      - type: bind
+        source: ../../scripts/openhands/start-agent-server.py
+        target: /usr/local/bin/openhands-agent-server
+        read_only: true
+        bind:
+          create_host_path: false
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=64m,mode=1777
+      - /home/openhands/workspace:rw,nosuid,nodev,size=512m,mode=0770,uid=${OH_ISOLATED_UID:?Set verified UID},gid=${OH_ISOLATED_GID:?Set verified GID}
+      - /home/openhands/.cache:rw,nosuid,nodev,size=128m,mode=0700,uid=${OH_ISOLATED_UID:?Set verified UID},gid=${OH_ISOLATED_GID:?Set verified GID}
+      # Runtime-generated tool configuration; temporary and non-executable.
+      - /home/openhands/.config:rw,nosuid,nodev,noexec,size=64m,mode=0700,uid=${OH_ISOLATED_UID:?Set verified UID},gid=${OH_ISOLATED_GID:?Set verified GID}

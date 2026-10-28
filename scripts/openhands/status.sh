@@ -2,4 +2,4 @@
 set -euo pipefail
 source "$(dirname -- "${BASH_SOURCE[0]}")/common.sh"
 llm_init_docker
-oh_compose ps openhands openhands-proxy
+oh_compose ps --all openhands openhands-proxy

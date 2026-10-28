@@ -1,0 +1,80 @@
+# Appended to the family blueprint; no invitation tokens are stored in sources.
+- id: enroll-__USER__
+  model: authentik_flows.flow
+  identifiers: {slug: family-enroll-__USER__}
+  attrs:
+    name: Family invitation for __USER__
+    title: Set up your account - __USER__
+    layout: content_right
+    designation: enrollment
+    authentication: require_unauthenticated
+    denied_action: message
+- id: invite-__USER__
+  model: authentik_stages_invitation.invitationstage
+  identifiers: {name: family-invitation-__USER__}
+  attrs: {continue_flow_without_invitation: false}
+- id: invite-policy-__USER__
+  model: authentik_policies_expression.expressionpolicy
+  identifiers: {name: family-invitation-identity-__USER__}
+  attrs:
+    execution_logging: false
+    expression: |
+__EXPRESSION__
+- id: invite-password-__USER__
+  model: authentik_stages_prompt.prompt
+  identifiers: {name: family-invite-password-__USER__}
+  attrs: {field_key: password, label: Choose a password (16 or more characters), type: password, required: true, order: 10}
+- id: invite-confirm-__USER__
+  model: authentik_stages_prompt.prompt
+  identifiers: {name: family-invite-confirm-__USER__}
+  attrs: {field_key: password_repeat, label: Confirm password, type: password, required: true, order: 20}
+- id: invite-credentials-__USER__
+  model: authentik_stages_prompt.promptstage
+  identifiers: {name: family-invite-credentials-__USER__}
+  attrs:
+    fields: [!KeyOf invite-password-__USER__, !KeyOf invite-confirm-__USER__]
+    validation_policies: [!KeyOf invite-policy-__USER__]
+- id: invite-write-__USER__
+  model: authentik_stages_user_write.userwritestage
+  identifiers: {name: family-invite-write-__USER__}
+  attrs:
+    user_creation_mode: always_create
+    user_type: external
+    user_path_template: users/household
+    create_users_as_inactive: false
+    create_users_group: !KeyOf group-__USER__
+- id: enroll-token-__USER__
+  model: authentik_flows.flowstagebinding
+  identifiers:
+    target: !KeyOf enroll-__USER__
+    stage: !KeyOf invite-__USER__
+    order: 10
+  attrs: {evaluate_on_plan: false, re_evaluate_policies: true}
+- id: enroll-credentials-__USER__
+  model: authentik_flows.flowstagebinding
+  identifiers:
+    target: !KeyOf enroll-__USER__
+    stage: !KeyOf invite-credentials-__USER__
+    order: 20
+  attrs: {evaluate_on_plan: false, re_evaluate_policies: true}
+- id: enroll-write-__USER__
+  model: authentik_flows.flowstagebinding
+  identifiers:
+    target: !KeyOf enroll-__USER__
+    stage: !KeyOf invite-write-__USER__
+    order: 30
+  attrs: {evaluate_on_plan: false, re_evaluate_policies: true}
+- id: enroll-totp-__USER__
+  model: authentik_flows.flowstagebinding
+  identifiers:
+    target: !KeyOf enroll-__USER__
+    stage: !KeyOf totp
+    order: 40
+  attrs: {evaluate_on_plan: false, re_evaluate_policies: true}
+- id: enroll-session-__USER__
+  model: authentik_flows.flowstagebinding
+  identifiers:
+    target: !KeyOf enroll-__USER__
+    stage: !KeyOf session
+    order: 50
+  attrs: {evaluate_on_plan: false, re_evaluate_policies: true}

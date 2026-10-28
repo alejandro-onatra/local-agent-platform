@@ -62,15 +62,30 @@ tasks:
     cmds:
       - bash scripts/openhands/plan.sh
 
+  openhands:upgrade:plan:
+    desc: Pull and preflight the pinned new image without stopping the current services
+    cmds:
+      - bash scripts/openhands/upgrade.sh plan
+
+  openhands:upgrade:apply:
+    desc: Back up stopped OpenHands state/projects privately and upgrade the pinned image
+    cmds:
+      - bash scripts/openhands/upgrade.sh apply
+
   openhands:up:
-    desc: Start local OpenHands and check UI and internal LLM connection
+    desc: Start OpenHands and check UI, authenticated backend and internal LLM connection
     cmds:
       - bash scripts/openhands/up.sh
 
   openhands:check:
-    desc: Check OpenHands UI and container-to-Ollama connection
+    desc: Check UI, authenticated backend/proxy and container-to-Ollama connection
     cmds:
       - bash scripts/openhands/check.sh
+
+  openhands:backend:check:
+    desc: Diagnose backend/proxy health and show sanitized startup error indicators
+    cmds:
+      - bash scripts/openhands/backend-check.sh
 
   openhands:status:
     desc: Show OpenHands container status
@@ -94,6 +109,313 @@ tasks:
       - task: llm:up
       - task: llm:check
       - task: openhands:up
+
+  openhands:instances:config:
+    desc: Validate source-only per-UID pilot configuration; no Docker access
+    cmds:
+      - bash scripts/instances/run.sh config
+
+  openhands:instances:plan:
+    desc: Preflight cached images, native modules and mounted storage for two offline synthetic instances
+    cmds:
+      - bash scripts/instances/run.sh plan
+
+  openhands:instances:up:
+    desc: Start two isolated synthetic OpenHands instances on localhost; current demo unchanged
+    cmds:
+      - bash scripts/instances/run.sh up
+
+  openhands:instances:check:
+    desc: Inspect pilot runtime restrictions, distinct native keys and authenticated API health
+    cmds:
+      - bash scripts/instances/run.sh check
+
+  openhands:instances:accept:
+    desc: Probe own/foreign state, keys, secret stores and idle conversations; no model execution
+    cmds:
+      - bash scripts/instances/run.sh accept
+
+  openhands:instances:network:check:
+    desc: Probe selected live IPv4 peer endpoints from actual agent namespaces; no host firewall changes
+    cmds:
+      - bash scripts/instances/run.sh network-check
+
+  openhands:instances:websocket:check:
+    desc: Probe native session WebSocket authentication and foreign conversations through each ingress
+    cmds:
+      - bash scripts/instances/run.sh websocket-check
+
+  openhands:instances:recovery:check:
+    desc: Restart only idle pilots and restore generated synthetic records; no native key export or full-state backup
+    cmds:
+      - bash scripts/instances/run.sh recovery-check
+
+  openhands:instances:diagnose:
+    desc: Read current pilot process checks, including stopped containers, without keys or logs
+    cmds:
+      - bash scripts/instances/run.sh diagnose
+
+  openhands:instances:down:
+    desc: Stop and remove only synthetic instance projects, preserving all bind-mounted data
+    cmds:
+      - bash scripts/instances/run.sh down
+
+  household:plan:
+    desc: Preview named-user instances, bounded storage and private HTTPS URLs
+    cmds:
+      - bash scripts/household/run.sh plan
+
+  household:setup:
+    desc: Prepare invitation enrollment and isolated instances, then enable per-user HTTPS; no user passwords requested
+    cmds:
+      - task: identity:up
+      - task: llm:up
+      - bash scripts/household/run.sh setup
+      - task: gateway:up
+      - task: household:check
+
+  household:models:tune:
+    desc: Repair thinking control in managed local Qwen profiles; preserve keys and existing conversations
+    cmds:
+      - bash scripts/household/run.sh models-tune
+
+  household:models:check:
+    desc: Check per-user native API, Canvas proxy and Qwen profile wiring without credentials or mutations
+    cmds:
+      - bash scripts/household/run.sh models-check
+
+  household:identity:apply:
+    desc: Apply invitation feedback and light household branding; no account creation or agent restarts
+    cmds:
+      - bash scripts/household/run.sh identity-apply
+
+  household:invite:
+    desc: Issue a 24-hour single-use invitation into a private owner file; replaces a pending invitation
+    requires:
+      vars: [USERNAME]
+    env:
+      HOUSEHOLD_USERNAME: '{{.USERNAME}}'
+    cmds:
+      - bash scripts/household/run.sh invite --username "$HOUSEHOLD_USERNAME"
+
+  household:invite:revoke:
+    desc: Revoke pending enrollment for one reserved username; never disable or reset an existing account
+    requires:
+      vars: [USERNAME]
+    env:
+      HOUSEHOLD_USERNAME: '{{.USERNAME}}'
+    cmds:
+      - bash scripts/household/run.sh invite-revoke --username "$HOUSEHOLD_USERNAME"
+
+  identity:logs:check:
+    desc: Read recent Authentik logs as fixed indicators and enrollment state; no raw logs, credentials or changes
+    cmds:
+      - bash scripts/household/run.sh logs
+
+  household:diagnose:
+    desc: Read identity process state and public outpost configuration flags; no imports or restarts
+    cmds:
+      - bash scripts/household/run.sh diagnose
+
+  household:check:
+    desc: Verify real per-user process, network, mount, storage and HTTPS controls without passwords or user content
+    cmds:
+      - bash scripts/household/run.sh check
+
+  security:household:test:
+    desc: Validate named-user provisioning, MFA, application isolation and bounded storage sources
+    cmds:
+      - python3 -B -m unittest discover -s tests/security -p test_household.py -v
+
+  gateway:plan:
+    desc: Show private LAN binding and pinned login gateway plan; no startup
+    cmds:
+      - bash scripts/gateway/run.sh plan
+
+  gateway:tls:issue:
+    desc: Unlock the existing intermediate in a hidden owner prompt and issue a 30-day login/IP leaf; no CA regeneration
+    cmds:
+      - bash scripts/gateway/run.sh issue
+
+  gateway:config:refresh:
+    desc: Migrate reviewed gateway configurations using existing TLS files; preserve CSRF form headers without CA signing or service restart
+    cmds:
+      - bash scripts/gateway/run.sh refresh
+
+  gateway:up:
+    desc: Start the selected household HTTPS gateway using existing TLS material and check readiness
+    cmds:
+      - bash scripts/gateway/run.sh up
+
+  gateway:check:
+    desc: Verify effective gateway runtime controls, TLS/IP trust, Authentik readiness and public root download
+    cmds:
+      - bash scripts/gateway/run.sh check
+
+  gateway:down:
+    desc: Remove only the login gateway deployment, preserving all TLS material and identity services
+    cmds:
+      - bash scripts/gateway/run.sh down
+
+  security:gateway:test:
+    desc: Test gateway refusal paths, source controls and native synthetic TLS/proxy behavior
+    cmds:
+      - python3 -B -m unittest discover -s tests/security -p test_gateway.py -v
+
+  pki:plan:
+    desc: Preview offline root/intermediate ceremony without device writes or key creation
+    cmds:
+      - bash scripts/pki/run.sh plan
+
+  pki:offline:check:
+    desc: Require a verified removable USB, disconnected network snapshot and zero running default-context containers; read-only
+    requires:
+      vars: [USB]
+    env:
+      PKI_USB_MOUNT: '{{.USB}}'
+    cmds:
+      - bash scripts/pki/run.sh offline-check --usb "$PKI_USB_MOUNT"
+
+  pki:root:create:
+    desc: Offline-only creation of encrypted root on verified USB and encrypted intermediate in private local storage; preserves existing material
+    requires:
+      vars: [USB]
+    env:
+      PKI_USB_MOUNT: '{{.USB}}'
+    cmds:
+      - bash scripts/pki/run.sh create --usb "$PKI_USB_MOUNT"
+
+  pki:online:check:
+    desc: Check USB and stopped default-context containers for owner-approved connected ceremony; no offline assurance or key creation
+    requires:
+      vars: [USB]
+    env:
+      PKI_USB_MOUNT: '{{.USB}}'
+    cmds:
+      - bash scripts/pki/run.sh online-check --usb "$PKI_USB_MOUNT"
+
+  pki:root:create:online:
+    desc: Create encrypted CA keys with explicit owner acceptance of network exposure; other creation guards remain
+    requires:
+      vars: [USB]
+    env:
+      PKI_USB_MOUNT: '{{.USB}}'
+    cmds:
+      - bash scripts/pki/run.sh create --allow-online --usb "$PKI_USB_MOUNT"
+
+  security:pki:test:
+    desc: Test offline/USB rejection, preserved partial state, certificate constraints and synthetic native encrypted root/intermediate creation
+    cmds:
+      - python3 -B -m unittest discover -s tests/security -p test_pki.py -v
+
+  identity:plan:
+    desc: Preview persistent localhost-only Authentik without Docker or account changes
+    cmds:
+      - bash scripts/identity/local.sh plan
+
+  identity:up:
+    desc: Start persistent localhost-only Authentik database/server/worker after environment setup; requires sudo
+    cmds:
+      - bash scripts/identity/local.sh up
+
+  identity:check:
+    desc: Verify effective runtime restrictions, service health and localhost HTTP readiness
+    cmds:
+      - bash scripts/identity/local.sh check
+
+  identity:status:
+    desc: Inspect the local identity services without reading logs or changing accounts
+    cmds:
+      - bash scripts/identity/local.sh status
+
+  identity:down:
+    desc: Remove local identity containers/networks while preserving bind-mounted data and keys
+    cmds:
+      - bash scripts/identity/local.sh down
+
+  identity:backup:plan:
+    desc: Preview encrypted identity snapshots and isolated SQL restore boundaries
+    cmds:
+      - bash scripts/identity/backup.sh plan
+
+  identity:recovery:key:create:
+    desc: Generate a passphrase-encrypted recovery identity as the desktop user; no sudo, no service changes
+    cmds:
+      - bash scripts/identity/backup.sh key-create
+
+  identity:recovery:key:rewrap:
+    desc: Change the recovery passphrase with verified atomic replacement; same key and existing backups retained
+    cmds:
+      - bash scripts/identity/backup.sh key-rewrap
+
+  identity:backup:create:
+    desc: Pause Authentik writers, snapshot DB/files to a public age recipient, resume services; requires sudo
+    requires:
+      vars: [RECIPIENT]
+    env:
+      IDENTITY_BACKUP_RECIPIENT: '{{.RECIPIENT}}'
+    cmds:
+      - bash scripts/identity/backup.sh create --recipient "$IDENTITY_BACKUP_RECIPIENT"
+
+  identity:backup:restore:check:
+    desc: Decrypt a private snapshot and restore SQL in disposable networkless PostgreSQL; requires sudo and recovery-key passphrase
+    requires:
+      vars: [BACKUP, IDENTITY]
+    env:
+      IDENTITY_BACKUP_FILE: '{{.BACKUP}}'
+      IDENTITY_RECOVERY_FILE: '{{.IDENTITY}}'
+    cmds:
+      - bash scripts/identity/backup.sh restore-check --backup "$IDENTITY_BACKUP_FILE" --identity "$IDENTITY_RECOVERY_FILE"
+
+  identity:rehearsal:plan:
+    desc: Preview full identity restore on separate loopback/RAM state without decrypting or deploying
+    cmds:
+      - bash scripts/identity/backup.sh rehearsal-plan
+
+  identity:rehearsal:up:
+    desc: Restore a snapshot into bounded RAM and start separate Authentik on 127.0.0.2:19000; requires sudo and recovery phrase
+    requires:
+      vars: [BACKUP, IDENTITY]
+    env:
+      IDENTITY_BACKUP_FILE: '{{.BACKUP}}'
+      IDENTITY_RECOVERY_FILE: '{{.IDENTITY}}'
+    cmds:
+      - bash scripts/identity/backup.sh rehearsal-up --backup "$IDENTITY_BACKUP_FILE" --identity "$IDENTITY_RECOVERY_FILE"
+
+  identity:rehearsal:check:
+    desc: Check temporary Authentik runtime, restored signing secret and readable TOTP without accepting browser evidence
+    cmds:
+      - bash scripts/identity/backup.sh rehearsal-check
+
+  identity:rehearsal:accept:
+    desc: Require a new restored-instance login event and TOTP step advance; does not certify account/session correlation
+    cmds:
+      - bash scripts/identity/backup.sh rehearsal-accept
+
+  identity:rehearsal:down:
+    desc: Remove only verified rehearsal containers/networks/RAM state; preserve live identity and encrypted backup
+    cmds:
+      - bash scripts/identity/backup.sh rehearsal-down
+
+  identity:native:plan:
+    desc: Preview pinned disposable Authentik/PostgreSQL validation without Docker or account changes
+    cmds:
+      - bash scripts/identity/native-check.sh plan
+
+  identity:native:check:
+    desc: Validate/import/read back the blueprint in isolated disposable containers; downloads images and requires sudo
+    cmds:
+      - bash scripts/identity/native-check.sh run
+
+  security:identity:test:
+    desc: Test identity source mutations and disposable native-check orchestration failures
+    cmds:
+      - bash scripts/identity/test.sh
+
+  security:instances:test:
+    desc: Test instance isolation mutations, failed startup, protected key reads and acceptance cleanup
+    cmds:
+      - bash scripts/instances/test-instances.sh
 
   openhands:demo:check:
     desc: Verify agent-generated demo files, arithmetic and tests inside the container
@@ -222,17 +544,85 @@ tasks:
     cmds:
       - bash scripts/security/check-secrets.sh
 
+  security:storage:test:
+    desc: Test storage policy, unsafe mount mutations, setup preservation and bounded probe behavior
+    cmds:
+      - bash scripts/storage/test-storage.sh
+
+  storage:accept:
+    desc: Test ENOSPC and cross-UID canaries in prepared synthetic storage; does not start real agents
+    cmds:
+      - bash scripts/storage/run.sh accept
+
+  storage:unmount:
+    desc: Unmount only verified pilot filesystems, preserving all images; no force or lazy detach
+    cmds:
+      - bash scripts/storage/run.sh unmount
+
+  security:container:check:
+    desc: Inspect real agent controls and synthetic file canaries; requires Docker access
+    cmds:
+      - bash scripts/security/check-container.sh
+
+  openhands:security:plan:
+    desc: Verify current image identity and validate optional readonly-root hardening profile
+    cmds:
+      - bash scripts/openhands/hardening.sh plan
+
+  openhands:security:apply:
+    desc: Recreate idle OpenHands/proxy with verified identity and readonly-root profile
+    cmds:
+      - bash scripts/openhands/hardening.sh apply
+
+  openhands:security:rollback:
+    desc: Restore the previous writable-root profile preserving state and workspace
+    cmds:
+      - bash scripts/openhands/hardening.sh rollback
+
+  security:config:
+    desc: Guard declared Compose sources offline; does not certify deployed SEC controls
+    cmds:
+      - bash scripts/security/check-controls.sh --scope config
+
+  security:check:
+    desc: Evaluate SEC evidence and secrets; missing acceptance keeps readiness pending
+    cmds:
+      - bash scripts/security/check-controls.sh --secrets
+
+  security:tls:check:
+    desc: Check portal TLS using a verified public root; full SEC readiness may remain pending
+    requires:
+      vars: [CA_CERT, CA_SHA256]
+    env:
+      SEC_CA_CERT: '{{.CA_CERT}}'
+      SEC_CA_SHA256: '{{.CA_SHA256}}'
+    cmds:
+      - bash scripts/security/check-controls.sh --secrets --tls
+
+  security:controls:test:
+    desc: Test unsafe source mutations, pending evidence and TLS verification guards
+    cmds:
+      - bash scripts/security/test-controls.sh
+
   security:test:
-    desc: Test real secret detection in files, staging and history using temporary repos
+    desc: Test secret detection and SEC guards using temporary repositories and synthetic TLS peers
     cmds:
       - bash scripts/security/test-secrets.sh
+
+  repo:environment:test:
+    desc: Test LAN inventory privacy, resource checks and incomplete host visibility
+    cmds:
+      - bash scripts/repo/test-lan.sh
 
   repo:commit:check:
     desc: Run non-interactive environment checks, secret scanning and code tests before commit
     cmds:
       - mise run repo:check
       - mise run env:python:check
+      - task: security:config
+      - task: openhands:instances:config
       - task: security:secrets
+      - task: repo:environment:test
       - task: repo:test
       - task: observability:test
       - task: security:test

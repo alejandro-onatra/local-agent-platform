@@ -1,0 +1,24 @@
+# No private values or machine-specific USB identifiers belong in this profile.
+schema_version: 1
+step_version: 0.30.6
+# Existing Ubuntu crypto tool; environment check rejects an unreviewed version.
+openssl_version: 3.5.5
+root:
+  subject: Local Agent Platform Root CA
+  lifetime_hours: 87600
+  max_path_len: 1
+intermediate:
+  subject: Local Agent Platform Intermediate CA
+  lifetime_hours: 8760
+  max_path_len: 0
+key:
+  type: EC
+  curve: P-384
+  encrypted: true
+  storage_format: encrypted-pkcs8
+  cipher: aes-256-cbc
+  prf: hmacWithSHA256
+  iterations: 600000
+minimum_phrase_bytes: 16
+root_directory_name: agent-platform-ca-root
+issuer_directory_name: .local/share/agent-platform/pki/issuer

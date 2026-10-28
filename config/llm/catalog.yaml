@@ -1,0 +1,102 @@
+# Qwen baselines have pinned manifests; cross-family candidates remain unlocked and uninstalled.
+schema_version: 1
+resolved_at: '2026-10-26'
+default_tier: balanced
+runtime_policy:
+  max_loaded_models: 1
+  parallel_requests: 1
+  min_free_vram_mib: 2048
+  automatic_escalation: false
+profiles:
+- tier: fast
+  name: qwen3:4b
+  digest: sha256:359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7
+  download_bytes: 2497293931
+  quantization: Q4_K_M
+  context_length: 8192
+  thinking: false
+  max_output_tokens: 2048
+  deployment_status: candidate_not_installed
+  acceptance: hardware_benchmark_and_tool_use_pending
+- tier: balanced
+  name: qwen3:8b
+  digest: sha256:500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41
+  download_bytes: 5225388164
+  quantization: Q4_K_M
+  context_length: 16384
+  thinking: false
+  max_output_tokens: 2048
+  deployment_status: existing_model_requires_profile_check
+  acceptance: hardware_benchmark_and_tool_use_pending
+- tier: reasoning
+  name: qwen3:14b
+  digest: sha256:bdbd181c33f2ed1b31c972991882db3cf4d192569092138a7d29e973cd9debe8
+  download_bytes: 9276198565
+  quantization: Q4_K_M
+  context_length: 8192
+  thinking: true
+  max_output_tokens: 2048
+  deployment_status: candidate_not_installed
+  acceptance: hardware_benchmark_and_tool_use_pending
+selection_policy:
+  cross_family_evaluation_required: true
+  parameter_count_is_not_quality_ranking: true
+  metrics:
+  - time_to_first_token
+  - warm_tokens_per_second
+  - peak_vram_mib
+  - peak_host_ram_mib
+  - spanish_task_correctness
+  - tool_call_correctness
+  - agent_task_completion
+  promotion_requires_local_acceptance: true
+comparison_candidates:
+- name: phi4-mini:3.8b
+  family: Microsoft Phi
+  tier_candidates:
+  - fast
+  approximate_download_gb: 2.5
+  source: https://ollama.com/library/phi4-mini
+  initial_context_length: 8192
+  status: not_installed_not_benchmarked
+  manifest_lock: pending
+- name: mistral-nemo:12b
+  family: Mistral
+  tier_candidates:
+  - balanced
+  approximate_download_gb: 7.1
+  source: https://ollama.com/library/mistral-nemo
+  initial_context_length: 8192
+  status: not_installed_not_benchmarked
+  manifest_lock: pending
+- name: gemma4:12b
+  family: Google Gemma
+  tier_candidates:
+  - balanced
+  - reasoning
+  approximate_download_gb: 8.0
+  source: https://ollama.com/library/gemma4:12b
+  initial_context_length: 8192
+  status: not_installed_not_benchmarked
+  manifest_lock: pending
+  runtime_compatibility: verify_before_pull
+- name: qwen3.5:9b
+  family: Qwen
+  tier_candidates:
+  - balanced
+  approximate_download_gb: 6.6
+  source: https://ollama.com/library/qwen3.5:9b
+  initial_context_length: 8192
+  status: not_installed_not_benchmarked
+  manifest_lock: pending
+  runtime_compatibility: verify_before_pull
+- name: gpt-oss:20b
+  family: OpenAI open-weight
+  tier_candidates:
+  - experimental_reasoning
+  approximate_download_gb: 14.0
+  source: https://ollama.com/library/gpt-oss:20b
+  initial_context_length: 4096
+  status: not_installed_not_benchmarked
+  manifest_lock: pending
+  eligibility: not_default_insufficient_vram_margin_until_measured
