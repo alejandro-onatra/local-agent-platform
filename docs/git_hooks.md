@@ -79,3 +79,25 @@ Failures return a fixed phase name, not potentially sensitive command output.
 The October 28 public API readback reports `main.protected: false`. Treat branch
 enforcement as a pending hardening action, not an active safeguard. Detailed
 repository access/security settings still require authenticated review.
+
+## Native runner compatibility
+
+The first GitHub run on Ubuntu 24.04 failed three native PKI/gateway tests because
+`/usr/bin/openssl` did not match the reviewed 3.5.5 host contract. The workflow
+now selects the officially available Ubuntu 26.04 runner and performs
+`mise run env:ci:check` before the full gate. Keep the strict version check; do
+not skip these tests or weaken the host ceremony policy to obtain a green job.
+The published runner inventory lists OpenSSL 3.5.5. Future runner updates still
+require review if this check fails. Checkout v6 is pinned by commit and uses the
+current Node runtime; CI still has only contents-read permission.
+
+References: [runner availability](https://github.com/actions/runner-images/blob/main/README.md),
+[Ubuntu 26.04 software](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2604-Readme.md).
+A local pass is not a remote CI pass; read back the new run before requiring it.
+
+The CI preflight checks the target OS and the same native Smallstep/OpenSSL
+version guards used by the crypto tests. It does not require NetworkManager, USB
+inspection or a local Docker daemon for an offline ceremony. The host's complete
+`env:pki:check` and ceremony guards are unchanged. The first preflight attempt
+incorrectly required desktop ceremony tools; that mismatch is separate from the
+original OpenSSL version failure.

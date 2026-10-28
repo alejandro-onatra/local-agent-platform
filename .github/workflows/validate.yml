@@ -16,13 +16,13 @@ concurrency:
 jobs:
   validate:
     name: Repository validation
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 25
     env:
       PYTHONOPTIMIZE: '0'
     steps:
       - name: Check out complete history without persisted credentials
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -35,5 +35,7 @@ jobs:
           mise trust mise.toml
           mise install --locked
           mise run env:python:setup
+      - name: Verify native PKI tooling before security tests
+        run: mise run env:ci:check
       - name: Run the same validation as local commits
         run: mise exec -- task repo:commit:check
