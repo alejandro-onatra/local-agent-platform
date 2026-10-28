@@ -10,6 +10,7 @@ This log records implementation decisions and scoped validation evidence. Entrie
 - Query OSV for PyYAML 6.0.3 in the host uv.lock: no advisories returned on this date. This excludes container/OS/tool dependencies and is not a frozen database scan.
 - Publish a scoped security policy and a prioritized hardening plan; retain incomplete OAuth, effective egress, per-user dynamic acceptance, recovery and telemetry gaps.
 - Remove trailing spaces from copied MIT license comment headers in test fixtures; keep reference function bodies unchanged.
+- Repair hook rehearsal on clean checkouts: create a harmless nonempty fixture commit inside the temporary clone and report only a fixed failure phase.
 
 **October 28, 2026 — recover services and repair local Qwen thinking control**
 

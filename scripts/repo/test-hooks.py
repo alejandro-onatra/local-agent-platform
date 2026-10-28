@@ -10,6 +10,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[2]
 MISE = shutil.which("mise") or str(Path.home() / ".local/bin/mise")
 ENV = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+PHASE = "initialization"
 
 
 def run(repo, args, expected=0):
@@ -26,6 +27,8 @@ def git(repo, *args, expected=0):
 
 
 def main():
+    global PHASE
+    PHASE = "clone_and_environment"
     with tempfile.TemporaryDirectory(prefix="agent-platform-hook-test-") as directory:
         repo = Path(directory) / "repo"
         run(ROOT, ["git", "clone", "--quiet", "--no-hardlinks", str(ROOT), str(repo)])
@@ -44,16 +47,21 @@ def main():
             shutil.copy2(source, target)
         run(repo, [MISE, "trust", "mise.toml"])
         run(repo, [MISE, "run", "env:python:setup"])
+        PHASE = "hook_installation"
         git(repo, "config", "--local", "core.hooksPath", "custom-preserved")
         run(repo, [MISE, "run", "repo:hooks:install"], expected=2)
         assert git(repo, "config", "--local", "--get", "core.hooksPath").stdout.strip() == "custom-preserved"
         git(repo, "config", "--local", "--unset", "core.hooksPath")
         run(repo, [MISE, "run", "repo:hooks:install"])
         run(repo, [MISE, "run", "repo:hooks:check"])
+        PHASE = "clean_commit"
+        # A clean, already-committed source tree still needs a real fixture change.
+        (repo / "hook-check.txt").write_text("Synthetic hook integration fixture.\n")
         git(repo, "add", "--all")
         result = git(repo, "commit", "-qm", "Verified clean fixture")
         assert "Running pre-commit validation" in result.stdout + result.stderr
         head = git(repo, "rev-parse", "HEAD").stdout.strip()
+        PHASE = "secret_rejection"
         secret = "sk-" + "abcdef0123456789" * 4
         unsafe = repo / "unsafe.txt"
         unsafe.write_text("LITELLM_MASTER_KEY=" + secret)
@@ -63,6 +71,7 @@ def main():
         assert git(repo, "rev-parse", "HEAD").stdout.strip() == head
         git(repo, "reset", "-q", "HEAD", "--", "unsafe.txt")
         unsafe.unlink()
+        PHASE = "compose_rejection"
         compose = repo / "infra/openhands/compose.yaml"
         baseline = compose.read_text()
         unsafe_compose = baseline.replace("127.0.0.1:8000:8080", "0.0.0.0:8000:8080")
@@ -73,6 +82,7 @@ def main():
         assert git(repo, "rev-parse", "HEAD").stdout.strip() == head
         compose.write_text(baseline)
         git(repo, "reset", "-q", "HEAD", "--", "infra/openhands/compose.yaml")
+        PHASE = "shell_rejection"
         script = repo / "scripts/repo/check-repo.sh"
         script.write_text(script.read_text() + "\nif\n")
         git(repo, "add", "scripts/repo/check-repo.sh")
@@ -88,5 +98,5 @@ if __name__ == "__main__":
     try:
         main()
     except (RuntimeError, AssertionError, OSError, subprocess.SubprocessError):
-        print("Hook integration test failed; potentially sensitive command output withheld.")
+        print(json.dumps({"status":"failed","phase":PHASE,"details":"Potentially sensitive command output withheld"}))
         raise SystemExit(1) from None
