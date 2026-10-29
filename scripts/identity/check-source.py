@@ -78,11 +78,11 @@ def validate(document):
     named('password','authentik_stages_password.passwordstage',{'backends':['authentik.core.auth.InbuiltBackend'],'configure_flow':None})
     named('totp','authentik_stages_authenticator_totp.authenticatortotpstage',{'digits':6})
     named('webauthn','authentik_stages_authenticator_webauthn.authenticatorwebauthnstage',{'user_verification':'required','resident_key_requirement':'preferred'})
-    for id,action in [('mfa-login','configure'),('mfa-access','deny')]:
+    for id,action,threshold in [('mfa-login','configure','seconds=0'),('mfa-access','deny','minutes=5')]:
         named(id,'authentik_stages_authenticator_validate.authenticatorvalidatestage',{
             'device_classes':['webauthn','totp'],'not_configured_action':action,
             'configuration_stages':[Ref('webauthn'),Ref('totp')] if action=='configure' else [],
-            'last_auth_threshold':'seconds=0','webauthn_user_verification':'required'})
+            'last_auth_threshold':threshold,'webauthn_user_verification':'required'})
     named('session','authentik_stages_user_login.userloginstage',{'session_duration':'hours=1','remember_me_offset':'seconds=0'})
     named('end-session','authentik_stages_user_logout.userlogoutstage',{})
     for flow,stages in [('login',['identify','password','mfa-login','session']),('authorize',['mfa-access']),('logout',['end-session'])]:

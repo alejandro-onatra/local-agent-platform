@@ -21,10 +21,10 @@ def readback():
     from authentik.stages.authenticator_validate.models import AuthenticatorValidateStage
     flows={key:Flow.objects.get(slug='household-'+key) for key in ('login','authorize','logout')}
     assert flows['authorize'].authentication=='require_authenticated'
-    for name,action in [('mfa-login','configure'),('mfa-access','deny')]:
+    for name,action,threshold in [('mfa-login','configure','seconds=0'),('mfa-access','deny','minutes=5')]:
         stage=AuthenticatorValidateStage.objects.get(name='household-'+name)
         assert stage.not_configured_action==action and set(stage.device_classes)=={'webauthn','totp'}
-        assert stage.last_auth_threshold=='seconds=0' and stage.webauthn_user_verification=='required'
+        assert stage.last_auth_threshold==threshold and stage.webauthn_user_verification=='required'
         assert set(stage.configuration_stages.values_list('name',flat=True))==({'household-webauthn','household-totp'} if action=='configure' else set())
     for key,names in [('login',['identify','password','mfa-login','session']),('authorize',['mfa-access']),('logout',['end-session'])]:
         assert list(FlowStageBinding.objects.filter(target=flows[key]).order_by('order').values_list('stage__name',flat=True))==['household-'+name for name in names]

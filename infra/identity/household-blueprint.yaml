@@ -93,7 +93,7 @@ entries:
     - totp
     not_configured_action: deny
     configuration_stages: []
-    last_auth_threshold: seconds=0
+    last_auth_threshold: minutes=5
     webauthn_user_verification: required
 - id: session
   model: authentik_stages_user_login.userloginstage
