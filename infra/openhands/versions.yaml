@@ -15,6 +15,12 @@ proxy:
   resolved_at: '2026-10-05'
   version: 1.30.5
 
+egress:
+  image: ubuntu/squid@sha256:c7304c79af47fc6c369f6c7453c96e4f26f69d74400a2f30ae8be56380a6bcc2
+  resolved_tag: 7.2-26.04_beta
+  resolved_at: '2026-10-29'
+  version: '7.2'
+
 # Only this known prior release may use the state-preserving upgrade task.
 upgrade_from:
   version: 1.24.0

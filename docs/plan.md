@@ -15,9 +15,10 @@ new-conversation agent completion remains to be measured.
 Do not interpret earlier dated proposals below as the current deployment state.
 The root CA was created in the explicitly accepted connected ceremony and its USB
 was removed; this is not an offline-host integrity guarantee. The complete SEC
-matrix remains pending. The family path bypasses LiteLLM, and the Internet switch
-is still a design. See [publication review](release_review.md) for the current
-scope, operational gaps and validation limits.
+matrix remains pending. The family path bypasses LiteLLM. Household egress proxy
+and owner Task controls are implemented in the repository and passed source tests,
+but have not been deployed or accepted with live traffic. See [publication review](release_review.md)
+for the current scope, operational gaps and validation limits.
 
 
 New requirement — October 26, 2026: provide owner-controlled public web access
@@ -25,9 +26,10 @@ for agent tools, default off, per user with a global off override and a visible
 switch preferably in OpenHands. Enforce outside the agent through a mandatory
 proxy, including active connection cutoff and DNS/IPv4/IPv6 bypass tests. Tool
 visibility or environment variables alone do not satisfy the requirement.
-This is planned, not enabled. Complete current backend/model connection first;
-then implement and accept the control plane and UI. See
-[Internet switch design and acceptance matrix](internet_access.md).
+The source implementation is ready for owner deployment; Internet access remains
+off. Prepare the pinned proxy, apply browser tools only while both agents are idle,
+then test HTTPS and deny cases in
+[the Internet switch and acceptance matrix](internet_access.md).
 
 Priority correction — October 25, 2026: deliver alejandro and kimberly accounts,
 mandatory TOTP, separate personal instances and actual phone-to-OpenHands access

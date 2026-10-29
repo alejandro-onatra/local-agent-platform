@@ -192,10 +192,13 @@ not additional published host ports. See
 New personal usage currently takes the direct local Ollama route and is not
 counted in LiteLLM dashboards. Per-user proxy credentials, fair inference/quotas,
 logs/traces and workflow metrics must be integrated explicitly. Existing proxy
-metrics do not prove personal-user telemetry. Existing WebSockets are bounded to
-five minutes; logout/deactivation is not claimed instantaneous because outpost
-caching also applies. Live cross-user browser/WebSocket tests and the deferred
-full identity application restore rehearsal remain open.
+metrics do not prove personal-user telemetry. Caddy closes an authenticated
+OpenHands WebSocket after 20 minutes, even if it is active. The per-user model
+relay permits up to 10 minutes between reads from Ollama; continuous streamed
+output can last longer. These limits govern different links and are an experiment,
+not a confirmed cause of prior disconnects. Logout/deactivation is not claimed
+instantaneous because outpost caching also applies. Live cross-user browser/WebSocket
+tests and the deferred full identity application restore rehearsal remain open.
 
 ## Decision and files
 

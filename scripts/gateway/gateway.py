@@ -30,7 +30,7 @@ PROFILE={'schema_version':1,'purpose':'household_users_https',
     'intermediate_fingerprint_sha256':'d83278b69d446d697f5a14fc1f226d9cd7be670c65e2b3cbf66f6e1939d2ef1e',
     'root_key_mounted':False,'access_logs':False,'openhands_routes':True,'renewal':'supervised_task'}
 # Update only with reviewed source/template changes and regression validation.
-SOURCE_HASHES={'infra/gateway/compose.yaml': '8152e49e6c433ee138ede766e58e650df074ae9564b40b6f66e1bffabdc3d54f', 'infra/gateway/Caddyfile': '5c4eb6461b87810db6ebbce5074916b6fa027b72c970c4d19e2354f10262c00c', 'infra/gateway/entrypoint.sh': '440c55213de5127a8698719f63c31ae1ceac9566270925a8201bf19898ffceba'}
+SOURCE_HASHES={'infra/gateway/compose.yaml': '8152e49e6c433ee138ede766e58e650df074ae9564b40b6f66e1bffabdc3d54f', 'infra/gateway/Caddyfile': 'a1a0610dbafb846bd456645b666628fccb0433580afebb74182115aebfe21225', 'infra/gateway/entrypoint.sh': '440c55213de5127a8698719f63c31ae1ceac9566270925a8201bf19898ffceba'}
 class GatewayError(ValueError):
     def __init__(self,code,diagnostic=None):
         super().__init__(code);self.diagnostic=diagnostic
@@ -212,6 +212,8 @@ def source_hashes():
 
 # Exact reviewed revisions only; template/script pairs are validated with every other source hash.
 LEGACY_CONFIG_REVISIONS={
+    'pre_timeout':('5c4eb6461b87810db6ebbce5074916b6fa027b72c970c4d19e2354f10262c00c',
+                   'eff0d4ef19532d9483098e7dec09340ee8a6c1b91f813d03048e38b3b16f233b'),
     'pre_sni':('5059e92a7228f11cadc9a60f1c2432688cf76c07631852553238a86f81a7b868',
                '4e8def17c78730cbaeb141cdeef584c3b6257e99901771863cbc20004b44a0ba'),
     'pre_csrf':('e893f7f5be007d5a7978c64761a99c53fc82d725dbe855efe92c63689ef00bd7',
@@ -228,6 +230,8 @@ def legacy_source_revision(observed,current):
 
 def legacy_caddy_text(current,revision):
     if revision not in LEGACY_CONFIG_REVISIONS:raise GatewayError('unreviewed_gateway_revision')
+    if revision=='pre_timeout':return current.replace('stream_timeout 20m','stream_timeout 5m')
+    current=current.replace('stream_timeout 20m','stream_timeout 5m')
     text=current.replace('    # Capture native form proof before stripping untrusted identity assertions.\n'
                          '    vars authentik_csrf {http.request.header.X-Authentik-CSRF}\n'
                          '    request_header -X-Authentik-*\n','',1)

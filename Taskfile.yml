@@ -184,6 +184,58 @@ tasks:
     cmds:
       - bash scripts/household/run.sh models-check
 
+  household:models:relay:apply:
+    desc: Apply the 10-minute model idle-read timeout; recreate only per-user model relays
+    cmds:
+      - bash scripts/household/run.sh models-relay-timeout-apply
+
+  household:internet:prepare:
+    desc: Cache and validate the pinned household egress proxy; no services or browser settings are changed
+    cmds:
+      - bash scripts/household/run.sh internet-prepare
+
+  household:internet:apply:
+    desc: Enable browser tools for both household users; recreates only their OpenHands containers after explicit idle confirmation
+    requires:
+      vars: [CONFIRM_IDLE]
+    env:
+      HOUSEHOLD_CONFIRM_IDLE: '{{.CONFIRM_IDLE}}'
+    cmds:
+      - bash scripts/household/run.sh internet-apply
+
+  household:internet:on:
+    desc: Start the restricted egress proxy for one user; requires browser tools already applied
+    requires:
+      vars: [USERNAME]
+    env:
+      HOUSEHOLD_USERNAME: '{{.USERNAME}}'
+    cmds:
+      - bash scripts/household/run.sh internet-on --username "$HOUSEHOLD_USERNAME"
+
+  household:internet:off:
+    desc: Immediately stop the egress proxy and close active web tunnels for one user
+    requires:
+      vars: [USERNAME]
+    env:
+      HOUSEHOLD_USERNAME: '{{.USERNAME}}'
+    cmds:
+      - bash scripts/household/run.sh internet-off --username "$HOUSEHOLD_USERNAME"
+
+  household:internet:global-off:
+    desc: Persist a global egress cutoff and stop both household proxies
+    cmds:
+      - bash scripts/household/run.sh internet-global-off
+
+  household:internet:global-on:
+    desc: Clear the global cutoff without starting any per-user proxy
+    cmds:
+      - bash scripts/household/run.sh internet-global-on
+
+  household:internet:status:
+    desc: Show confirmed per-user proxy state, global override and browser-tool readiness
+    cmds:
+      - bash scripts/household/run.sh internet-status
+
   household:identity:apply:
     desc: Apply invitation feedback and light household branding; no account creation or agent restarts
     cmds:
@@ -238,7 +290,7 @@ tasks:
       - bash scripts/gateway/run.sh issue
 
   gateway:config:refresh:
-    desc: Migrate reviewed gateway configurations using existing TLS files; preserve CSRF form headers without CA signing or service restart
+    desc: Migrate reviewed gateway timeout/CSRF configurations using existing TLS files; no CA signing or service restart
     cmds:
       - bash scripts/gateway/run.sh refresh
 
