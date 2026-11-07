@@ -3,7 +3,7 @@
 Prioritized security work now has a separate [hardening plan](hardening_plan.md),
 with publication, identity/isolation, egress, supply-chain and recovery acceptance.
 
-## Current delivery checkpoint — October 28, 2026
+## Delivery checkpoint — October 28, 2026 (historical snapshot)
 
 Implemented and partially accepted: separate bounded household instances, private
 model relays, Caddy HTTPS and Authentik invitations/MFA. Alejandro completed a
@@ -15,9 +15,19 @@ new-conversation agent completion remains to be measured.
 Do not interpret earlier dated proposals below as the current deployment state.
 The root CA was created in the explicitly accepted connected ceremony and its USB
 was removed; this is not an offline-host integrity guarantee. The complete SEC
-matrix remains pending. The family path bypasses LiteLLM, and the Internet switch
-is still a design. See [publication review](release_review.md) for the current
-scope, operational gaps and validation limits.
+matrix remains pending. The family path bypasses LiteLLM. Household egress proxy
+and owner Task controls are implemented in the repository and passed source tests,
+but have not been deployed or accepted with live traffic. See [publication review](release_review.md)
+for the current scope, operational gaps and validation limits.
+
+## Current local OpenHands checkpoint — November 6, 2026
+
+The owner reported upgrading the local deployment to the locked Canvas 1.34.0 /
+Agent Server/SDK 1.58.1 / Automation 1.26.0 release. Candidate identity,
+installed-module and native cache-usage checks passed, as did the UI,
+authenticated backend/Canvas proxy and Ollama/model-digest checks. A real agent
+execution and post-upgrade runtime restrictions remain pending. The separate
+household instances were not upgraded by this local operation.
 
 
 New requirement — October 26, 2026: provide owner-controlled public web access
@@ -25,9 +35,10 @@ for agent tools, default off, per user with a global off override and a visible
 switch preferably in OpenHands. Enforce outside the agent through a mandatory
 proxy, including active connection cutoff and DNS/IPv4/IPv6 bypass tests. Tool
 visibility or environment variables alone do not satisfy the requirement.
-This is planned, not enabled. Complete current backend/model connection first;
-then implement and accept the control plane and UI. See
-[Internet switch design and acceptance matrix](internet_access.md).
+The source implementation is ready for owner deployment; Internet access remains
+off. Prepare the pinned proxy, apply browser tools only while both agents are idle,
+then test HTTPS and deny cases in
+[the Internet switch and acceptance matrix](internet_access.md).
 
 Priority correction — October 25, 2026: deliver alejandro and kimberly accounts,
 mandatory TOTP, separate personal instances and actual phone-to-OpenHands access

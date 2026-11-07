@@ -53,14 +53,15 @@ def storage_policy():
 def paths(tenant):
     return STORE/'mounts'/tenant['id']/'state',STORE/'mounts'/tenant['id']/'workspace',BASE/'control'/tenant['id']
 
-def render(tenant,lock):
+def render(tenant,lock,browser_enabled=False,include_proxy=True):
     gateway,pilot,store=helpers();state,workspace,control=paths(tenant)
     values={'PILOT_IMAGE':lock['image'],'PILOT_PROXY_IMAGE':lock['proxy']['image'],
        'PILOT_USER':f"{tenant['uid']}:{tenant['gid']}",'PILOT_UID':str(tenant['uid']),
        'PILOT_STATE':str(state),'PILOT_WORKSPACE':str(workspace),'PILOT_CONTROL':str(control),
        'PILOT_LAUNCHER':str(ROOT/'scripts/openhands/start-agent-server.py'),
        'PILOT_ENTRYPOINT':str(ROOT/'infra/openhands/instances/entrypoint.sh'),
-       'PILOT_NGINX':str(ROOT/'infra/openhands/nginx.conf'),'PILOT_PORT':'0'}
+       'PILOT_NGINX':str(ROOT/'infra/openhands/nginx.conf'),
+       'PILOT_EGRESS_CONFIG':str(control/'squid.conf'),'PILOT_PORT':'0'}
     text=(ROOT/'infra/openhands/instances/compose.yaml').read_text()
     config=store.read_yaml(ROOT/'infra/openhands/instances/compose.yaml')
     def visit(value):
@@ -70,6 +71,14 @@ def render(tenant,lock):
         return value
     config=visit(config);agent=config['services']['openhands'];ingress=config['services']['ingress']
     agent['environment']['AGENT_CANVAS_ALLOW_LAN_SESSION_KEY']='true'
+    if browser_enabled:
+        proxy='http://egress-proxy:3128'
+        bypass='localhost,127.0.0.1,::1,ollama,model-relay,ingress,openhands'
+        agent['environment'].update({'OH_ENABLE_BROWSER':'true','VITE_ENABLE_BROWSER_TOOLS':'true',
+            'HTTP_PROXY':proxy,'HTTPS_PROXY':proxy,'ALL_PROXY':proxy,
+            'http_proxy':proxy,'https_proxy':proxy,'all_proxy':proxy,
+            'NO_PROXY':bypass,'no_proxy':bypass,
+            'BROWSER_USE_PROXY_SERVER':proxy,'BROWSER_USE_NO_PROXY':bypass})
     ingress.pop('ports')
     relay={k:v for k,v in ingress.items() if k not in ('networks','depends_on','volumes')}
     relay['networks']=['backend','models']
@@ -77,7 +86,78 @@ def render(tenant,lock):
                        'read_only':True,'bind':{'create_host_path':False}}]
     config['services']['model-relay']=relay
     config['networks']['models']={'external':True,'name':'agent-platform-local_default'}
+    if include_proxy:
+        config['services']['egress-proxy']={
+            'image':lock['egress']['image'],'platform':'linux/amd64','user':'584792:584792',
+            'entrypoint':['/usr/local/bin/entrypoint.sh'],
+            'command':['-f','/etc/squid/squid.conf','-NYC'],
+            'profiles':['internet'],'restart':'no','read_only':True,
+            'networks':['backend','egress'],
+            'volumes':[{'type':'bind','source':str(control/'squid.conf'),'target':'/etc/squid/squid.conf',
+                'read_only':True,'bind':{'create_host_path':False}}],
+            'tmpfs':['/tmp:rw,nosuid,nodev,noexec,size=16m,mode=1777',
+                '/var/log/squid:rw,nosuid,nodev,noexec,size=8m,mode=0750,uid=584792,gid=584792',
+                '/var/spool/squid:rw,nosuid,nodev,noexec,size=16m,mode=0750,uid=584792,gid=584792',
+                '/run:rw,nosuid,nodev,noexec,size=8m,mode=0750,uid=584792,gid=584792'],
+            'mem_limit':'192m','cpus':1,'pids_limit':96,'cap_drop':['ALL'],
+            'security_opt':['no-new-privileges:true','apparmor:docker-default'],
+            'logging':{'driver':'json-file','options':{'max-size':'2m','max-file':'2'}}}
+        config['networks']['egress']={}
     return config
+
+
+def replace_protected_file(path,data,pilot):
+    """Replace one verified root-owned control file atomically."""
+    old=path.read_bytes();pilot.protected_file(path,old,False)
+    import tempfile
+    fd,name=tempfile.mkstemp(prefix='.household-compose-',dir=path.parent)
+    temporary=Path(name)
+    try:
+        with os.fdopen(fd,'wb') as stream:
+            os.fchmod(stream.fileno(),0o644);stream.write(data);stream.flush();os.fsync(stream.fileno())
+        os.replace(temporary,path)
+    finally:temporary.unlink(missing_ok=True)
+    pilot.protected_file(path,data,False)
+
+
+def prepare_household_compose(path,tenant,lock,pilot,create=False,browser_enabled=None):
+    """Migrate only the exact previous household Compose file; reject arbitrary drift."""
+    if not path.exists() and not path.is_symlink():
+        if not create:raise HouseholdError('household_compose_missing')
+        enabled=bool(browser_enabled)
+        pilot.protected_file(path,yaml.safe_dump(render(tenant,lock,browser_enabled=enabled),sort_keys=False).encode(),True)
+        return
+    if path.is_symlink():raise HouseholdError('unsafe_household_compose')
+    current=path.read_bytes()
+    reviewed={enabled:yaml.safe_dump(render(tenant,lock,browser_enabled=enabled),sort_keys=False).encode()
+              for enabled in (False,True)}
+    legacy=yaml.safe_dump(render(tenant,lock,browser_enabled=False,include_proxy=False),sort_keys=False).encode()
+    if browser_enabled is None:
+        for expected in reviewed.values():
+            if current==expected:pilot.protected_file(path,expected,False);return
+        if current!=legacy:raise HouseholdError('household_compose_control_drift')
+        target=reviewed[False]
+    else:
+        target=reviewed[browser_enabled]
+        if current==target:pilot.protected_file(path,target,False);return
+        if current not in (*reviewed.values(),legacy):raise HouseholdError('household_compose_control_drift')
+    replace_protected_file(path,target,pilot)
+
+
+def prepare_squid_control(path,pilot,create=False):
+    pilot.protected_file(path,(ROOT/'infra/openhands/instances/squid.conf').read_bytes(),create)
+
+
+def validate_squid(engine,image,control):
+    engine.run(['docker','--context','default','run','--rm','--network','none','--platform','linux/amd64',
+        '--user','584792:584792','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges:true',
+        '--security-opt','apparmor:docker-default','--memory','192m','--cpus','1','--pids-limit','96',
+        '--tmpfs','/tmp:rw,nosuid,nodev,noexec,size=16m,mode=1777',
+        '--tmpfs','/var/log/squid:rw,nosuid,nodev,noexec,size=8m,mode=0750,uid=584792,gid=584792',
+        '--tmpfs','/var/spool/squid:rw,nosuid,nodev,noexec,size=16m,mode=0750,uid=584792,gid=584792',
+        '--tmpfs','/run:rw,nosuid,nodev,noexec,size=8m,mode=0750,uid=584792,gid=584792',
+        '--mount','type=bind,src='+str(control)+',dst=/etc/squid/squid.conf,readonly',
+        '--entrypoint','/usr/sbin/squid-gnutls',image,'-k','parse','-f','/etc/squid/squid.conf'],timeout=30)
 
 def model_config():
     return '''worker_processes 1;
@@ -95,13 +175,15 @@ http {
   listen 8080;
   client_max_body_size 8m;
   location = /v1/models { limit_except GET { deny all; } proxy_pass http://ollama:11434; }
-  location = /v1/chat/completions { limit_except POST { deny all; } proxy_pass http://ollama:11434; proxy_buffering off; proxy_read_timeout 180s; }
+  location = /v1/chat/completions { limit_except POST { deny all; } proxy_pass http://ollama:11434; proxy_buffering off; proxy_read_timeout 600s; }
   location / { return 404; }
  }
 }
 '''
 
 LEGACY_MODEL_CONFIG_SHA256='5c7903aff9fac9ee0a8005c55107c81298d27b3e4de9d4d46e71a9ea3b852b94'
+LEGACY_MODEL_CONFIG_TIMEOUT_SHA256='bca48fa1f32af6408e4da8cdc79afd2eb531a40429821ab40af69c91eef1bcbe'
+LEGACY_MODEL_CONFIG_SHA256S={LEGACY_MODEL_CONFIG_SHA256,LEGACY_MODEL_CONFIG_TIMEOUT_SHA256}
 
 def prepare_model_control(path,pilot,create=False):
     """Migrate only the reviewed old public relay config; reject arbitrary drift."""
@@ -111,7 +193,7 @@ def prepare_model_control(path,pilot,create=False):
         if not stat.S_ISREG(info.st_mode) or info.st_uid!=0 or info.st_nlink!=1 or stat.S_IMODE(info.st_mode)!=0o644:
             raise HouseholdError('unsafe_model_relay_control')
         old=path.read_bytes()
-        if old!=data and hashlib.sha256(old).hexdigest()==LEGACY_MODEL_CONFIG_SHA256:
+        if old!=data and hashlib.sha256(old).hexdigest() in LEGACY_MODEL_CONFIG_SHA256S:
             # Verify root ownership, mode, link count and parent before replacement.
             pilot.protected_file(path,old,False)
             import tempfile
@@ -201,18 +283,94 @@ def environment_root():
     # Reuse the tested fixed-image/mount primitives with an independent purpose/base.
     store.prepare(policy,engine,base=STORE)
     lock=store.read_yaml(ROOT/'infra/openhands/versions.yaml')
-    for image in (lock['image'],lock['proxy']['image']):
+    for image in (lock['image'],lock['proxy']['image'],lock['egress']['image']):
         engine.run(['docker','--context','default','pull',image],timeout=1200)
+    egress_digests=json.loads(engine.run(['docker','--context','default','image','inspect','--format','{{json .RepoDigests}}',lock['egress']['image']]))
+    if lock['egress']['image'] not in (egress_digests or []):raise HouseholdError('pinned_egress_image_required')
     metadata=pilot.image_metadata(engine,lock)
     (BASE/'control').mkdir(mode=0o700,exist_ok=True);store.safe_path(BASE/'control')
     for tenant in POLICY['tenants']:
         state,workspace,control=paths(tenant);control.mkdir(mode=0o700,exist_ok=True);store.safe_path(control)
         for folder in ('.openhands','.cache','.config','.local','workspace'):pilot.safe_child(state,folder,tenant,True)
         for kind in ('passwd','group'):pilot.protected_file(control/kind,pilot.remap_accounts(metadata[kind],tenant,kind).encode(),True)
-        for name,text in [('compose.yaml',yaml.safe_dump(render(tenant,lock),sort_keys=False))]:
-            pilot.protected_file(control/name,text.encode(),True)
+        prepare_household_compose(control/'compose.yaml',tenant,lock,pilot,True)
+        prepare_squid_control(control/'squid.conf',pilot,True)
+        setup_step('squid_config_'+tenant['id'],validate_squid,engine,lock['egress']['image'],control/'squid.conf')
         prepare_model_control(control/'model-nginx.conf',pilot,True)
-    return {'status':'prepared','scope':'Separate household bounded storage, controls and cached images; no accounts or services created'}
+    return {'status':'prepared','egress_proxy_image':'cached_and_pinned','browser_tools':'off_until_owner_apply',
+            'internet':'off','scope':'Separate household storage and optional egress controls prepared; no accounts or service startup'}
+
+
+def prepare_internet_root():
+    if os.geteuid()!=0:raise HouseholdError('host_admin_required')
+    _,pilot,store=source();store.safe_path(BASE)
+    engine=store.Engine();lock=store.read_yaml(ROOT/'infra/openhands/versions.yaml')
+    image=lock['egress']['image']
+    try:engine.run(['docker','--context','default','pull',image],timeout=1200)
+    except Exception:raise HouseholdError('pinned_egress_image_unavailable') from None
+    digests=json.loads(engine.run(['docker','--context','default','image','inspect','--format','{{json .RepoDigests}}',image]))
+    if image not in (digests or []):raise HouseholdError('pinned_egress_image_required')
+    prepared={}
+    for tenant in POLICY['tenants']:
+        control=paths(tenant)[2];store.safe_path(control)
+        prepare_household_compose(control/'compose.yaml',tenant,lock,pilot,False)
+        prepare_squid_control(control/'squid.conf',pilot,True)
+        setup_step('squid_config_'+tenant['id'],validate_squid,engine,image,control/'squid.conf')
+        project='agent-platform-household-'+tenant['id']
+        setup_step('compose_config_'+tenant['id'],engine.run,['docker','--context','default','compose',
+            '--project-name',project,'--file',str(control/'compose.yaml'),'--profile','internet','config','--quiet'])
+        prepared[tenant['id']]={'proxy_config':'valid','egress':'off'}
+    return {'status':'prepared','instances':prepared,'browser_tools':'unchanged_until_internet_apply',
+        'scope':'Pinned proxy and root-owned configuration only; no services started or agent containers recreated'}
+
+
+def apply_internet_root(payload):
+    if os.geteuid()!=0:raise HouseholdError('host_admin_required')
+    if payload.get('confirmed_idle') is not True:raise HouseholdError('confirm_idle_required')
+    _,pilot,store=source();engine=store.Engine();lock=store.read_yaml(ROOT/'infra/openhands/versions.yaml')
+    internet=module('household_internet','scripts/household/internet.py')
+    status=internet.operate('status',None,engine=engine,base=BASE,tenants=POLICY['tenants'],
+        controls={t['id']:paths(t)[2] for t in POLICY['tenants']},lock=lock,actor_uid=os.getuid(),
+        render_compose=lambda tenant,current_lock:render(tenant,current_lock,browser_enabled=True),
+        expected_squid=(ROOT/'infra/openhands/instances/squid.conf').read_bytes())
+    if any(item['proxy']=='running' for item in status['instances'].values()):
+        raise HouseholdError('internet_proxy_must_be_off_before_agent_recreation')
+    runtime_root();applied={}
+    for tenant in POLICY['tenants']:
+        control=paths(tenant)[2];project='agent-platform-household-'+tenant['id']
+        prepare_household_compose(control/'compose.yaml',tenant,lock,pilot,False,browser_enabled=True)
+        setup_step('internet_compose_'+tenant['id'],engine.run,['docker','--context','default','compose',
+            '--project-name',project,'--file',str(control/'compose.yaml'),'--profile','internet','config','--quiet'])
+        print('[household] Recreating only '+tenant['id']+' OpenHands; persistent files stay mounted.',file=sys.stderr,flush=True)
+        setup_step('internet_apply_'+tenant['id'],engine.run,['docker','--context','default','compose',
+            '--project-name',project,'--file',str(control/'compose.yaml'),'up','-d','--no-deps',
+            '--force-recreate','--pull','never','openhands'],timeout=120)
+        container=internet._container(engine,project,'openhands')
+        if not internet._browser_enabled(container):raise HouseholdError('household_browser_tools_apply_failed')
+        applied[tenant['id']]={'browser_tools':'enabled','egress':'off'}
+    runtime_root()
+    return {'status':'passed','instances':applied,'internet':'off',
+        'scope':'Only household OpenHands containers recreated after owner idle confirmation; proxy remains stopped'}
+
+
+def internet_control_root(payload):
+    if os.geteuid()!=0:raise HouseholdError('host_admin_required')
+    try:
+        _,_,store=source();engine=store.Engine();lock=store.read_yaml(ROOT/'infra/openhands/versions.yaml')
+        internet=module('household_internet','scripts/household/internet.py')
+        action=payload.get('action');username=payload.get('username')
+        if action=='on':runtime_root()
+        return internet.operate(action,username,engine=engine,base=BASE,tenants=POLICY['tenants'],
+            controls={tenant['id']:paths(tenant)[2] for tenant in POLICY['tenants']},lock=lock,
+            actor_uid=payload.get('requested_by_uid'),
+            render_compose=lambda tenant,current_lock:render(tenant,current_lock,browser_enabled=True),
+            expected_squid=(ROOT/'infra/openhands/instances/squid.conf').read_bytes())
+    except Exception as error:
+        if type(error).__name__=='InternetError' and re.fullmatch(
+            r'internet_[a-z0-9_]+|global_internet_[a-z0-9_]+|household_[a-z0-9_]+|unknown_household_username|host_admin_required|invalid_internet_action|invalid_internet_actor',str(error)):
+            raise HouseholdError(str(error)) from None
+        if isinstance(error,HouseholdError):raise
+        raise HouseholdError('internet_operation_failed_details_withheld') from None
 
 
 def setup_step(stage, callback, *args, **kwargs):
@@ -242,6 +400,34 @@ def models_check_root(tune=False):
             'scope':'Verified household containers; managed model tuning' if tune else 'Verified household containers; local API/model readback only, no browser-session acceptance'}
 
 
+def models_relay_timeout_apply_root():
+    """Apply the reviewed model idle-read timeout; recreate only per-user relays."""
+    if os.geteuid()!=0:raise HouseholdError('host_admin_required')
+    runtime_root()
+    _,pilot,store=source();engine=store.Engine()
+    lock=store.read_yaml(ROOT/'infra/openhands/versions.yaml')
+    for tenant in POLICY['tenants']:
+        control=paths(tenant)[2]
+        setup_step('relay_timeout_control_'+tenant['id'],prepare_model_control,control/'model-nginx.conf',pilot,False)
+        setup_step('relay_timeout_config_'+tenant['id'],validate_model_relay,engine,tenant,lock)
+    instances={}
+    for tenant in POLICY['tenants']:
+        project='agent-platform-household-'+tenant['id']
+        print('[household] Recreating only '+tenant['id']+' model relay.',file=sys.stderr,flush=True)
+        setup_step('relay_timeout_restart_'+tenant['id'],engine.run,['docker','--context','default','compose',
+            '--project-name',project,'--file',str(paths(tenant)[2]/'compose.yaml'),'up','-d','--no-deps',
+            '--force-recreate','--pull','never','model-relay'],timeout=90)
+        try:
+            state=json.loads(engine.run(['docker','--context','default','inspect','--format','{{json .State}}',
+                project+'-model-relay-1'],timeout=20))
+        except Exception:raise HouseholdError('household_model_relay_timeout_apply_verification_failed') from None
+        if state.get('Running') is not True:raise HouseholdError('household_model_relay_timeout_apply_not_running')
+        instances[tenant['id']]={'model_relay':'running'}
+    runtime_root()
+    return {'status':'passed','instances':instances,'proxy_read_timeout_seconds':600,
+            'scope':'Only model-relay containers recreated; OpenHands, ingress, Authentik, user state and model data preserved'}
+
+
 def seed_agent(engine, project):
     raw=engine.run(['docker','--context','default','exec','-i',project+'-openhands-1','python','-B','-'],
                    input=(ROOT/'scripts/household/seed-agent.py').read_bytes(),timeout=300)
@@ -264,7 +450,9 @@ def setup_root(payload):
     lock=store.read_yaml(ROOT/'infra/openhands/versions.yaml')
     for tenant in POLICY['tenants']:
         control=paths(tenant)[2]
-        pilot.protected_file(control/'compose.yaml',yaml.safe_dump(render(tenant,lock),sort_keys=False).encode(),False)
+        prepare_household_compose(control/'compose.yaml',tenant,lock,pilot,False)
+        prepare_squid_control(control/'squid.conf',pilot,False)
+        setup_step('squid_config_'+tenant['id'],validate_squid,engine,lock['egress']['image'],control/'squid.conf')
         setup_step('relay_control_'+tenant['id'],prepare_model_control,control/'model-nginx.conf',pilot,False)
         setup_step('relay_config_'+tenant['id'],validate_model_relay,engine,tenant,lock)
     print('[household] Importing and verifying identity configuration; no account passwords are set.',file=sys.stderr,flush=True)
@@ -306,9 +494,17 @@ def runtime_root():
     for tenant in POLICY['tenants']:
         config=render(tenant,lock);prefix='agent-platform-household-'+tenant['id']
         for service,expected in config['services'].items():
+            if service=='egress-proxy':
+                names=store_text(engine.run(['docker','--context','default','ps','--all','--format','{{.Names}}',
+                    '--filter','label=com.docker.compose.project='+prefix,
+                    '--filter','label=com.docker.compose.service=egress-proxy'])).splitlines()
+                if not names:continue
+                if names!=[prefix+'-egress-proxy-1']:raise HouseholdError('household_runtime_proxy_identity_drift')
+                state=json.loads(engine.run(['docker','--context','default','inspect','--format','{{json .State}}',names[0]]))
+                if state.get('Running') is not True:continue
             info=json.loads(engine.run(['docker','--context','default','inspect','--format','{{json .}}',prefix+'-'+service+'-1']))
             host=info['HostConfig'];actual=info['Config'];labels=actual.get('Labels',{})
-            memory={'2g':2*1024**3,'64m':64*1024**2}[expected['mem_limit']]
+            memory={'2g':2*1024**3,'64m':64*1024**2,'192m':192*1024**2}[expected['mem_limit']]
             if (not info['State']['Running'] or actual['Image']!=expected['image'] or actual['User']!=expected['user']
                 or labels.get('com.docker.compose.project')!=prefix or labels.get('com.docker.compose.service')!=service
                 or host['ReadonlyRootfs'] is not True or host['Privileged'] or host.get('PortBindings') or host.get('CapAdd')
@@ -317,6 +513,13 @@ def runtime_root():
                 or set(host['SecurityOpt'])!={'no-new-privileges:true','apparmor:docker-default'}
                 or host.get('Devices') or host.get('DeviceRequests') or host.get('PidMode') or host.get('IpcMode')=='host'):
                 raise HouseholdError('household_runtime_process_drift_'+tenant['id']+'_'+service)
+            if service=='openhands':
+                env=set(actual.get('Env',[]));browser='OH_ENABLE_BROWSER=true' in env and 'VITE_ENABLE_BROWSER_TOOLS=true' in env
+                if browser:
+                    if not {'HTTPS_PROXY=http://egress-proxy:3128','BROWSER_USE_PROXY_SERVER=http://egress-proxy:3128'}<=env:
+                        raise HouseholdError('household_browser_proxy_environment_drift')
+                elif 'OH_ENABLE_BROWSER=false' not in env or 'VITE_ENABLE_BROWSER_TOOLS=false' not in env:
+                    raise HouseholdError('household_browser_state_unknown')
             wanted={prefix+'_'+name if name!='models' else 'agent-platform-local_default' for name in expected['networks']}
             if set(info['NetworkSettings']['Networks'])!=wanted:raise HouseholdError('household_runtime_network_drift')
             for name in wanted-inspected_networks:
@@ -327,6 +530,10 @@ def runtime_root():
             wanted_mounts={(m['target'],m['source'],not m.get('read_only',False)) for m in expected['volumes']}
             if mounts!=wanted_mounts or any(m['Type']=='volume' for m in info['Mounts']):raise HouseholdError('household_runtime_mount_drift')
     return {'status':'passed','instances':2,'runtime_process_mount_networks':'passed','bounded_storage':'passed'}
+
+
+def store_text(value):
+    return value.decode().strip() if isinstance(value,bytes) else str(value).strip()
 
 def root_call(action,payload):
     helper=helpers()[0].pki().backup()
@@ -469,7 +676,7 @@ def owner_invitation(username,revoke=False):
 
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('mode',choices=['plan','setup','check','root-runtime','root-status','root-setup','root-environment','invite','invite-revoke','diagnose','root-diagnose','logs','root-logs','identity-apply','models-check','root-models-check','models-tune','root-models-tune']);parser.add_argument('--username',choices=['alejandro','kimberly']);args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('mode',choices=['plan','setup','check','root-runtime','root-status','root-setup','root-environment','invite','invite-revoke','diagnose','root-diagnose','logs','root-logs','identity-apply','models-check','root-models-check','models-tune','root-models-tune','models-relay-timeout-apply','root-models-relay-timeout-apply','internet-prepare','root-internet-prepare','internet-apply','root-internet-apply','internet-on','internet-off','internet-global-off','internet-global-on','internet-status','root-internet']);parser.add_argument('--username',choices=['alejandro','kimberly']);args=parser.parse_args()
     try:
         gateway,pilot,store=source()
         if args.mode=='plan':
@@ -480,6 +687,14 @@ def main():
         elif args.mode=='root-models-check':result=models_check_root()
         elif args.mode=='models-tune':result=root_call('root-models-tune',{})
         elif args.mode=='root-models-tune':result=models_check_root(tune=True)
+        elif args.mode=='models-relay-timeout-apply':result=root_call('root-models-relay-timeout-apply',{})
+        elif args.mode=='root-models-relay-timeout-apply':result=models_relay_timeout_apply_root()
+        elif args.mode=='internet-prepare':result=root_call('root-internet-prepare',{})
+        elif args.mode=='internet-apply':result=root_call('root-internet-apply',{
+            'confirmed_idle':os.environ.get('HOUSEHOLD_CONFIRM_IDLE')=='YES','requested_by_uid':os.getuid()})
+        elif args.mode in ('internet-on','internet-off','internet-global-off','internet-global-on','internet-status'):
+            result=root_call('root-internet',{'action':args.mode.removeprefix('internet-'),
+                'username':args.username,'requested_by_uid':os.getuid()})
         elif args.mode=='diagnose':result=root_call('root-diagnose',{})
         elif args.mode=='root-diagnose':result=diagnose_root()
         elif args.mode=='logs':result=root_call('root-logs',{})
@@ -507,7 +722,11 @@ def main():
                 info=os.fstat(fd)
                 if not stat.S_ISREG(info.st_mode) or info.st_uid!=0 or stat.S_IMODE(info.st_mode)!=0o600 or info.st_nlink!=1:raise HouseholdError('unsafe_household_lock')
                 fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
-                result=environment_root() if args.mode=='root-environment' else setup_root(json.load(sys.stdin))
+                if args.mode=='root-environment':result=environment_root()
+                elif args.mode=='root-internet-prepare':result=prepare_internet_root()
+                elif args.mode=='root-internet-apply':result=apply_internet_root(json.load(sys.stdin))
+                elif args.mode=='root-internet':result=internet_control_root(json.load(sys.stdin))
+                else:result=setup_root(json.load(sys.stdin))
             finally:os.close(fd)
     except Exception as error:
         result={'status':'failed','error':str(error) if isinstance(error,HouseholdError) else 'household_operation_failed_details_withheld',

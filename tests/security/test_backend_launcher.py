@@ -13,9 +13,14 @@ module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
 
 class BackendLauncherTests(unittest.TestCase):
     def test_wrong_version_or_missing_module_is_rejected(self):
-        for version,found in [('1.49.5',object()),('1.53.0',None)]:
+        for version,found in [('1.49.5',object()),('1.59.0',object()),('1.53.0',None)]:
             with patch.object(module.importlib.metadata,'version',return_value=version), patch.object(module.importlib.util,'find_spec',return_value=found):
                 self.assertFalse(module.runtime_ready())
+
+    def test_both_locked_agent_server_versions_are_accepted(self):
+        for version in ('1.53.0','1.58.1'):
+            with patch.object(module.importlib.metadata,'version',return_value=version), patch.object(module.importlib.util,'find_spec',return_value=object()):
+                self.assertTrue(module.runtime_ready())
 
     def test_runtime_probe_does_not_launch_server(self):
         with patch.object(module,'runtime_ready',return_value=True),patch.object(module,'verify_usage_compatibility'),patch.object(module.sys,'argv',['launcher','--runtime-check']),patch.object(module.runpy,'run_module') as run,contextlib.redirect_stdout(io.StringIO()):

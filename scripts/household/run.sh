@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
-mode="${1:?Use plan, environment, check or setup}"
+mode="${1:?Use plan, environment, check, setup, models-relay-timeout-apply or internet-*}"
 case "$mode" in
   plan) ;;
-  setup|environment|check|invite|invite-revoke|diagnose|logs|identity-apply|models-check|models-tune) sudo -v ;;
+  setup|environment|check|invite|invite-revoke|diagnose|logs|identity-apply|models-check|models-tune|models-relay-timeout-apply|internet-*) sudo -v ;;
   *) exit 2 ;;
 esac
 if [[ "$mode" == environment ]]; then

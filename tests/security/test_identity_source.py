@@ -28,10 +28,14 @@ class IdentitySourceTests(unittest.TestCase):
             with self.subTest(entry=row['id']):
                 self.reject(lambda d,r:d['entries'].remove(r[row['id']]))
     def test_no_mfa_skip_or_cached_validation(self):
-        for id in ('mfa-login','mfa-access'):
-            for field,value in [('not_configured_action','skip'),('device_classes',['email']),('last_auth_threshold','hours=24'),('webauthn_user_verification','preferred')]:
+        for id,expected_threshold in [('mfa-login','seconds=0'),('mfa-access','minutes=5')]:
+            for field,value in [('not_configured_action','skip'),('device_classes',['email']),('last_auth_threshold','minutes=6'),('last_auth_threshold','hours=24'),('webauthn_user_verification','preferred')]:
                 with self.subTest(stage=id,field=field):
                     self.reject(lambda d,r:r[id]['attrs'].update({field:value}))
+            for value in ('seconds=0','minutes=5'):
+                if value!=expected_threshold:
+                    with self.subTest(stage=id,field='last_auth_threshold',value=value):
+                        self.reject(lambda d,r:r[id]['attrs'].update({'last_auth_threshold':value}))
     def test_missing_enrollment_stages_and_webauthn_without_verification_rejected(self):
         self.reject(lambda d,r:r['mfa-login']['attrs'].update(configuration_stages=[]))
         self.reject(lambda d,r:r['webauthn']['attrs'].update(user_verification='discouraged'))

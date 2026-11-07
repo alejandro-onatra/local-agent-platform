@@ -209,9 +209,12 @@ Every application request first removes untrusted identity headers, asks the
 outpost for authorization, then checks the authenticated username exactly before
 proxying. Callback paths under `/outpost.goauthentik.io/` go to the outpost; they
 never serve Canvas. HTTP APIs and WebSocket handshakes follow the same policy.
-Existing WebSockets are bounded to five minutes, not instant logout revocation.
-Outpost token caching also affects revocation latency; expiry/deactivation and
-logout behavior still need explicit live acceptance.
+Caddy closes an authenticated OpenHands WebSocket after 20 minutes, even if it is
+active. The per-user model relay tolerates up to 10 minutes without receiving data
+from Ollama; a continuous token stream can run longer. These are separate connection
+limits and are an experiment, not proof of the cause of prior disconnects. Outpost
+token caching also affects revocation latency; expiry/deactivation and logout behavior
+still need explicit live acceptance.
 
 The agents have **no published host ports**. Their native session-key injection
 is enabled only for these dedicated instances behind authorization. That is an
@@ -567,9 +570,11 @@ and profile wiring from browser-cookie/health-cache failures. It is read-only.
 
 The owner requested Internet access with a visible on/off switch, preferably in
 OpenHands. See [the enforcement design and acceptance matrix](internet_access.md).
-This is pending implementation; internal agent networks and disabled browser
-tools remain unchanged. The switch will require external network enforcement,
-owner authorization and active-session cutoff; hiding tools is insufficient.
+The proxy and owner Task controls are implemented in the repository but not
+deployed. Internet access remains off until the owner runs the preparation,
+idle-confirmed apply and per-user enable steps in
+[the Internet access runbook](internet_access.md). Live network acceptance is
+still pending.
 
 ### Post-login authorization diagnostic
 

@@ -398,6 +398,7 @@ class CSRFConfigRevisionTests(unittest.TestCase):
         for name,(digest,_) in G.LEGACY_CONFIG_REVISIONS.items():
             old=G.legacy_caddy_text(current,name)
             self.assertEqual(hashlib.sha256(old.encode()).hexdigest(),digest)
-            self.assertNotIn('header_up X-Authentik-CSRF',old)
+            if name=='pre_timeout':self.assertIn('header_up X-Authentik-CSRF',old)
+            else:self.assertNotIn('header_up X-Authentik-CSRF',old)
         self.assertIn('default_sni login.home.arpa',G.legacy_caddy_text(current,'pre_csrf'))
         with self.assertRaises(G.GatewayError):G.legacy_caddy_text(current,'arbitrary')

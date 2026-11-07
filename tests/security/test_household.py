@@ -5,6 +5,8 @@ from unittest import mock
 ROOT=Path(__file__).resolve().parents[2]
 spec=importlib.util.spec_from_file_location('household_tests',ROOT/'scripts/household/household.py')
 H=importlib.util.module_from_spec(spec);spec.loader.exec_module(H)
+internet_spec=importlib.util.spec_from_file_location('household_internet_tests',ROOT/'scripts/household/internet.py')
+I=importlib.util.module_from_spec(internet_spec);internet_spec.loader.exec_module(I)
 
 class HouseholdTests(unittest.TestCase):
     def test_named_policy_and_real_storage_are_separate_from_synthetic(self):
@@ -62,7 +64,7 @@ class HouseholdTests(unittest.TestCase):
             self.assertLess(block.index('forward_auth'),block.index('respond @wrong_user 403'))
             self.assertLess(block.index('respond @wrong_user 403'),block.index('reverse_proxy agent-platform-household-'+user))
             self.assertIn('not header X-Authentik-Username '+user,block)
-            self.assertIn('Cache-Control no-store',block);self.assertIn('stream_timeout 5m',block)
+            self.assertIn('Cache-Control no-store',block);self.assertIn('stream_timeout 20m',block)
 
     def test_privileged_ipc_keeps_passwords_off_arguments_and_sanitizes_failures(self):
         @contextlib.contextmanager
@@ -522,6 +524,7 @@ class ModelRelayTests(unittest.TestCase):
 
     def test_relay_config_routes_every_compiled_module_temp_area_to_tmp(self):
         text=H.model_config()
+        self.assertIn('proxy_read_timeout 600s;',text)
         for directive in ('client_body_temp_path','proxy_temp_path','fastcgi_temp_path','uwsgi_temp_path','scgi_temp_path'):
             self.assertRegex(text,directive+r' /tmp/[a-z_]+;')
         self.assertIn('pid /tmp/nginx.pid;',text)
@@ -566,7 +569,7 @@ class ModelRelayTests(unittest.TestCase):
     def test_reviewed_legacy_config_migrates_atomically_and_repeat_is_noop(self):
         import hashlib
         new=H.model_config().encode()
-        old=new.replace(b' fastcgi_temp_path /tmp/fastcgi;\n uwsgi_temp_path /tmp/uwsgi;\n scgi_temp_path /tmp/scgi;\n',b'')
+        old=new.replace(b' fastcgi_temp_path /tmp/fastcgi;\n uwsgi_temp_path /tmp/uwsgi;\n scgi_temp_path /tmp/scgi;\n',b'').replace(b'proxy_read_timeout 600s;',b'proxy_read_timeout 180s;')
         self.assertEqual(hashlib.sha256(old).hexdigest(),H.LEGACY_MODEL_CONFIG_SHA256)
         with tempfile.TemporaryDirectory() as folder:
             path=Path(folder)/'model-nginx.conf';path.write_bytes(old);path.chmod(0o644)
@@ -585,6 +588,23 @@ class ModelRelayTests(unittest.TestCase):
                 H.prepare_model_control(path,pilot)
             self.assertEqual(path.read_bytes(),new);self.assertEqual(path.stat().st_ino,inode)
             self.assertEqual(verified,[old,new,new])
+
+    def test_current_timeout_revision_migrates_to_ten_minutes(self):
+        import hashlib
+        new=H.model_config().encode()
+        old=new.replace(b'proxy_read_timeout 600s;',b'proxy_read_timeout 180s;')
+        self.assertEqual(hashlib.sha256(old).hexdigest(),H.LEGACY_MODEL_CONFIG_TIMEOUT_SHA256)
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'model-nginx.conf';path.write_bytes(old);path.chmod(0o644)
+            original=Path.lstat
+            def root_stat(item,*args,**kwargs):
+                info=original(item,*args,**kwargs)
+                if item==path:return types.SimpleNamespace(st_mode=info.st_mode,st_uid=0,st_nlink=1)
+                return info
+            def protected(item,data,create):self.assertEqual(item.read_bytes(),data)
+            with mock.patch.object(Path,'lstat',root_stat):
+                H.prepare_model_control(path,types.SimpleNamespace(protected_file=protected))
+            self.assertEqual(path.read_bytes(),new)
 
     def test_arbitrary_control_drift_is_not_adopted(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -934,3 +954,77 @@ class PublicBrowserRouteTests(unittest.TestCase):
 
     def test_success_response_without_an_authorization_redirect_is_not_accepted(self):
         with self.assertRaises(H.HouseholdError):self.run_probe('https://192.168.42.20:8443/application/o/authorize/',status=200)
+
+
+class HouseholdInternetTests(unittest.TestCase):
+    def test_browser_tools_and_proxy_remain_off_until_explicit_apply(self):
+        _,_,store=H.source();lock=store.read_yaml(ROOT/'infra/openhands/versions.yaml')
+        tenant=H.POLICY['tenants'][0]
+        safe=H.render(tenant,lock);enabled=H.render(tenant,lock,browser_enabled=True)
+        self.assertEqual(safe['services']['openhands']['networks'],['backend'])
+        self.assertTrue(safe['networks']['backend']['internal'])
+        self.assertEqual(safe['services']['openhands']['environment']['OH_ENABLE_BROWSER'],'false')
+        self.assertNotIn('HTTPS_PROXY',safe['services']['openhands']['environment'])
+        self.assertEqual(safe['services']['egress-proxy']['profiles'],['internet'])
+        self.assertEqual(safe['services']['egress-proxy']['networks'],['backend','egress'])
+        self.assertEqual(safe['services']['egress-proxy']['user'],'584792:584792')
+        self.assertEqual(safe['services']['egress-proxy']['cap_drop'],['ALL'])
+        self.assertTrue(safe['services']['egress-proxy']['read_only'])
+        env=enabled['services']['openhands']['environment']
+        self.assertEqual(env['OH_ENABLE_BROWSER'],'true')
+        self.assertEqual(env['HTTPS_PROXY'],'http://egress-proxy:3128')
+        self.assertEqual(env['BROWSER_USE_PROXY_SERVER'],'http://egress-proxy:3128')
+
+    def test_squid_acl_denies_private_targets_before_allow_and_ends_with_deny(self):
+        text=(ROOT/'infra/openhands/instances/squid.conf').read_text()
+        allow=text.index('http_access allow household_clients')
+        final_deny=text.index('http_access deny all')
+        for rule in ('http_access deny to_localhost','http_access deny to_linklocal',
+                     'http_access deny to_private','http_access deny to_multicast',
+                     'http_access deny to_reserved','http_access deny !ipv4_destination'):
+            self.assertLess(text.index(rule),allow)
+        self.assertLess(allow,final_deny)
+        self.assertIn('acl Safe_ports port 443',text)
+        self.assertIn('acl SSL_ports port 443',text)
+        self.assertIn('192.88.99.0/24',text)
+        self.assertLess(text.index('http_access deny !CONNECT'),allow)
+        self.assertLess(text.index('http_access deny CONNECT !SSL_ports'),allow)
+        self.assertIn('http_access allow household_clients CONNECT SSL_ports',text)
+        self.assertNotIn('http_access allow household_clients\n',text)
+        self.assertIn('access_log none',text)
+
+    def test_browser_tool_configuration_is_reported_even_when_agent_is_stopped(self):
+        env={'OH_ENABLE_BROWSER=true','VITE_ENABLE_BROWSER_TOOLS=true',
+             'HTTPS_PROXY=http://egress-proxy:3128','BROWSER_USE_PROXY_SERVER=http://egress-proxy:3128'}
+        self.assertTrue(I._browser_enabled({'State':{'Running':False},'Config':{'Env':list(env)}}))
+
+    def test_global_off_always_overrides_a_running_per_user_proxy(self):
+        self.assertTrue(I.effective_on(True,False))
+        self.assertFalse(I.effective_on(False,False))
+        self.assertFalse(I.effective_on(True,True))
+        self.assertFalse(I.effective_on(False,True))
+
+    def test_cutoff_uses_immediate_container_stop(self):
+        class Engine:
+            running=True
+            commands=[]
+            def run(inner,args,**kwargs):
+                inner.commands.append(args)
+                if 'ps' in args:return b'agent-platform-household-alejandro-egress-proxy-1\n'
+                if 'inspect' in args:return json.dumps({'State':{'Running':inner.running}}).encode()
+                if 'stop' in args:inner.running=False
+                return b''
+        engine=Engine();I._stop_proxy(engine,'agent-platform-household-alejandro')
+        stop=next(args for args in engine.commands if 'stop' in args)
+        self.assertEqual(stop[stop.index('--time')+1],'0')
+        self.assertFalse(engine.running)
+
+    def test_cutoff_reports_failure_if_immediate_stop_and_kill_do_not_work(self):
+        class Engine:
+            def run(inner,args,**kwargs):
+                if 'ps' in args:return b'agent-platform-household-alejandro-egress-proxy-1\n'
+                if 'inspect' in args:return b'{"State":{"Running":true}}'
+                return b''
+        with self.assertRaises(I.InternetError) as caught:
+            I._stop_proxy(Engine(),'agent-platform-household-alejandro')
+        self.assertEqual(str(caught.exception),'internet_cutoff_unverified')
