@@ -19,7 +19,14 @@ def check_backend(api):
                     'qwen_profile_active':data.get('active_profile')=='local-qwen3-8b'}
             else:
                 version=data.get('version') or data.get('sdk_version')
-                result[label]={'status':'passed' if isinstance(version,str) and bool(re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+(?:[-+][a-zA-Z0-9.]+)?',version)) else 'invalid_version_schema'}
+                version_valid=isinstance(version,str) and bool(re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+(?:[-+][a-zA-Z0-9.]+)?',version))
+                usable_tools=data.get('usable_tools')
+                if isinstance(usable_tools,list) and all(type(name) is str for name in usable_tools):
+                    browser_tool_set='usable' if 'browser_tool_set' in usable_tools else 'not_usable'
+                else:
+                    browser_tool_set='not_reported'
+                result[label]={'status':'passed' if version_valid else 'invalid_version_schema',
+                    'browser_tool_set':browser_tool_set}
         except urllib.error.HTTPError as e:
             result[label]={'status':'failed','http_status':e.code if e.code in (400,401,403,404,405,422,429,500,502,503,504) else 'other','category':'http_4xx' if 400<=e.code<500 else 'http_5xx'};e.close()
         except (ValueError,TypeError,AttributeError):result[label]={'status':'failed','category':'invalid_schema'}

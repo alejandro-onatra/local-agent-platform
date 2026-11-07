@@ -99,6 +99,21 @@ owner policy.
 7. Add an Authentik-protected owner switch and observability after the CLI
    enforcement has passed those live checks.
 
+### Browser-tool readiness is separate from Internet egress
+
+The task household:internet:status reports whether the per-user proxy and browser
+environment flags are enabled. The task household:models:check also reports the
+Agent Server's browser_tool_set capability from /server_info; usable means the
+server reports the tool set as available, not_usable means it omitted the tool,
+and not_reported means the server did not return a valid tool list. This does not
+prove a specific conversation received or successfully used the tools.
+
+After enabling browser tools, verify them in a new Canvas conversation. A
+successful browser acceptance must show actual browser_navigate and
+browser_get_content tool events for a harmless public page. A model's claim that
+it can use curl/wget, proxy status, or an empty tab list before navigation is
+not evidence of browser navigation.
+
 ## Backlog: owner admin panel
 
 - Add a separate HTTPS admin app behind Caddy and Authentik, restricted to an

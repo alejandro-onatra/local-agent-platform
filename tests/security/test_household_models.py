@@ -26,6 +26,16 @@ class ModelChecks(unittest.TestCase):
     def test_invalid_server_version_is_not_accepted(self):
         result=M.check_backend(lambda p:{'version':'PRIVATE'} if p=='/server_info' else {})
         self.assertEqual(result['server_info']['status'],'invalid_version_schema')
+    def test_browser_tool_set_readiness_is_reported_without_returning_tool_catalog(self):
+        cases=[({'usable_tools':['terminal','browser_tool_set','PRIVATE TOOL']},'usable'),
+               ({'usable_tools':['terminal']},'not_usable'),
+               ({'usable_tools':['browser_tool_set',7]},'not_reported'),
+               ({},'not_reported')]
+        for server_info,expected in cases:
+            with self.subTest(expected=expected,server_info=server_info):
+                result=M.check_backend(lambda path:{'version':'1.53.0',**server_info} if path=='/server_info' else {})
+                self.assertEqual(result['server_info']['browser_tool_set'],expected)
+                self.assertNotIn('PRIVATE',json.dumps(result))
     def test_model_and_agent_profile_links_are_checked_without_exposing_keys(self):
         def api(path):
             if path.startswith('/api/agent-profiles'):return {'profile':{'llm_profile_ref':'local-qwen3-8b','PRIVATE':'hidden'}}
