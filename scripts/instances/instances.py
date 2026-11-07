@@ -10,7 +10,7 @@ sys.path.insert(0,str(ROOT/'scripts/storage'))
 import storage as store
 BASE=Path('/var/lib/agent-platform/instances-pilot')
 TEMPLATE=ROOT/'infra/openhands/instances/compose.yaml'
-SOURCE_ENTRYPOINT='87f44fe42f523db1087023c0fbd34e7359db7066636aefedae963576991454b6'
+SOURCE_ENTRYPOINT='1b03f9278af158eb1f2376ed344561c0de217c991193b3c9618360e5da4346bd'
 PORTS={'probe-a':8101,'probe-b':8102}
 
 class PilotError(ValueError):
