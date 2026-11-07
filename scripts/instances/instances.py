@@ -10,7 +10,7 @@ sys.path.insert(0,str(ROOT/'scripts/storage'))
 import storage as store
 BASE=Path('/var/lib/agent-platform/instances-pilot')
 TEMPLATE=ROOT/'infra/openhands/instances/compose.yaml'
-SOURCE_ENTRYPOINT='87f44fe42f523db1087023c0fbd34e7359db7066636aefedae963576991454b6'
+SOURCE_ENTRYPOINT='1b03f9278af158eb1f2376ed344561c0de217c991193b3c9618360e5da4346bd'
 PORTS={'probe-a':8101,'probe-b':8102}
 
 class PilotError(ValueError):
@@ -147,7 +147,14 @@ def image_metadata(engine,lock):
     finally:
         try:engine.run(['docker','--context','default','rm','--force',name])
         except store.StorageError:pass
-    if data.get('entrypoint')!=SOURCE_ENTRYPOINT:raise PilotError('native_entrypoint_mismatch')
+    entrypoint_hash=data.get('entrypoint')
+    if not isinstance(entrypoint_hash,str) or not re.fullmatch(r'[0-9a-f]{64}',entrypoint_hash):
+        raise PilotError('native_entrypoint_metadata_invalid')
+    if entrypoint_hash!=SOURCE_ENTRYPOINT:
+        raise PilotError('native_entrypoint_mismatch',{
+          'expected_entrypoint_sha256':SOURCE_ENTRYPOINT,
+          'observed_entrypoint_sha256':entrypoint_hash,
+          'image_digest':lock['image'].rsplit('@',1)[-1]})
     return data
 
 

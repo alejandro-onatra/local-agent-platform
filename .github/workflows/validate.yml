@@ -17,7 +17,7 @@ jobs:
   validate:
     name: Repository validation
     runs-on: ubuntu-26.04
-    timeout-minutes: 25
+    timeout-minutes: 60
     env:
       PYTHONOPTIMIZE: '0'
     steps:
@@ -39,3 +39,44 @@ jobs:
         run: mise run env:ci:check
       - name: Run the same validation as local commits
         run: mise exec -- task repo:commit:check
+      - name: Run disposable Authentik and PostgreSQL integration
+        run: mise exec -- task identity:native:check
+      - name: Prepare synthetic storage for Compose integration
+        run: |
+          mise run env:storage:setup
+          mise run env:storage:check
+      - name: Pull the pinned Compose integration images
+        shell: bash
+        run: |
+          set -euo pipefail
+          openhands_image="$(mise exec -- python -c 'from pathlib import Path; import yaml; print(yaml.safe_load(Path("infra/openhands/versions.yaml").read_text())["image"])')"
+          ingress_image="$(mise exec -- python -c 'from pathlib import Path; import yaml; print(yaml.safe_load(Path("infra/openhands/versions.yaml").read_text())["proxy"]["image"])')"
+          docker --context default pull "$openhands_image"
+          docker --context default pull "$ingress_image"
+      - name: Run two-instance OpenHands Compose integration
+        run: |
+          mise exec -- task openhands:instances:plan
+          touch "$RUNNER_TEMP/openhands-instances-up-attempted"
+          mise exec -- task openhands:instances:up
+          mise exec -- task openhands:instances:check
+          mise exec -- task openhands:instances:accept
+          mise exec -- task openhands:instances:network:check
+          mise exec -- task openhands:instances:websocket:check
+          mise exec -- task openhands:instances:recovery:check
+      - name: Stop synthetic instances and unmount CI storage
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if [[ -f "$RUNNER_TEMP/openhands-instances-up-attempted" ]]; then
+            mise exec -- task openhands:instances:down
+            down_status=$?
+          else
+            echo "No OpenHands pilot startup was attempted; skipping down."
+            down_status=0
+          fi
+          mise exec -- task storage:unmount
+          unmount_status=$?
+          if (( down_status != 0 || unmount_status != 0 )); then
+            exit 1
+          fi
