@@ -147,7 +147,14 @@ def image_metadata(engine,lock):
     finally:
         try:engine.run(['docker','--context','default','rm','--force',name])
         except store.StorageError:pass
-    if data.get('entrypoint')!=SOURCE_ENTRYPOINT:raise PilotError('native_entrypoint_mismatch')
+    entrypoint_hash=data.get('entrypoint')
+    if not isinstance(entrypoint_hash,str) or not re.fullmatch(r'[0-9a-f]{64}',entrypoint_hash):
+        raise PilotError('native_entrypoint_metadata_invalid')
+    if entrypoint_hash!=SOURCE_ENTRYPOINT:
+        raise PilotError('native_entrypoint_mismatch',{
+          'expected_entrypoint_sha256':SOURCE_ENTRYPOINT,
+          'observed_entrypoint_sha256':entrypoint_hash,
+          'image_digest':lock['image'].rsplit('@',1)[-1]})
     return data
 
 
