@@ -8,14 +8,23 @@ import inspect
 import runpy
 import sys
 
-EXPECTED_VERSION = '1.53.0'
-# Official v1.53.0 normalize_usage already includes upstream PR #5327.
-USAGE_SOURCE_SHA256 = 'd67ed7d48ada7620a60246c09e63b01871bc440a426d9f6889236730c6265634'
+# Both locked releases use the same upstream normalize_usage implementation.
+USAGE_SOURCE_SHA256_BY_VERSION = {
+    '1.53.0': 'd67ed7d48ada7620a60246c09e63b01871bc440a426d9f6889236730c6265634',
+    '1.58.1': 'd67ed7d48ada7620a60246c09e63b01871bc440a426d9f6889236730c6265634',
+}
+
+
+def installed_agent_server_version():
+    try:
+        return importlib.metadata.version('openhands-agent-server')
+    except (ImportError, ValueError, importlib.metadata.PackageNotFoundError):
+        return None
 
 
 def runtime_ready():
     try:
-        return (importlib.metadata.version('openhands-agent-server') == EXPECTED_VERSION
+        return (installed_agent_server_version() in USAGE_SOURCE_SHA256_BY_VERSION
                 and importlib.util.find_spec('openhands.agent_server.__main__') is not None)
     except (ImportError, ValueError, importlib.metadata.PackageNotFoundError):
         return False
@@ -25,18 +34,21 @@ class UsageCompatibilityError(ValueError):
     """Fixed public diagnostic raised only by our compatibility guards."""
 
 
-def verified_usage_source(source):
+def verified_usage_source(source, version):
     """Require the locked upstream normalizer without rewriting it."""
-    if hashlib.sha256(source.encode()).hexdigest() != USAGE_SOURCE_SHA256:
+    expected = USAGE_SOURCE_SHA256_BY_VERSION.get(version)
+    if expected is None or hashlib.sha256(source.encode()).hexdigest() != expected:
         raise UsageCompatibilityError('Locked usage normalizer source mismatch')
 
 
 def verify_usage_compatibility():
     """Test native SDK/LiteLLM accounting without changing code or calling an LLM."""
-    if importlib.metadata.version('openhands-sdk') != EXPECTED_VERSION:
-        raise UsageCompatibilityError('Locked SDK version mismatch')
+    server_version = importlib.metadata.version('openhands-agent-server')
+    sdk_version = importlib.metadata.version('openhands-sdk')
+    if server_version != sdk_version or sdk_version not in USAGE_SOURCE_SHA256_BY_VERSION:
+        raise UsageCompatibilityError('Locked Agent Server/SDK version mismatch')
     telemetry = importlib.import_module('openhands.sdk.llm.utils.telemetry')
-    verified_usage_source(inspect.getsource(telemetry.normalize_usage))
+    verified_usage_source(inspect.getsource(telemetry.normalize_usage), sdk_version)
     for details, expected_write in [
         ({'cached_tokens': 3, 'cache_creation_tokens': None}, 0),
         ({'cached_tokens': 3}, 0),
@@ -63,7 +75,7 @@ def main():
         print('Locked SDK usage compatibility check failed; backend not launched.', file=sys.stderr)
         return 1
     if sys.argv[1:] == ['--runtime-check']:
-        print('Installed Python Agent Server 1.53.0 and native cache-usage compatibility verified; no runtime patch or extraction required.')
+        print(f'Installed Python Agent Server {installed_agent_server_version()} and native cache-usage compatibility verified; no runtime patch or extraction required.')
         return 0
     runpy.run_module('openhands.agent_server', run_name='__main__', alter_sys=True)
     return 0

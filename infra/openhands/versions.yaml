@@ -1,11 +1,11 @@
 # Maintained configuration; keep versions, digests and numeric types explicit.
-resolved_at: '2026-10-10'
-version: 1.26.0
-image: ghcr.io/openhands/agent-canvas@sha256:ce4526401c08b47d74fd0be5ebf97e8219d6a02955cb6710e8cc3335f01291a6
-source_revision: 3500d9e5c7cbdfb5a2cbfe9499ce4448eb10c0a2
-agent_server: 1.53.0
-automation: 1.19.0
-compressed_image_bytes: 1565822625
+resolved_at: '2026-10-29'
+version: 1.34.0
+image: ghcr.io/openhands/agent-canvas@sha256:638c5e3ce76df74344bb18bd85f44af395337ade8e71f04532099fb380febadf
+source_revision: 6c120073f5a1e1c838ba6fdd9a075c79ff997b98
+agent_server: 1.58.1
+automation: 1.26.0
+compressed_image_bytes: 1408033220
 ui_url: http://127.0.0.1:8000/canvas
 llm_model: openai/qwen3:8b
 llm_base_url: http://ollama:11434/v1
@@ -23,6 +23,6 @@ egress:
 
 # Only this known prior release may use the state-preserving upgrade task.
 upgrade_from:
-  version: 1.24.0
-  image: ghcr.io/openhands/agent-canvas@sha256:65b9dd60572a8f489d157998637d9aa58ccbc454878eeef62152d67399e962ac
-  agent_server: 1.49.6
+  version: 1.26.0
+  image: ghcr.io/openhands/agent-canvas@sha256:ce4526401c08b47d74fd0be5ebf97e8219d6a02955cb6710e8cc3335f01291a6
+  agent_server: 1.53.0

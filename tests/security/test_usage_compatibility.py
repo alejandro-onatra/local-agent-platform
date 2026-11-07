@@ -59,8 +59,8 @@ class UsageCompatibilityTests(unittest.TestCase):
     def setUp(self):
         self.telemetry=reference_module(FIXTURE.with_name('sdk_normalize_usage_1_53_0.py'))
 
-    def apply(self):
-        with patch.object(launcher.importlib.metadata,'version',return_value='1.53.0'),patch.object(launcher.importlib,'import_module',return_value=self.telemetry):
+    def apply(self,version='1.53.0'):
+        with patch.object(launcher.importlib.metadata,'version',return_value=version),patch.object(launcher.importlib,'import_module',return_value=self.telemetry):
             launcher.verify_usage_compatibility()
 
     def test_original_sdk_reproduces_exact_null_attribute_error(self):
@@ -78,6 +78,16 @@ class UsageCompatibilityTests(unittest.TestCase):
                               ({'cached_tokens':3,'cache_creation_tokens':0},0)]:
             result=self.telemetry.normalize_usage(Usage(prompt_tokens_details=details))
             self.assertEqual((result.prompt_tokens,result.completion_tokens,result.cache_read_tokens,result.cache_write_tokens),(100,5,3,write))
+
+    def test_same_native_usage_implementation_is_verified_for_both_locked_versions(self):
+        self.apply('1.53.0')
+        self.apply('1.58.1')
+
+    def test_agent_server_and_sdk_versions_must_match(self):
+        with patch.object(launcher.importlib.metadata,'version',side_effect=['1.58.1','1.53.0']),patch.object(launcher.importlib,'import_module') as imports:
+            with self.assertRaisesRegex(ValueError,'version mismatch'):
+                launcher.verify_usage_compatibility()
+        imports.assert_not_called()
 
     def test_missing_usage_and_details_are_not_invented(self):
         self.apply()
@@ -116,7 +126,7 @@ class UsageCompatibilityTests(unittest.TestCase):
     def test_modified_reference_source_is_rejected_without_partial_patch(self):
         source=inspect.getsource(self.telemetry.normalize_usage)
         with self.assertRaisesRegex(ValueError,'source mismatch'):
-            launcher.verified_usage_source(source+'\n')
+            launcher.verified_usage_source(source+'\n','1.53.0')
         code=self.telemetry.normalize_usage.__code__
         with patch.object(launcher.importlib.metadata,'version',return_value='1.53.0'),patch.object(launcher.importlib,'import_module',return_value=self.telemetry),patch.object(launcher.inspect,'getsource',return_value=source.replace('cache_write = 0','cache_write = 8')):
             with self.assertRaisesRegex(ValueError,'source mismatch'):
