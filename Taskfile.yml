@@ -596,6 +596,11 @@ tasks:
     cmds:
       - bash scripts/security/check-secrets.sh
 
+  security:trivy:check:
+    desc: Scan dependencies and infrastructure configuration for high/critical findings
+    cmds:
+      - trivy fs --scanners vuln,misconfig --severity HIGH,CRITICAL --exit-code 1 .
+
   security:storage:test:
     desc: Test storage policy, unsafe mount mutations, setup preservation and bounded probe behavior
     cmds:
@@ -674,6 +679,7 @@ tasks:
       - task: security:config
       - task: openhands:instances:config
       - task: security:secrets
+      - task: security:trivy:check
       - task: repo:environment:test
       - task: repo:test
       - task: observability:test
