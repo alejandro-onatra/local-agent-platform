@@ -33,7 +33,7 @@ if a[0]=='inspect':
  else:print('sha256:synthetic-image')
  raise SystemExit(0)
 if a[:2]==['image','inspect']:
- print(json.dumps(['ghcr.io/openhands/agent-canvas@sha256:ce4526401c08b47d74fd0be5ebf97e8219d6a02955cb6710e8cc3335f01291a6']));raise SystemExit(0)
+ print(json.dumps(['ghcr.io/openhands/agent-canvas@sha256:638c5e3ce76df74344bb18bd85f44af395337ade8e71f04532099fb380febadf']));raise SystemExit(0)
 if a[0]=='compose':
  if 'ps' in a:print('synthetic-container');raise SystemExit(0)
  if 'exec' in a:

@@ -2,22 +2,20 @@
 
 ## Version selection
 
-On October 10, 2026 the latest official stable release is Agent Canvas 1.26.0
-(published October 8), containing Agent Server/SDK 1.53.0 and Automation 1.19.0.
-The official all-in-one image is pinned by digest in `infra/openhands/versions.yaml`
-for Linux amd64; its compressed layers total approximately 1.57 GB. The source
-revision is verified against the release and registry image labels. The owner
-applied this upgrade on October 11: candidate/native cache-usage tests, private
-backups, UI, authenticated backend/proxy and Ollama model checks passed.
-Post-upgrade runtime restrictions passed all 14 selected checks; Collector log
-refresh and a synthetic proxy stream check passed. The owner reported successful
-read-only agent terminal execution in /projects/demo. Broader functionality and
-household acceptance remain pending; see [upgrade evidence](openhands_upgrade.md).
+The local OpenHands deployment is pinned to Agent Canvas 1.34.0, Agent
+Server/SDK 1.58.1 and Automation 1.26.0 in
+`infra/openhands/versions.yaml`. The Linux amd64 image is locked by digest and
+source revision. On November 6, 2026, the owner reported a successful local
+upgrade: candidate identity/native cache-usage checks, a private backup, UI,
+authenticated backend/Canvas proxy and Ollama model checks passed. A real agent
+execution and post-upgrade runtime restriction checks remain pending. This
+upgrade did not update the separate household instances; see
+[upgrade evidence](openhands_upgrade.md).
 
 Node and the OpenHands Python runtime are inside the image. The host Python,
 pinned by mise, is only used for repository configuration/validation scripts.
 mise maintains Task and Python; Task coordinates `scripts/openhands/` operations.
-For an existing 1.24.0 deployment use [the backed-up upgrade procedure](openhands_upgrade.md)
+For an existing 1.26.0 deployment use [the backed-up upgrade procedure](openhands_upgrade.md)
 instead of ordinary startup. The frontend continues to use the OpenHands agent;
 no cloud provider is required.
 
@@ -97,14 +95,14 @@ If the UI fails, check `openhands:logs`. Do not share keys or conversation bodie
 
 ## Validation performed and pending
 
-The official amd64 digest was resolved and code, image configuration and component versions were checked. The combined Compose configuration, mounts and network, and script syntax were validated. Real execution requires the host terminal with access to Docker; startup, LLM profile and conversation remain pending until results are shared.
+The owner reported successful startup, authenticated backend/Canvas proxy readiness and Ollama connectivity for the local 1.34.0 deployment. A real agent conversation and post-upgrade runtime restriction checks still require acceptance.
 
 ## Sources
 
-- [Release v1.26.0 and Official Quickstart](https://github.com/OpenHands/OpenHands/tree/v1.26.0)
-- [Dockerfile of the image](https://github.com/OpenHands/OpenHands/blob/v1.26.0/docker/Dockerfile)
-- [Entrypoint and persistence](https://github.com/OpenHands/OpenHands/blob/v1.26.0/docker/entrypoint.sh)
-- [Agent Server: configuration](https://github.com/OpenHands/software-agent-sdk/blob/v1.53.0/openhands-agent-server/openhands/agent_server/config.py)
+- [Pinned release v1.34.0 and Official Quickstart](https://github.com/OpenHands/OpenHands/tree/v1.34.0)
+- [Dockerfile of the image](https://github.com/OpenHands/OpenHands/blob/v1.34.0/docker/Dockerfile)
+- [Entrypoint and persistence](https://github.com/OpenHands/OpenHands/blob/v1.34.0/docker/entrypoint.sh)
+- [Agent Server: configuration](https://github.com/OpenHands/software-agent-sdk/blob/v1.58.1/openhands-agent-server/openhands/agent_server/config.py)
 - [Local Models](https://docs.openhands.dev/openhands/usage/llms/local-llms)
 
 ## Fix for sudo step — October 5, 2026
@@ -218,7 +216,7 @@ while running Agent Server 1.49.6: real normalization preflight and authenticate
 backend/proxy checks passed, with no recognized error indicators in the reviewed
 log tail. This did not establish an actual successful agent conversation.
 
-The repository now prepares Canvas 1.26.0 / SDK 1.53.0, whose native normalizer
+The repository now pins Canvas 1.34.0 / SDK 1.58.1, whose native normalizer
 contains the upstream fix. The launcher no longer compiles or replaces function
 code. It checks the exact installed version/source and exercises null, absent and
 integer cache-write details before launching the installed Python module. The

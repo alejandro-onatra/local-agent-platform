@@ -3,7 +3,7 @@
 Prioritized security work now has a separate [hardening plan](hardening_plan.md),
 with publication, identity/isolation, egress, supply-chain and recovery acceptance.
 
-## Current delivery checkpoint — October 28, 2026
+## Delivery checkpoint — October 28, 2026 (historical snapshot)
 
 Implemented and partially accepted: separate bounded household instances, private
 model relays, Caddy HTTPS and Authentik invitations/MFA. Alejandro completed a
@@ -19,6 +19,15 @@ matrix remains pending. The family path bypasses LiteLLM. Household egress proxy
 and owner Task controls are implemented in the repository and passed source tests,
 but have not been deployed or accepted with live traffic. See [publication review](release_review.md)
 for the current scope, operational gaps and validation limits.
+
+## Current local OpenHands checkpoint — November 6, 2026
+
+The owner reported upgrading the local deployment to the locked Canvas 1.34.0 /
+Agent Server/SDK 1.58.1 / Automation 1.26.0 release. Candidate identity,
+installed-module and native cache-usage checks passed, as did the UI,
+authenticated backend/Canvas proxy and Ollama/model-digest checks. A real agent
+execution and post-upgrade runtime restrictions remain pending. The separate
+household instances were not upgraded by this local operation.
 
 
 New requirement — October 26, 2026: provide owner-controlled public web access

@@ -2,6 +2,13 @@
 
 This log records implementation decisions and scoped validation evidence. Entries are not a commit log: several changes accumulated after the October 7 Git baseline before being prepared together for publication. Deployment and acceptance statements apply only to their stated checks and dates.
 
+**November 6, 2026 — owner-reported local OpenHands 1.34.0 upgrade**
+
+- Record the current Canvas 1.34.0 / Agent Server/SDK 1.58.1 / Automation 1.26.0 lock and distinguish the local deployment from the separate household instances.
+- The owner reported successful candidate identity, installed-module and native cache-usage checks; private backup creation; and UI, authenticated backend/Canvas proxy and Ollama/model-digest checks after apply.
+- A real agent execution and post-upgrade runtime restriction checks remain pending. Refresh Collector log mounts after recreation; no household upgrade or acceptance is claimed.
+- Update current OpenHands, upgrade, isolation and plan documentation while retaining October 2026 evidence for 1.26.0 as historical.
+
 **October 28, 2026 — diagnose and correct the GitHub runner mismatch**
 
 - Read the authenticated first-run logs: three native PKI/gateway tests failed because the Ubuntu 24.04 OpenSSL did not match the pinned 3.5.5 host contract.

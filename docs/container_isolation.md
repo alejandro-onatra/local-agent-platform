@@ -1,9 +1,13 @@
 # Host-container isolation
 
-Date: October 11, 2026
-Status: owner applied the optional hardening profile; UI/model startup checks
-passed. The owner-reported post-apply baseline passed all 14 selected runtime
-checks. The owner subsequently applied the Python launcher compatibility fix:
+Status as of November 6, 2026: the owner reported applying Canvas 1.34.0 / SDK
+1.58.1 to the local OpenHands deployment. Candidate, UI, authenticated
+backend/Canvas proxy and model connectivity checks passed. A real agent execution
+and post-upgrade runtime restriction checks remain pending; the separate
+household instances were not upgraded. The owner applied the optional hardening
+profile on October 9; UI/model startup checks passed. The owner-reported
+post-apply baseline passed all 14 selected runtime checks. The owner subsequently
+applied the Python launcher compatibility fix:
 authenticated backend/proxy and model connectivity passed. The owner then applied
 the bounded runtime configuration tmpfs; the latest backend log diagnostic reported
 no recognized error indicators at that time. A subsequent agent call reported the
@@ -449,6 +453,16 @@ checks do not establish new image UID, startup, actual agent execution or family
 security. Re-run current runtime checks and refresh Collector log mounts after
 recreation. New upstream HTML session-key injection is disabled by default;
 keep that default and supply preserved credentials locally if the UI asks.
+
+## Owner-reported OpenHands 1.34.0 upgrade — November 6, 2026
+
+The owner reported successful candidate identity/native cache-usage checks,
+private backup creation, UI readiness, authenticated backend/Canvas proxy
+readiness and container-to-Ollama/model-digest checks after upgrading the local
+deployment. The 14 selected runtime checks and demo acceptance documented above
+apply to the earlier 1.26.0 deployment; they have not yet been rerun against
+1.34.0. A real agent task, current runtime restrictions, refreshed Collector log
+mounts and household-instance upgrade/acceptance remain separate pending work.
 
 
 ## Current runtime acceptance and storage preparation — October 11, 2026

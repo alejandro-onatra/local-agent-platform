@@ -1,13 +1,24 @@
 # OpenHands upgrade operations
 
-Date: October 11, 2026
-Status: owner applied Canvas 1.26.0 / SDK 1.53.0 on October 11.
-Candidate, backup and API/model checks passed. Service recovery, Collector log
-mount refresh and synthetic streamed usage passed. The stale image checker was
-corrected and the owner revalidated all 14 selected runtime conditions. The owner
-reported successful read-only agent terminal execution in /projects/demo.
-The existing demo acceptance also passed all three generated tests and additional
-arithmetic checks. Broader tool behavior and household acceptance remain pending.
+Date: November 6, 2026
+Status: owner reported applying Canvas 1.34.0 / SDK 1.58.1 locally. Candidate,
+backup, UI, authenticated backend/Canvas proxy and Ollama model checks passed.
+Real agent execution and post-upgrade runtime restriction checks remain pending.
+The separate household instances were not upgraded by this operation.
+
+## Applied local upgrade — November 6, 2026
+
+The owner supplied successful `openhands:upgrade:plan` and
+`openhands:upgrade:apply` output. Candidate image identity, installed modules and
+the native cache-usage self-test passed. Apply created a private backup, recreated
+only the local OpenHands/proxy services, then passed UI, authenticated
+Agent Server/Canvas proxy and container-to-Ollama/model-digest checks. The backup
+remains outside the repository.
+
+The current lock is Canvas 1.34.0, Agent Server/SDK 1.58.1 and Automation 1.26.0.
+This output does not establish a successful real agent task, post-upgrade runtime
+restrictions, household instance upgrades or household readiness. Refresh
+observability log mounts after recreation as directed by the upgrade task.
 
 ## Applied host evidence — October 11, 2026
 
@@ -113,14 +124,14 @@ particular conversation uses LiteLLM and adds usage to the dashboard.
 
 ## Pinned target
 
-[Latest stable release 1.26.0](https://github.com/OpenHands/OpenHands/releases/tag/v1.26.0)
-was published October 8. [Release defaults](https://github.com/OpenHands/OpenHands/blob/v1.26.0/config/defaults.json)
-select Agent Server/SDK 1.53.0 and Automation 1.19.0. The linux/amd64 image is locked
-by immutable digest, with source revision matching the release. Compressed layers
-sum to 1,565,822,625 bytes; disk and network transfer can differ with shared layers.
+[Pinned release 1.34.0](https://github.com/OpenHands/OpenHands/releases/tag/v1.34.0)
+is recorded in `infra/openhands/versions.yaml` with Agent Server/SDK 1.58.1 and
+Automation 1.26.0. The Linux amd64 image is locked by immutable digest and source
+revision. Its compressed layers total 1,408,033,220 bytes; disk and network
+transfer can differ with shared layers.
 
 The installed Python backend is retained by the
-[released Dockerfile](https://github.com/OpenHands/OpenHands/blob/v1.26.0/docker/Dockerfile).
+[released Dockerfile](https://github.com/OpenHands/OpenHands/blob/v1.34.0/docker/Dockerfile).
 The hardened launcher continues avoiding executable PyInstaller extraction. Its
 native SDK normalizer already includes the cache-creation attribute guard, so no
 runtime source compilation or function replacement remains. A pinned-version /
