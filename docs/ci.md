@@ -14,6 +14,11 @@ services or use household accounts, CA keys, passwords, persistent storage, or
 the host Ollama model. These checks do not certify real-device login or model
 inference.
 
+The CI bootstrap retries temporary mise download failures with bounded
+backoff. Mise tool downloads use eight retries for transient HTTP and network
+errors. Archive and binary checksums remain mandatory; a failed or mismatched
+download is not installed.
+
 ## Local and CI security scans
 
 The versioned pre-commit hook and the GitHub Actions workflow both run
