@@ -1,12 +1,139 @@
 version: '3'
 
-# Service operations and code tests only. Environment tasks live in mise.toml.
+# Go Task owns project tasks; mise pins and activates tool versions.
 # Explicit task calls in cmds run sequentially.
 tasks:
   default:
     desc: List available tasks
     cmds:
       - task --list
+
+
+  # Environment, repository, and host preparation.
+  env:plan:
+    desc: "Check Python/uv/dependencies and repository structure; preview Docker/Toolkit installation."
+    cmds:
+      - bash scripts/environment/plan.sh
+
+  env:setup:
+    desc: "Synchronize Python with uv, check GPU and install Docker/Toolkit; requires sudo and may restart Docker."
+    cmds:
+      - bash scripts/environment/setup.sh
+
+  env:check:
+    desc: "Validate Python/uv/lock, repository structure, GPU driver and Docker/GPU in the host terminal."
+    cmds:
+      - bash scripts/environment/check.sh
+
+  env:python:setup:
+    desc: "Synchronize .venv from pyproject.toml and uv.lock with uv sync --locked; no sudo."
+    cmds:
+      - bash scripts/environment/setup-python.sh
+
+  env:python:check:
+    desc: "Check versions and .venv synchronization against uv.lock without installing dependencies."
+    cmds:
+      - bash scripts/environment/check-python.sh
+
+  repo:check:
+    desc: "Check required files and shell syntax throughout the repository."
+    cmds:
+      - bash scripts/repo/check-repo.sh
+
+  gpu:check:
+    desc: "Inspect host GPU, NVIDIA driver and device nodes; save a local diagnostic."
+    cmds:
+      - bash scripts/host/check-gpu.sh
+
+  docker:plan:
+    desc: "Preview pinned packages and Docker/Toolkit installer actions without installing."
+    cmds:
+      - bash scripts/host/install-docker-gpu.sh --plan
+
+  docker:install:
+    desc: "Install pinned packages and configure NVIDIA/Docker; requires sudo and checks active services."
+    cmds:
+      - bash scripts/host/install-docker-gpu.sh --apply
+
+  docker:check:
+    desc: "Check Docker/Compose/Buildx and GPU in a temporary container; may require sudo."
+    cmds:
+      - bash scripts/host/check-docker-gpu.sh
+
+  repo:hooks:install:
+    desc: "Install versioned Git hooks for this checkout; preserve any different existing hooks path."
+    cmds:
+      - bash scripts/repo/install-hooks.sh
+
+  repo:hooks:check:
+    desc: "Verify this checkout uses the executable versioned pre-commit hook."
+    cmds:
+      - bash scripts/repo/check-hooks.sh
+
+  env:lan:inventory:
+    desc: "Inspect host resources, visible KVM support and LAN networking without changing the host."
+    cmds:
+      - bash scripts/environment/inventory-lan.sh
+
+  env:storage:plan:
+    desc: "Inspect storage tools and reserve budget for two synthetic fixed-size filesystems per UID; no allocation."
+    cmds:
+      - bash scripts/storage/run.sh plan
+
+  env:storage:setup:
+    desc: "Prepare/remount 512 MiB of private synthetic ext4 images outside CloudDrive; requires host sudo, preserves existing services/data."
+    cmds:
+      - bash scripts/storage/run.sh setup
+
+  env:storage:check:
+    desc: "Verify exact pilot backing files, active mounts, UID permissions and capacity; requires host sudo, no writes to filesystems."
+    cmds:
+      - bash scripts/storage/run.sh check
+
+  env:identity:check:
+    desc: "Validate candidate MFA blueprint, pinned images and disposable/persistent/rehearsal sources without Docker or credentials."
+    cmds:
+      - bash scripts/identity/check-source.sh
+
+  env:identity:setup:
+    desc: "Prepare root-private local identity storage/credentials outside Git and CloudDrive; preserve existing keys. Requires sudo."
+    cmds:
+      - bash scripts/identity/local.sh setup
+
+  env:identity:backup:check:
+    desc: "Verify pinned backup encryption tools and Linux descriptor support; no keys or service changes."
+    cmds:
+      - bash scripts/identity/check-backup-tools.sh
+
+  env:pki:setup:
+    desc: "Install the pinned Smallstep CLI and validate PKI tooling; no key generation, trust or media changes."
+    cmds:
+      - bash scripts/pki/environment.sh setup
+
+  env:pki:check:
+    desc: "Verify pinned Smallstep and offline ceremony source/host tools without creating keys or changing connectivity."
+    cmds:
+      - bash scripts/pki/environment.sh check
+
+  env:gateway:setup:
+    desc: "Install locked native Caddy, verify PKI tools and cache the pinned gateway image using host sudo; no service startup or trust installation."
+    cmds:
+      - bash scripts/gateway/environment.sh setup
+
+  env:gateway:check:
+    desc: "Check gateway source, immutable image declaration and native Caddy/PKI tools; no credentials or Docker needed."
+    cmds:
+      - bash scripts/gateway/environment.sh check
+
+  env:household:setup:
+    desc: "Prepare separate 2 GiB workspaces/512 MiB state filesystems for alejandro and kimberly, cache pinned images and validate native modules; no users or service startup. Requires sudo."
+    cmds:
+      - bash scripts/household/run.sh environment
+
+  env:ci:check:
+    desc: "Verify the target runner OS and pinned native crypto tools; no desktop ceremony, keys or services."
+    cmds:
+      - bash scripts/environment/check-ci.sh
 
   llm:plan:
     desc: Show pinned Ollama/model configuration and validate Compose
@@ -16,7 +143,7 @@ tasks:
   llm:setup:
     desc: Start local Ollama, download model and test inference on GPU
     cmds:
-      - mise run repo:check
+      - task: repo:check
       - task: llm:plan
       - task: llm:up
       - task: llm:pull
@@ -105,7 +232,7 @@ tasks:
   openhands:setup:
     desc: Validate local inference and start OpenHands
     cmds:
-      - mise run repo:check
+      - task: repo:check
       - task: llm:up
       - task: llm:check
       - task: openhands:up
@@ -561,7 +688,7 @@ tasks:
   observability:setup:
     desc: Start existing agent and add the observability stack
     cmds:
-      - mise run repo:check
+      - task: repo:check
       - task: openhands:up
       - task: observability:up
       - task: observability:check
@@ -674,8 +801,8 @@ tasks:
   repo:commit:check:
     desc: Run non-interactive environment checks, secret scanning and code tests before commit
     cmds:
-      - mise run repo:check
-      - mise run env:python:check
+      - task: repo:check
+      - task: env:python:check
       - task: security:config
       - task: openhands:instances:config
       - task: security:secrets
@@ -700,6 +827,16 @@ tasks:
     desc: Explicitly approve synthetic in-memory record actions; no external effects
     cmds:
       - bash scripts/workflows/demo.sh --approve
+
+  workflow:demo:subject:
+    desc: Run offline synthetic triage with the subject provider; keep record actions pending
+    cmds:
+      - bash scripts/workflows/demo.sh --provider subject
+
+  workflow:demo:subject:approved:
+    desc: Approve synthetic in-memory record actions with the subject provider; no external effects
+    cmds:
+      - bash scripts/workflows/demo.sh --provider subject --approve
 
   workflow:test:
     desc: Test runtime contracts, provider replacement, denial, approvals and safe resumption

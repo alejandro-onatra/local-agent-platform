@@ -6,7 +6,7 @@ household identity/gateway/CA services not deployed or accepted.
 
 [ADR 003](architecture/adr-003-household-isolation.md) records actual host inventory,
 proposed isolation, Wi-Fi/network constraints and remaining owner inputs.
-Repeat inspection with `mise run env:lan:inventory`; it does not alter the host.
+Repeat inspection with `task env:lan:inventory`; it does not alter the host.
 
 The native MFA/application blueprint and its explicit deployment prerequisites are
 in [identity candidate](identity_access.md). Mixed Apple/Android/Windows/Linux
@@ -205,9 +205,9 @@ Host compromise requires host investigation/recovery as well as key rotation.
    certificate renewal, logout/revocation and security event privacy.
 6. Record SEC-01 through SEC-15 results and remaining limitations before family use.
 
-mise will own environment installation/validation and tool pins. Task will own
-service operations, enrollment/renewal/backup procedures and acceptance tests,
-with implementation in categorized scripts. [Automated SEC checks](security_checks.md)
+Mise pins and installs tools and activates the project environment. Go Task owns
+environment checks, service operations, enrollment/renewal/backup procedures and
+acceptance tests; implementation stays in categorized scripts. [Automated SEC checks](security_checks.md)
 now exist for the current source baseline, secret scanning and opt-in portal TLS.
 Enrollment, deployment, renewal and backup tasks are not implemented yet; the
 checks do not generate keys, expose services or certify family access.

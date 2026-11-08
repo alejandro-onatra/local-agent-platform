@@ -62,9 +62,9 @@ Exit code 0 alone does not identify the reason for stopping.
 Recover with the existing operations, without rerunning upgrade apply:
 
 ```bash
-mise exec -- task openhands:up &&
-mise exec -- task observability:up &&
-mise exec -- task observability:stream:check
+task openhands:up &&
+task observability:up &&
+task observability:stream:check
 ```
 
 `openhands:up` loads the saved hardening activation and refuses an unreviewed old
@@ -113,7 +113,7 @@ independent assistant Docker run or a before/after filesystem comparison.
 This completes the reported basic terminal exercise under the upgraded, hardened
 runtime. It does not validate every tool, a write task, persistent conversation
 recovery or household isolation. The owner subsequently ran
-`mise exec -- task openhands:demo:check`: synthetic arithmetic acceptance and all
+`task openhands:demo:check`: synthetic arithmetic acceptance and all
 three original generated tests (`test_negative`, `test_positive`, `test_zero`)
 passed inside the existing agent container. No implementation or test changes
 were made by this task. This completes the basic upgraded runtime/demo exercise;
@@ -143,8 +143,8 @@ Stop active agent work and host edits to `/projects` before apply. Run from the
 host terminal with Docker sudo authentication available:
 
 ```bash
-mise exec -- task openhands:upgrade:plan
-mise exec -- task openhands:upgrade:apply
+task openhands:upgrade:plan
+task openhands:upgrade:apply
 ```
 
 Plan requires one existing recognized old/new image and the active protected
@@ -198,10 +198,10 @@ or schemas. No live backup/restore drill has been accepted yet.
 ## Post-upgrade verification
 
 ```bash
-mise exec -- task openhands:backend:check
-mise exec -- task security:container:check
-mise exec -- task observability:logs:configure
-mise exec -- task observability:stream:check
+task openhands:backend:check
+task security:container:check
+task observability:logs:configure
+task observability:stream:check
 ```
 
 The container check still returns exit 2 when the selected runtime baseline passes

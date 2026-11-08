@@ -214,7 +214,7 @@ No inherent security or performance superiority is assumed from the product.
 | `scripts/household/` | Safe account provisioning, separate instances, local model defaults and runtime checks |
 | `config/gateway/pilot.yaml` | Reviewed names, CA fingerprints and per-user gateway scope |
 | `infra/gateway/` | Pinned Caddy image, exact source-IP binding, authorization and leaf-only mounts |
-| `mise.toml` / `mise.lock` | Tool versions and environment/storage preparation |
+| `mise.toml` / `mise.lock` | Pinned tool versions, checksums and project environment activation |
 | `Taskfile.yml` | Account, certificate, service operations and tests |
 
 Primary sources: [Authentik Caddy integration](https://docs.goauthentik.io/add-secure-apps/providers/proxy/server_caddy/),

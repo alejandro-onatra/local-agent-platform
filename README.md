@@ -11,21 +11,21 @@ bash scripts/bootstrap/install-mise.sh
 export PATH="$HOME/.local/bin:$PATH"
 mise trust mise.toml
 mise install --locked
-mise run env:python:setup
-mise run repo:hooks:install
-mise tasks ls
-mise exec -- task --list
-mise run env:plan
-mise run env:check
+eval "$(mise env -s bash)"
+task env:python:setup
+task repo:hooks:install
+task --list
+task env:plan
+task env:check
 ```
 
-To prepare Docker/NVIDIA Container Toolkit on a new host, review `mise run env:plan` and run `mise run env:setup` in the host terminal. This requires sudo and can restart Docker. The documented development host already passed Docker/GPU installation checks; use validation tasks rather than reinstalling it.
+To prepare Docker/NVIDIA Container Toolkit on a new host, review `task env:plan` and run `task env:setup` in the host terminal. This requires sudo and can restart Docker. The documented development host already passed Docker/GPU installation checks; use validation tasks rather than reinstalling it.
 
 ## Repository layout
 
-- `mise.toml` / `mise.lock`: pinned tools, environment activation, environment setup/checks, and Git hook installation.
+- `mise.toml` / `mise.lock`: pinned tool versions, checksums, and project environment activation.
 - `pyproject.toml` / `uv.lock`: project metadata and resolved Python dependencies with hashes.
-- `Taskfile.yml`: service operations, code tests, and commit validation through short task calls.
+- `Taskfile.yml`: all project tasks, including environment preparation/checks, service operations, tests, and commit validation.
 - `scripts/bootstrap/`, `scripts/environment/`, `scripts/host/`, `scripts/repo/`: implementation of bootstrap, environment, host, and repository checks.
 - `scripts/llm/`, `scripts/openhands/`, `scripts/observability/`: service deployment and functional checks.
 - `scripts/security/`: redacted secret detection, Compose regression guards and SEC readiness checks.
@@ -89,7 +89,7 @@ Dashboard entry point: [Agent platform overview](http://127.0.0.1:3000/d/platfor
 
 ## Commit validation and change review
 
-Git hooks are versioned under `.githooks/` and enabled per checkout with `mise run repo:hooks:install`. Before a normal commit, the hook runs `mise exec -- task repo:commit:check`: repository/environment checks, secret detection, and code tests. Any failure stops the commit. These local hooks do not replace CI or branch protection.
+Git hooks are versioned under `.githooks/` and enabled per checkout with `task repo:hooks:install`. Before a normal commit, the hook runs `task repo:commit:check`: repository/environment checks, secret detection, and code tests. Any failure stops the commit. These local hooks do not replace CI or branch protection.
 
 `main` tracks `origin/main` at `git@github.com:alejandro-onatra/local-agent-platform.git`. Credentials, reports, model weights, `.venv/`, and IDE files are excluded from Git.
 

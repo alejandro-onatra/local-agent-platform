@@ -40,7 +40,7 @@ agree with the inventory parser; no inventory code change was required.
 The principal hypothesis is disabled UEFI SVM mode, not a confirmed firmware
 setting. The observed board is ASUS ROG STRIX X570-E GAMING. For the optional VM alternative only, the owner could
 inspect UEFI Advanced / CPU Configuration / SVM Mode, enable it if disabled, save
-and reboot when their work is saved, then rerun `mise run env:lan:inventory`.
+and reboot when their work is saved, then rerun `task env:lan:inventory`.
 Menu placement can vary by firmware version. The expected first change is a
 visible CPU flag; missing tools and the boundary decision may remain pending.
 No firmware setting or reboot was performed by the agent. See the
@@ -88,11 +88,11 @@ required. Existing desktop loopback services stay running in their current form.
 ## Reproducible inventory
 
 ```bash
-mise run env:lan:inventory
-mise exec -- task repo:environment:test
+task env:lan:inventory
+task repo:environment:test
 ```
 
-The mise command calls `scripts/environment/inventory-lan.sh` and its Python
+The Go Task command calls `scripts/environment/inventory-lan.sh` and its Python
 implementation. It reads Linux resource/KVM observations and bounded `ip` query
 commands. It does not install software, enumerate other devices, invoke sudo or
 inspect secret stores. It writes `artifacts/diagnostics/lan-host-*.json` with mode

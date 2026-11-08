@@ -6,8 +6,8 @@ Open [Agent Platform · Overview](http://127.0.0.1:3000/d/platform-overview) ins
 
 ```bash
 cd /home/alejandro/CloudDrive/Engineering/agent-platform
-mise exec -- task observability:up
-mise exec -- task observability:check
+task observability:up
+task observability:check
 ```
 
 The JSON file is updated by Grafana provisioning; the probes and Collector/Prometheus configuration need to reapply Compose. `up` preserves existing credentials and volumes; it recreates observability services to reload the content of mounted files. Run it when the agent is inactive. Sudo, if Docker requires it, authenticates in the host terminal. The check verifies nine endpoints, a local call with native trace correlation by `traceparent`, token metrics, and privacy canaries. Correlation with a real OpenHands conversation remains a separate acceptance.
@@ -120,11 +120,11 @@ The two dashboards include accumulated values, estimated period increments, rate
 **No data** means there is no reported series: the callback omits missing/zero values. Cache Write 0 in OpenHands does not guarantee that Ollama reports a write metric. Only new usage that passes through the proxy is captured; the accumulated previous or direct conversation data is not imported.
 
 ```bash
-mise exec -- task observability:up
-mise exec -- task observability:cache:check
-mise exec -- task observability:check
+task observability:up
+task observability:cache:check
+task observability:check
 ```
 
-Apply with the agent inactive: `up` restarts the emitter's services and counters, preserving volumes and conversations. To repeat the isolated receiver test and privacy with the pinned image: `mise exec -- task observability:cache:test`. See [diagnosis and real example](diagnostics/tokens-2026-10-06.md).
+Apply with the agent inactive: `up` restarts the emitter's services and counters, preserving volumes and conversations. To repeat the isolated receiver test and privacy with the pinned image: `task observability:cache:test`. See [diagnosis and real example](diagnostics/tokens-2026-10-06.md).
 
 Final file and visualization verification: Grafana loaded both provisioned dashboards (Platform Overview: 48 panels including rows/text, file version 5; LLM: 18, version 3). The 59 queries were accepted by real Prometheus/Loki; there is no panel overlap. The updated callback is already active: the host's full test passed October 6 at 09:57 Europe/Berlin and Grafana returns a real Cache Hit series (1,626 when queried). The official normalization function of LiteLLM v1.104.0 interpreted the two `usage` real Ollama metrics as 1 and 1,623 cached tokens. The updated container check is included in the local acceptance reports.

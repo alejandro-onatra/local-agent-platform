@@ -24,14 +24,16 @@ misconfigurations.
 Install the checksum-locked tools once, then run only the Trivy scan:
 
 ```sh
+mise trust mise.toml
 mise install --locked
-mise exec -- task security:trivy:check
+eval "$(mise env -s bash)"
+task security:trivy:check
 ```
 
 Run the same full validation used by the pre-commit hook and CI with:
 
 ```sh
-mise exec -- task repo:commit:check
+task repo:commit:check
 ```
 
 The Trivy task fails on HIGH or CRITICAL findings. It scans repository files;

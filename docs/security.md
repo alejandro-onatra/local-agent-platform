@@ -20,8 +20,8 @@ to detect the local master key of LiteLLM. We do not use comment suppressions,
 
 ```bash
 mise install --locked
-mise exec -- task security:secrets
-mise exec -- task security:test
+task security:secrets
+task security:test
 ```
 
 The task reviews versioned files and new unignored files, staged content and
@@ -42,7 +42,7 @@ Scanner errors fail the control; they are not interpreted as absence of secrets.
 Each report records commit, hash of analyzed files, configuration,
 version and hash of the binary. The rules do not consult an API or a model. To
 repeat a result, exactly those same inputs are needed. The gate can be run explicitly and is included in the installed pre-commit hook.
-Enable the hook per checkout with `mise run repo:hooks:install`; see
+Enable the hook per checkout with `task repo:hooks:install`; see
 [Git commit validation](git_hooks.md). A pinned, least-privilege CI workflow is prepared under `.github/workflows/validate.yml`; its first remote run is not verified yet, and the public API reports main as unprotected. It does not guarantee finding secrets of any format.
 
 ## Proposed Controls, Still Not Installed or Executed

@@ -10,7 +10,7 @@ case "$mode" in
     *) exit 2 ;;
 esac
 age_binary="$(command -v age)"
-[[ "$age_binary" = /* ]] || { printf 'Run through mise exec; age is required.\n' >&2; exit 1; }
+[[ "$age_binary" = /* ]] || { printf 'Run through Task in the activated project environment; age is required.\n' >&2; exit 1; }
 printf '[identity-backup] Authenticating in this terminal for %s.\n' "$mode"
 sudo -v
 printf '[identity-backup] Authentication ready. No payload or key values will be logged.\n'

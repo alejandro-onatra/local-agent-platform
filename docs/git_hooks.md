@@ -1,13 +1,14 @@
 # Git commit validation
 
-## Install in each checkout with mise
+## Install in each checkout with Go Task
 
 ```bash
 mise trust mise.toml
 mise install --locked
-mise run env:python:setup
-mise run repo:hooks:install
-mise run repo:hooks:check
+eval "$(mise env -s bash)"
+task env:python:setup
+task repo:hooks:install
+task repo:hooks:check
 ```
 
 The installer sets local `core.hooksPath` to `.githooks`. Hooks are versioned;
@@ -16,10 +17,10 @@ replace a different existing hooks path. It does not alter global Git settings.
 
 ## What runs on every normal commit
 
-`.githooks/pre-commit` runs `mise exec -- task repo:commit:check`:
+`.githooks/pre-commit` runs `task repo:commit:check`:
 
-1. Repository files and shell syntax (`mise run repo:check`).
-2. Existing Python environment and uv lock consistency (`mise run env:python:check`).
+1. Repository files and shell syntax (`task repo:check`).
+2. Existing Python environment and uv lock consistency (`task env:python:check`).
 3. Offline Compose baseline regression guards (`security:config`); this is not SEC deployment approval.
 4. Secrets in publishable files, staged content and local history (`security:secrets`).
 5. Host inventory privacy/capacity regression tests (`repo:environment:test`).
@@ -39,12 +40,12 @@ unstaged fixes to make a staged version pass its tests.
 ## Add checks
 
 Add a short task call to `repo:commit:check` in `Taskfile.yml`. Keep implementation
-in categorized scripts. mise owns tool installation, environment checks and hook
-installation; Task owns code tests and the commit validation sequence.
+in categorized scripts. Go Task owns all project tasks; Mise pins and activates the
+tools those tasks use.
 
 ```bash
 # Run the same sequence explicitly:
-mise exec -- task repo:commit:check
+task repo:commit:check
 ```
 
 These hooks are local safeguards. Git can bypass them with `--no-verify`; CI and
@@ -63,7 +64,8 @@ The hook uses source guards only; it does not connect to the household portal.
 `.github/workflows/validate.yml` uses the same `repo:commit:check` gate on main
 pushes, pull requests and manual runs. It fetches complete history, does not
 persist checkout credentials, gives the job only read access to contents, and
-uses the existing checksum-verified pinned mise bootstrap plus locked tools.
+uses the existing checksum-verified Mise bootstrap plus locked tools, then runs
+project tasks directly through Go Task.
 It does not deploy, use runtime credentials or request an OIDC token. The hosted
 Ubuntu runner image itself is maintained by GitHub, not frozen by this repository.
 
@@ -85,7 +87,7 @@ repository access/security settings still require authenticated review.
 The first GitHub run on Ubuntu 24.04 failed three native PKI/gateway tests because
 `/usr/bin/openssl` did not match the reviewed 3.5.5 host contract. The workflow
 now selects the officially available Ubuntu 26.04 runner and performs
-`mise run env:ci:check` before the full gate. Keep the strict version check; do
+`task env:ci:check` before the full gate. Keep the strict version check; do
 not skip these tests or weaken the host ceremony policy to obtain a green job.
 The published runner inventory lists OpenSSL 3.5.5. Future runner updates still
 require review if this check fails. Checkout v6 is pinned by commit and uses the

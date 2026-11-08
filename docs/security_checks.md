@@ -8,13 +8,14 @@ firewall rules, publish ports or modify running containers.
 
 ## Commands and outcomes
 
-Prepare the pinned Python/PyYAML/Gitleaks environment with mise. Operations and
-code tests use Task; their implementation lives in `scripts/security/`.
+Install and activate pinned Python/PyYAML/Gitleaks tools with Mise. Go Task runs
+environment checks, security operations and code tests; implementation lives in
+`scripts/security/`.
 
 ```bash
-mise exec -- task security:config
-mise exec -- task security:check
-mise exec -- task security:controls:test
+task security:config
+task security:check
+task security:controls:test
 ```
 
 - `security:config`: eight offline guards over the declared source baseline.
@@ -75,7 +76,7 @@ its SHA-256 fingerprint over the certificate's DER bytes. Supply only this publi
 material; never pass a private key, passphrase or runtime credential.
 
 ```bash
-mise exec -- task security:tls:check \
+task security:tls:check \
   CA_CERT=/absolute/path/public-root.crt \
   CA_SHA256=VERIFIED_SHA256_CERTIFICATE_FINGERPRINT
 ```

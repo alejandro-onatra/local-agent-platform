@@ -11,4 +11,9 @@ else
     exit 2
 fi
 printf 'Running pre-commit validation; no installations or Docker operations.\n'
-"$mise_cmd" exec -- task repo:commit:check
+eval "$("$mise_cmd" env -s bash)"
+if ! command -v task >/dev/null 2>&1; then
+    printf 'Commit blocked: Go Task is unavailable in the project environment.\n' >&2
+    exit 2
+fi
+task repo:commit:check
