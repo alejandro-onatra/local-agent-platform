@@ -66,3 +66,16 @@ The check uses a temporary empty Docker configuration to download the public
 vulnerability database without calling host credential helpers. It removes
 that temporary configuration afterward and leaves the user's Docker settings
 unchanged.
+
+## Go Task pilot without Mise
+
+The optional `Go Task pilot` workflow runs `repo:mise-bootstrap:test` without
+installing Mise. It installs the pinned Go Task version through the official
+setup action and verifies the Linux AMD64 archive with a SHA-256 checksum.
+The selected task uses the runner's system Python and a local HTTP fixture.
+
+This pilot tests Go Task as a command runner for one task. It does not test Go
+Task as a tool version manager or replace Mise for CI tasks that need the
+locked Python, Trivy, Gitleaks, age, Smallstep, or Caddy versions. A successful
+run is one data point; keep the existing validation workflow unchanged until
+we compare repeated runs and define pinned installations for the tools CI needs.
