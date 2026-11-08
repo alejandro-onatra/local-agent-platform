@@ -39,3 +39,7 @@ this initial check does not scan built or running container images. Trivy
 refreshes its vulnerability database, so new advisories can change results
 even when the source is unchanged. Gitleaks remains responsible for staged
 content and local Git history; this Trivy scan does not replace it.
+The check uses a temporary empty Docker configuration to download the public
+vulnerability database without calling host credential helpers. It removes
+that temporary configuration afterward and leaves the user's Docker settings
+unchanged.

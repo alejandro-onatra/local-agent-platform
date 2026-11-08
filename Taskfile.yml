@@ -599,7 +599,7 @@ tasks:
   security:trivy:check:
     desc: Scan dependencies and infrastructure configuration for high/critical findings
     cmds:
-      - trivy fs --scanners vuln,misconfig --severity HIGH,CRITICAL --exit-code 1 .
+      - bash scripts/security/check-trivy.sh
 
   security:storage:test:
     desc: Test storage policy, unsafe mount mutations, setup preservation and bounded probe behavior
