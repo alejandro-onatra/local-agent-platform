@@ -19,6 +19,14 @@ backoff. Mise tool downloads use eight retries for transient HTTP and network
 errors. Archive and binary checksums remain mandatory; a failed or mismatched
 download is not installed.
 
+`repo:commit:check` tests this behavior against a local HTTP fixture, including
+temporary server errors, permanent 404 responses, and checksum mismatches. Run
+that regression test alone with:
+
+```sh
+mise exec -- task repo:mise-bootstrap:test
+```
+
 ## Local and CI security scans
 
 The versioned pre-commit hook and the GitHub Actions workflow both run

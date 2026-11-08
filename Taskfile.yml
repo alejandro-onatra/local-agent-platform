@@ -671,11 +671,17 @@ tasks:
     cmds:
       - bash scripts/repo/test-lan.sh
 
+  repo:mise-bootstrap:test:
+    desc: Test pinned mise bootstrap retries and checksum rejection with a local HTTP fixture
+    cmds:
+      - python3 -B -m unittest discover -s tests/environment -p test_mise_bootstrap.py -v
+
   repo:commit:check:
     desc: Run non-interactive environment checks, secret scanning and code tests before commit
     cmds:
       - mise run repo:check
       - mise run env:python:check
+      - task: repo:mise-bootstrap:test
       - task: security:config
       - task: openhands:instances:config
       - task: security:secrets
