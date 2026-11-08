@@ -18,8 +18,15 @@ inference.
 
 The versioned pre-commit hook and the GitHub Actions workflow both run
 `repo:commit:check`. That shared task runs Gitleaks for secret detection and
-Trivy for dependency vulnerabilities and supported infrastructure
-misconfigurations.
+Trivy for dependency vulnerabilities and IaC formats recognized by Trivy.
+The current repository scan detected no Trivy-supported IaC configuration
+files (`Detected config files: 0`), so Trivy did not evaluate the Compose YAML.
+
+The full `repo:commit:check` also runs `security:config`, which validates
+selected declared controls in `infra/llm/compose.yaml`,
+`infra/openhands/compose.yaml`, `infra/observability/compose.yaml`, and
+`infra/openhands/hardening.yaml`. These source guards are targeted checks,
+not a general IaC scan or a certification of running services.
 
 Install the checksum-locked tools once, then run only the Trivy scan:
 

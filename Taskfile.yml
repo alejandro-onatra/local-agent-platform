@@ -597,7 +597,7 @@ tasks:
       - bash scripts/security/check-secrets.sh
 
   security:trivy:check:
-    desc: Scan dependencies and infrastructure configuration for high/critical findings
+    desc: Scan dependencies and Trivy-supported IaC files for high/critical findings
     cmds:
       - bash scripts/security/check-trivy.sh
 
