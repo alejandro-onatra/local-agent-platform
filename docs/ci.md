@@ -27,6 +27,9 @@ that regression test alone with:
 mise exec -- task repo:mise-bootstrap:test
 ```
 
+If installing Mise fails, CI runs the fixture with the runner's system Python
+so the retry and checksum behavior remains testable without Mise installed.
+
 ## Local and CI security scans
 
 The versioned pre-commit hook and the GitHub Actions workflow both run
