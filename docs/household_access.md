@@ -15,10 +15,10 @@ See the [approved connection maps, published ports and Docker networks](architec
 Run from `/home/alejandro/CloudDrive/Engineering/agent-platform`:
 
 ```bash
-mise run env:gateway:setup &&
-mise run env:household:setup &&
-mise exec -- task gateway:tls:issue &&
-mise exec -- task household:setup
+task env:gateway:setup &&
+task env:household:setup &&
+task gateway:tls:issue &&
+task household:setup
 ```
 
 This completes the requested path in one sequence, with foreground prompts:
@@ -61,8 +61,8 @@ personal state to bypass a guard.
 After `household:setup` succeeds, run:
 
 ```bash
-mise exec -- task household:invite USERNAME=alejandro
-mise exec -- task household:invite USERNAME=kimberly
+task household:invite USERNAME=alejandro
+task household:invite USERNAME=kimberly
 ```
 
 Each operation creates a **24-hour, single-use native Authentik invitation** and
@@ -123,7 +123,7 @@ access until a TOTP device is configured and a factor is supplied.
 Revoke a pending invitation without resetting/disabling an existing account:
 
 ```bash
-mise exec -- task household:invite:revoke USERNAME=kimberly
+task household:invite:revoke USERNAME=kimberly
 ```
 
 Revocation invalidates unused links and forms still awaiting password validation.
@@ -134,7 +134,7 @@ is not an invitation to deactivate the embedded outpost service account.
 
 ## Phone access
 
-Use the IP URLs printed by `mise exec -- task household:plan`:
+Use the IP URLs printed by `task household:plan`:
 
 | Account | URL |
 | --- | --- |
@@ -247,11 +247,11 @@ Use Authentik's administrator UI to disable users or reset their application
 passwords. Do not deactivate the embedded outpost service-account user.
 `household:setup` does not reset existing managed passwords or erase state.
 Invitation enrollment sources and policy tests are included in
-`mise exec -- task security:household:test`. Those isolated tests are not native
+`task security:household:test`. Those isolated tests are not native
 browser/MFA acceptance. Invitations use the existing CA/leaf and do not require
 regenerating either CA or reconnecting the root USB.
 
-`mise exec -- task household:check` checks applied runtime/storage and gateway
+`task household:check` checks applied runtime/storage and gateway
 TLS. Stopping Caddy through `gateway:down` stops new LAN entry and preserves user
 and identity data. It does not stop running agents. Leaf renewal remains
 supervised through `gateway:tls:issue` followed by `gateway:up`; CA/root issuance
@@ -280,7 +280,7 @@ succeeds. Do not delete identity data, reset passwords or regenerate certificate
 
 If setup returns `household_operation_failed_details_withheld`, the original
 output is insufficient to distinguish a native exec failure, timeout or malformed
-response. Run `mise exec -- task household:diagnose` before retrying setup. The
+response. Run `task household:diagnose` before retrying setup. The
 task reads fixed process-state fields, public outpost/provider/enrollment flags
 and aggregate blocked/idle database-session counts. It does not import a blueprint,
 create invitations/users or restart services. Share only this sanitized output.
@@ -321,7 +321,7 @@ isolated source/unit tests.
 
 ## Enrollment button does not advance
 
-Run `mise exec -- task identity:logs:check` from the owner terminal, immediately
+Run `task identity:logs:check` from the owner terminal, immediately
 after reproducing the problem. It captures only fixed indicators from the last
 15 minutes (at most 200 log lines per identity service), verifies container
 labels before reading, and includes public enrollment state for the reserved
@@ -352,7 +352,7 @@ merged, preserving other settings. CSS applies to the non-default household IP
 brand, preserving the localhost administrator brand and all native security
 controls. Visual acceptance on desktop/mobile remains pending owner application.
 
-Run `mise exec -- task household:identity:apply` to import/read back identity
+Run `task household:identity:apply` to import/read back identity
 policy and appearance without starting/recreating agent containers or issuing
 invitations. Passwords, factors and existing account data are preserved. If the
 registration tab is still open, try Continue there after applying the update and
@@ -372,7 +372,7 @@ security instruction, form control, error or factor is moved into generated
 content. Native branding/components remain the base, so live visual acceptance
 is still required rather than claiming pixel-identical mockup rendering.
 
-Apply with `mise exec -- task household:identity:apply`. This updates native
+Apply with `task household:identity:apply`. This updates native
 identity configuration without resetting accounts/passwords, issuing invitations,
 recreating agents, or changing TLS/network authorization. Revisit normal login
 after completing any active enrollment; do not discard a consumed invitation's

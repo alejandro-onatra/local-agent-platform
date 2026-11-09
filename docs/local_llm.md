@@ -14,8 +14,8 @@ From a normal host terminal:
 cd /home/alejandro/CloudDrive/Engineering/agent-platform
 export PATH="$HOME/.local/bin:$PATH"
 mise install
-mise exec -- task llm:plan
-mise exec -- task llm:setup
+task llm:plan
+task llm:setup
 ```
 
 `llm:setup` validates the repository and Compose, starts Ollama, waits for its healthy state, downloads the model, checks its digest and runs inference tests. Docker explicitly uses the context `default`, to avoid a Docker Desktop or accidentally configured socket. It may ask for sudo to access the Engine; the script does not modify groups or privileges.
@@ -55,15 +55,15 @@ The test uses only synthetic data. Saves summaries of status, version, digest, t
 ## Operation and diagnosis
 
 ```bash
-mise exec -- task llm:status
-mise exec -- task llm:check
-mise exec -- task llm:logs
-mise exec -- task llm:down
+task llm:status
+task llm:check
+task llm:logs
+task llm:down
 # Reanudar conservando pesos:
-mise exec -- task llm:up
+task llm:up
 # Comprobar host y modelo:
-mise run env:check
-mise exec -- task llm:check
+task env:check
+task llm:check
 ```
 
 - **sudo blocked in Work:** run from the normal host terminal.
@@ -84,9 +84,9 @@ The following 0.78 tokens/s, 10 tokens generated, 68.809 total seconds, and 6,29
 Before OpenHands, repeat the test and consult the CPU/GPU distribution immediately after, while the model is still loaded:
 
 ```bash
-mise exec -- task llm:check
-mise exec -- task llm:status
-mise exec -- task llm:logs
+task llm:check
+task llm:status
+task llm:logs
 ```
 
 Share these results for reviewing times, `PROCESSOR` and backend CUDA. Do not change driver, model, or limits without evidence. The original report remains in `artifacts/diagnostics/llm-y546ryve.json` on the host; this state is based on the output shared by the user.

@@ -10,11 +10,14 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[2]
 MISE = shutil.which("mise") or str(Path.home() / ".local/bin/mise")
 ENV = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+TASK_ENV = ENV
+TASK_BIN = ""
 PHASE = "initialization"
 
 
-def run(repo, args, expected=0):
-    result = subprocess.run(args, cwd=repo, env=ENV, capture_output=True, text=True, timeout=240)
+def run(repo, args, expected=0, env=None):
+    result = subprocess.run(args, cwd=repo, env=ENV if env is None else env,
+                            capture_output=True, text=True, timeout=240)
     if result.returncode != expected:
         # Do not expose source snippets or potential secrets when a check regresses.
         raise RuntimeError(f"Unexpected exit status for {args[0]}: {result.returncode}")
@@ -22,12 +25,17 @@ def run(repo, args, expected=0):
 
 
 def git(repo, *args, expected=0):
+    hook_env = {key: value for key, value in TASK_ENV.items() if key != "BASH_ENV"}
     return run(repo, ["git", "-c", "user.name=Hook integration test", "-c",
-                     "user.email=test@example.invalid", *args], expected)
+                      "user.email=test@example.invalid", *args], expected, hook_env)
+
+
+def task(repo, *args, expected=0):
+    return run(repo, [TASK_BIN, *args], expected, TASK_ENV)
 
 
 def main():
-    global PHASE
+    global PHASE, TASK_ENV, TASK_BIN
     PHASE = "clone_and_environment"
     with tempfile.TemporaryDirectory(prefix="agent-platform-hook-test-") as directory:
         repo = Path(directory) / "repo"
@@ -46,14 +54,22 @@ def main():
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
         run(repo, [MISE, "trust", "mise.toml"])
-        run(repo, [MISE, "run", "env:python:setup"])
+        run(repo, [MISE, "install", "--locked"])
+        activation = run(repo, [MISE, "env", "-s", "bash"]).stdout
+        activation_file = Path(directory) / "mise-env.sh"
+        activation_file.write_text(activation)
+        TASK_ENV = {**ENV, "BASH_ENV": str(activation_file)}
+        TASK_BIN = run(repo, [MISE, "which", "task"], env=TASK_ENV).stdout.strip()
+        if not TASK_BIN or not Path(TASK_BIN).is_file():
+            raise RuntimeError("Go Task binary was not resolved from the pinned tool environment")
+        task(repo, "env:python:setup")
         PHASE = "hook_installation"
         git(repo, "config", "--local", "core.hooksPath", "custom-preserved")
-        run(repo, [MISE, "run", "repo:hooks:install"], expected=2)
+        task(repo, "repo:hooks:install", expected=201)
         assert git(repo, "config", "--local", "--get", "core.hooksPath").stdout.strip() == "custom-preserved"
         git(repo, "config", "--local", "--unset", "core.hooksPath")
-        run(repo, [MISE, "run", "repo:hooks:install"])
-        run(repo, [MISE, "run", "repo:hooks:check"])
+        task(repo, "repo:hooks:install")
+        task(repo, "repo:hooks:check")
         PHASE = "clean_commit"
         # A clean, already-committed source tree still needs a real fixture change.
         (repo / "hook-check.txt").write_text("Synthetic hook integration fixture.\n")
@@ -90,7 +106,8 @@ def main():
         assert git(repo, "rev-parse", "HEAD").stdout.strip() == head
     print(json.dumps({"status": "passed", "actual_git_commit_checks": {
         "clean_commit_accepted": True, "secret_commit_rejected_and_redacted": True,
-        "unsafe_compose_commit_rejected": True, "invalid_shell_commit_rejected": True, "existing_hooks_path_preserved": True},
+        "unsafe_compose_commit_rejected": True, "invalid_shell_commit_rejected": True,
+        "existing_hooks_path_preserved": True},
         "scope": "Disposable clone; project history is untouched"}, indent=2))
 
 
@@ -98,5 +115,6 @@ if __name__ == "__main__":
     try:
         main()
     except (RuntimeError, AssertionError, OSError, subprocess.SubprocessError):
-        print(json.dumps({"status":"failed","phase":PHASE,"details":"Potentially sensitive command output withheld"}))
+        print(json.dumps({"status":"failed","phase":PHASE,
+                          "details":"Potentially sensitive command output withheld"}))
         raise SystemExit(1) from None

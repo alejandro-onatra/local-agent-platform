@@ -55,17 +55,17 @@ failed cleanup preserves the state and reports that review is required.
 
 ## Owner execution
 
-Validate source through mise and preview the operational boundary:
+Run source validation and preview the operational boundary through Go Task:
 
 ```bash
-mise run env:identity:check
-mise exec -- task identity:rehearsal:plan
+task env:identity:check
+task identity:rehearsal:plan
 ```
 
 Start using the existing accepted backup and the rewrapped identity:
 
 ```bash
-mise exec -- task identity:rehearsal:up \
+task identity:rehearsal:up \
   BACKUP=/var/lib/agent-platform/identity-backups/identity-93fa270c09324a1c8354888f12c5c256.age \
   IDENTITY="$HOME/.config/agent-platform/recovery/identity.age"
 ```
@@ -102,8 +102,8 @@ temporary loopback rehearsal; this is not the household TLS or LAN portal.
 Then run:
 
 ```bash
-mise exec -- task identity:rehearsal:check
-mise exec -- task identity:rehearsal:accept
+task identity:rehearsal:check
+task identity:rehearsal:accept
 ```
 
 `check` verifies controls, health and readback without accepting browser evidence.
@@ -121,7 +121,7 @@ repeat `check`/`accept`; do not restart or replace the snapshot to force a pass.
 After recording browser and native results, remove the rehearsal:
 
 ```bash
-mise exec -- task identity:rehearsal:down
+task identity:rehearsal:down
 ```
 
 This verifies the exact rehearsal project/images/restrictions and protected
@@ -140,7 +140,7 @@ service, host-boot startup setup or complete host disaster-recovery procedure.
 ## Verification and limitations
 
 Code is in `scripts/identity/rehearsal.py` and its native probe, with categorized
-Task operations and mise source checks. Synthetic tests cover profile mutations,
+Task owns source checks and operations. Synthetic tests cover profile mutations,
 real runtime-verifier rejection of wildcard ports/external bridges, state/project
 collisions, malformed archives and baselines, restored file boundaries, native
 probe failures, incomplete browser evidence and cleanup. Local tests mock Docker,
@@ -163,7 +163,7 @@ Preparation evidence: all 382 repository tests passed, including 118 identity
 tests (23 new rehearsal/dispatch/session regressions). The installed Docker
 Compose parser accepted the derived profile without deployment; Python/shell,
 whitespace, documentation links and the registered Task plan passed. Source
-checks run through mise include the rehearsal plan. No real mount, restored
+source checks and rehearsal plans run through Go Task. No real mount, restored
 application startup or browser login was executed by the assistant. Owner
 execution, native acceptance, manual account/TOTP verification and cleanup
 remain pending.

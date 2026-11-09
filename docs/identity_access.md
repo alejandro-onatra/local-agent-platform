@@ -79,8 +79,8 @@ exists today. No browser request is currently routed through this candidate.
 ## Local validation
 
 ```bash
-mise run env:identity:check
-mise exec -- task security:identity:test
+task env:identity:check
+task security:identity:test
 ```
 
 The source guard permits only the reviewed graph, explicit `!KeyOf` references
@@ -148,10 +148,10 @@ compressed images; image cache remains after the test. It is not a security audi
 or a claim that these versions will stay supported indefinitely.
 
 ```bash
-mise run env:identity:check
-mise exec -- task security:identity:test
-mise exec -- task identity:native:plan
-mise exec -- task identity:native:check
+task env:identity:check
+task security:identity:test
+task identity:native:plan
+task identity:native:check
 ```
 
 The last task requires interactive host sudo. No user passwords or CA material
@@ -247,7 +247,7 @@ regressions reproduce mounted-script imports with/without a source path, require
 bootstrap before Django, require official lifecycle migrations, and check diagnostic
 redaction/allowlisting and explicit cleanup state. Source/shell/whitespace checks
 passed. These local tests do not establish native runtime acceptance. Repeat only
-`mise exec -- task identity:native:check` from the host terminal and retain its new
+`task identity:native:check` from the host terminal and retain its new
 source fingerprints/result; image digests and the blueprint itself are unchanged.
 
 
@@ -277,7 +277,7 @@ All 302 repository tests passed (38 identity tests), including typed error
 propagation under suppressed logging, redaction of private canaries, hostile
 metadata rejection, strict boolean validation and mandatory proxy/no-service-
 connection source rules. Source/shell/whitespace checks passed. Owner native rerun
-remains required: `mise exec -- task identity:native:check`.
+remains required: `task identity:native:check`.
 
 Reference: [pinned outpost serializer](https://github.com/goauthentik/authentik/blob/version/2026.8.4/authentik/outposts/api/outposts.py).
 

@@ -53,14 +53,14 @@ From the repository, install the pinned tool and validate the environment:
 
 ```bash
 mise install --locked age
-mise run env:identity:backup:check
-mise exec -- task identity:backup:plan
+task env:identity:backup:check
+task identity:backup:plan
 ```
 
 Generate the recovery identity as your desktop user, without sudo:
 
 ```bash
-mise exec -- task identity:recovery:key:create
+task identity:recovery:key:create
 ```
 
 Enter and retain a strong passphrase in the native age terminal prompt. The task
@@ -73,14 +73,14 @@ Create a consistent encrypted snapshot; this task requires sudo and briefly
 interrupts the identity UI:
 
 ```bash
-mise exec -- task identity:backup:create \
+task identity:backup:create \
   RECIPIENT="$(cat "$HOME/.config/agent-platform/recovery/recipient.txt")"
 ```
 
 Use the exact `backup_file` path from its fixed report in the next command:
 
 ```bash
-mise exec -- task identity:backup:restore:check \
+task identity:backup:restore:check \
   BACKUP=/var/lib/agent-platform/identity-backups/identity-REPLACE_WITH_REPORTED_ID.age \
   IDENTITY="$HOME/.config/agent-platform/recovery/identity.age"
 ```
@@ -115,11 +115,11 @@ application restore before family/LAN readiness. No in-place restore is provided
 - `scripts/identity/backup.py`: snapshot, encrypted key generation, safe archive
   reader, native SQL restore orchestration and fixed reports.
 - `scripts/identity/backup.sh`: terminal privilege boundary and report file.
-- `scripts/identity/check-backup-tools.sh`: mise environment validation.
+- `scripts/identity/check-backup-tools.sh`: Task environment validation.
 - `tests/security/test_identity_backup.py`: malformed archives, native encryption,
   wrong-key/corruption rejection, failure recovery and cleanup orchestration.
 - `mise.toml` and `mise.lock`: exact encryption tool version and checksums.
-- `Taskfile.yml`: operational tasks; no service logic embedded in mise.
+- `Taskfile.yml`: environment and operational tasks; no service logic embedded in task definitions.
 
 Automated tests use synthetic bytes and temporary test keys only. SQL/container
 orchestration is mocked locally until the owner executes the live restore task.
@@ -160,7 +160,7 @@ Only fixed prompts/results are displayed; native PTY output is not streamed.
 Run as the desktop user, **without sudo**:
 
 ```bash
-mise exec -- task identity:recovery:key:rewrap
+task identity:recovery:key:rewrap
 ```
 
 Enter the existing phrase to unlock the key, then choose and confirm a new phrase,

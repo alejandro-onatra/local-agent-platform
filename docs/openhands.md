@@ -12,9 +12,9 @@ execution and post-upgrade runtime restriction checks remain pending. This
 upgrade did not update the separate household instances; see
 [upgrade evidence](openhands_upgrade.md).
 
-Node and the OpenHands Python runtime are inside the image. The host Python,
-pinned by mise, is only used for repository configuration/validation scripts.
-mise maintains Task and Python; Task coordinates `scripts/openhands/` operations.
+Node and the OpenHands Python runtime are inside the image. Host Python 3.14.4,
+pinned by Mise, supplies the project scripts and checks. Mise also pins Go Task;
+Task runs all project commands, including `scripts/openhands/` operations.
 For an existing 1.26.0 deployment use [the backed-up upgrade procedure](openhands_upgrade.md)
 instead of ordinary startup. The frontend continues to use the OpenHands agent;
 no cloud provider is required.
@@ -25,7 +25,7 @@ From the normal host terminal:
 
 ```bash
 cd /home/alejandro/CloudDrive/Engineering/agent-platform
-mise exec -- task openhands:setup
+task openhands:setup
 ```
 
 The task checks Ollama and its inference, downloads the image, creates the workspace, and starts the container. It may request sudo to access Docker. It applies a second compose file to the project `agent-platform-local`, preserving the existing weights volume. It may recreate Ollama to connect it to the internal network; do not run it during another inference.
@@ -79,12 +79,12 @@ and [SEC-01 through SEC-15](security.md) before changing network exposure.
 ## Operation and issues
 
 ```bash
-mise exec -- task openhands:plan
-mise exec -- task openhands:status
-mise exec -- task openhands:check
-mise exec -- task openhands:logs
-mise exec -- task openhands:down
-mise exec -- task openhands:up
+task openhands:plan
+task openhands:status
+task openhands:check
+task openhands:logs
+task openhands:down
+task openhands:up
 ```
 
 `openhands:down` stops OpenHands and its proxy; preserves state, workspace and Ollama. Do not use `compose down -v` to operate this local platform.
@@ -128,7 +128,7 @@ Use the task of this guide's summation; request at least three unittest cases. D
 Upon completion, run in the host terminal:
 
 ```bash
-mise exec -- task openhands:demo:check
+task openhands:demo:check
 ```
 
 The check requires `sum.py` with `add(a, b)`, correct results for four synthetic entries and at least three successful and non-omitted unittests in `test_sum.py`. Run the generated files inside the container, not on the host. The checker verifies that normal files exist in the workspace and fails if they are missing; it does not write or correct the solution. Functional validation does not demonstrate that all agent changes have remained within the workspace: also check the conversation events.
@@ -144,10 +144,10 @@ The official guide for local models of OpenHands recommends at least 22000 token
 From the host:
 
 ```bash
-mise exec -- task openhands:up
-mise exec -- task llm:check
-mise exec -- task llm:status
-mise exec -- task openhands:profile:check
+task openhands:up
+task llm:check
+task llm:status
+task openhands:profile:check
 ```
 
 The last command queries the persisted defaults of Agent Server and prints only allowed fields of the profile and tool names; it does not show keys, prompts or conversations. Existing conversations may retain another configuration. Create a new conversation after correcting the profile and confirming that the tools include terminal and files. Disable browser tools that are not needed if the UI allows configuring them.

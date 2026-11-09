@@ -129,8 +129,9 @@ not evidence of browser navigation.
 - Test owner authorization, denial for family users, CSRF rejection, active
   cutoff, audit records and behavior when agent activity cannot be determined.
 
-Environment and image preparation belong in mise; service operations belong in
-Task; implementation belongs under categorized scripts/ and infra/ directories.
+Mise manages pinned tools and project environment activation. Go Task runs all
+project tasks, including environment/image preparation and service operations;
+implementation stays under categorized scripts/ and infra/ directories.
 
 ## Required automatic acceptance
 

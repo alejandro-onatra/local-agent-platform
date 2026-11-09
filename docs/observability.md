@@ -33,8 +33,8 @@ Run from the host terminal, where sudo already works:
 
 ```bash
 cd /home/alejandro/CloudDrive/Engineering/agent-platform
-mise exec -- task observability:plan
-mise exec -- task observability:setup
+task observability:plan
+task observability:setup
 ```
 
 `setup` reapplies the existing local platform, starts the seven services, configures the log reading of the three selected containers and verifies a synthetic call to Qwen3 through LiteLLM along with ingestion/redaction in Tempo, Loki and Prometheus. It does not delete volumes. Run it when the agent is inactive, because `openhands:up` may recreate Ollama/OpenHands.
@@ -84,7 +84,7 @@ To return to the previous path, select `local-qwen3-8b` based on `http://ollama:
 After validating the proxy, and only with synthetic data:
 
 ```bash
-mise exec -- task observability:tracing:on
+task observability:tracing:on
 ```
 
 The task verifies that `lmnr` and OpenTelemetry are present in the image; it does not install dependencies on the fly. Connect OpenHands to the internal observability network and configure the local OTLP HTTP endpoint. Disable additional automatic integrations via `LMNR_INSTRUMENTS` empty, preserving the native decorators of the SDK. Recreate OpenHands; create a new conversation and repeat the reading task.
@@ -92,7 +92,7 @@ The task verifies that `lmnr` and OpenTelemetry are present in the image; it doe
 This step allows checking agent spans, but may send tool content to the **memory** of the Collector before filtering it. That is why it is separated from the normal startup. Persistent exporters receive only the filtered output. The exact coverage, the names of the operations, and the propagation of `traceparent` between OpenHands and LiteLLM must be checked; no single complete trace is promised until observed.
 
 ```bash
-mise exec -- task observability:tracing:off
+task observability:tracing:off
 ```
 
 This step also `openhands:up` reapplies the base Compose and disables the optional tracing. If it is needed to keep it, run `tracing:on` again afterwards and refresh the log configuration.
@@ -102,7 +102,7 @@ This step also `openhands:up` reapplies the base Compose and disables the option
 Docker already collects stdout/stderr of OpenHands, Ollama, and LiteLLM with its driver `json-file`. Their real location is obtained from `LogPath` of the container; it is not assumed that Docker is always in `/var/lib/docker`.
 
 ```bash
-mise exec -- task observability:logs:configure
+task observability:logs:configure
 ```
 
 The task queries only ID, LogPath, and driver of those three services. It generates two ignored files in `artifacts/observability/`: the filelog configuration and the Compose mounts. The Collector mounts **only the log directories of those containers, read-only**, without Docker socket or access to logs of other containers. It runs as UID 0 to be able to read those directories on the host, with capabilities removed, without elevation and root filesystem read-only. The daemon is not changed, and the user is not added to the docker group.
@@ -149,12 +149,12 @@ Panels without data indicate lack of traffic/instrumentation; they do not equate
 ## Operation and validation
 
 ```bash
-mise exec -- task observability:test
-mise exec -- task observability:validate
-mise exec -- task observability:status
-mise exec -- task observability:check
-mise exec -- task observability:logs
-mise exec -- task observability:stop
+task observability:test
+task observability:validate
+task observability:status
+task observability:check
+task observability:logs
+task observability:stop
 ```
 
 `stop` preserves all volumes. Stopping LiteLLM leaves conversations that use it without a model: return first to the direct profile if you wish to continue using OpenHands. `down -v` is not executed nor storage is deleted as part of the tasks.
@@ -181,7 +181,7 @@ See the [validation log](diagnostics/observability-2026-10-05.md). Preparation v
 If the deployment reports a stopped service, obtain its status and local logs. For LiteLLM:
 
 ```bash
-mise exec -- task observability:status
+task observability:status
 sudo docker --context default inspect --format '{{json .State}}' agent-platform-observability-litellm-1
 sudo docker --context default logs --tail 100 agent-platform-observability-litellm-1
 ```
@@ -194,7 +194,7 @@ The logs from the first startup confirmed `UnsafeMasterKeyError`, output 3 and `
 
 `observability:up` now generates a random key of 32 bytes (prefix `sk-`) in the private directory along with the Grafana password. It preserves existing keys and volumes; sudo preserves only the necessary Compose variables. The smoke test authenticates the model call and requires rejection of a request without a key. The exception that allows startup without authentication is not enabled.
 
-Retry `mise exec -- task observability:up` followed by `mise exec -- task observability:check`. The correction was accepted on the host on October 6; see [evidence](diagnostics/observability-2026-10-06.md).
+Retry `task observability:up` followed by `task observability:check`. The correction was accepted on the host on October 6; see [evidence](diagnostics/observability-2026-10-06.md).
 
 Source: [LiteLLM authentication change 1.104.0](https://docs.litellm.ai/release_notes/v1.104.0/v1-104-0), [Databaseless API](https://docs.litellm.ai/docs/proxy/docker_quick_start).
 
@@ -228,7 +228,7 @@ The implementation is prepared and validated separately; the comprehensive check
 
 Cache acceptance on October 6, 09:57 Europe/Berlin: the host's full test compared 1,623 reused tokens with an identical counter increase; the general check also passed. Grafana cards already return real cache data. The effective route of a new OpenHands conversation call is verified separately; its historical usage prior to the proxy is not recovered.
 
-Configuration maintained in YAML: `collector.yaml` and `versions.yaml`. The scripts read with `yaml.safe_load` in the pinned Python environment of mise; the generated filelog overrides remain in JSON. Run `mise install --locked` and `mise run env:python:setup` to prepare a new checkout. Digests, privacy filters, credentials, and metric names are not changed by this migration.
+Configuration maintained in YAML: `collector.yaml` and `versions.yaml`. The scripts read with `yaml.safe_load` in the pinned Python environment of mise; the generated filelog overrides remain in JSON. Run `mise install --locked` and `task env:python:setup` to prepare a new checkout. Digests, privacy filters, credentials, and metric names are not changed by this migration.
 
 ### Existing conversation that omits the proxy
 
@@ -237,9 +237,9 @@ A saved profile can point to LiteLLM while the open conversation preserves `http
 With the agent finished or paused:
 
 ```bash
-mise exec -- task openhands:route:proxy CONVERSATION_ID=<uuid>
-mise exec -- task openhands:usage:check CONVERSATION_ID=<uuid>
-mise exec -- task observability:stream:check
+task openhands:route:proxy CONVERSATION_ID=<uuid>
+task openhands:usage:check CONVERSATION_ID=<uuid>
+task observability:stream:check
 ```
 
 The repair reuses the credential of the `local-qwen3-8b` profile via the loopback API within the container; it does not print it. It verifies the proxy's authentication, uses `switch_llm` with `usage_id` new (the SDK log 1.49.6 reuses entries with the same ID), verifies the conversation, and activates the profile for future conversations. It does not restart services. The script requires the pinned version and rejects a profile directed to another server.

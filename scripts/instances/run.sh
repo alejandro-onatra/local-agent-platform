@@ -4,7 +4,7 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 mode="${1:?Use config, plan, up, check, accept, down, diagnose, network-check, websocket-check or recovery-check}"
 case "$mode" in config|plan|up|check|accept|down|diagnose|network-check|websocket-check|recovery-check) ;; *) exit 2 ;; esac
 pilot_python="$repo_root/.venv/bin/python3"
-[[ -x "$pilot_python" ]] || { printf 'Run mise run env:python:setup first.\n' >&2; exit 1; }
+[[ -x "$pilot_python" ]] || { printf 'Run task env:python:setup first.\n' >&2; exit 1; }
 report_dir="$repo_root/artifacts/security"
 [[ ! -L "$repo_root/artifacts" && ! -L "$report_dir" ]] || exit 1
 mkdir -p -- "$report_dir"
