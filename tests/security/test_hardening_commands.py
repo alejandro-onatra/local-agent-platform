@@ -33,7 +33,7 @@ if a[0]=='inspect':
  else:print('sha256:synthetic-image')
  raise SystemExit(0)
 if a[:2]==['image','inspect']:
- print(json.dumps(['ghcr.io/openhands/agent-canvas@sha256:638c5e3ce76df74344bb18bd85f44af395337ade8e71f04532099fb380febadf']));raise SystemExit(0)
+ print(json.dumps([os.environ['FAKE_IMAGE']]));raise SystemExit(0)
 if a[0]=='compose':
  if 'ps' in a:print('synthetic-container');raise SystemExit(0)
  if 'exec' in a:
@@ -46,7 +46,8 @@ if a[0]=='compose':
  if 'config' in a or 'up' in a:raise SystemExit(0)
 raise SystemExit(99)
 ''');fake.chmod(0o755)
-        self.env=dict(os.environ,PATH=str(self.bin)+os.pathsep+os.environ['PATH'],FAKE_LOG=str(self.log))
+        image=next(line.partition(':')[2].strip() for line in (self.repo/'infra/openhands/versions.yaml').read_text().splitlines() if line.startswith('image: '))
+        self.env=dict(os.environ,PATH=str(self.bin)+os.pathsep+os.environ['PATH'],FAKE_LOG=str(self.log),FAKE_IMAGE=image)
 
     def command(self,mode,stdin=None):
         return subprocess.run(['bash',str(self.repo/'scripts/openhands/hardening.sh'),mode],
