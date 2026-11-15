@@ -46,6 +46,7 @@ jobs:
         run: task identity:native:check
       - name: Prepare synthetic storage for Compose integration
         run: |
+          touch "$RUNNER_TEMP/storage-setup-attempted"
           task env:storage:setup
           task env:storage:check
       - name: Pull the pinned Compose integration images
@@ -78,8 +79,13 @@ jobs:
             echo "No OpenHands pilot startup was attempted; skipping down."
             down_status=0
           fi
-          task storage:unmount
-          unmount_status=$?
+          if [[ -f "$RUNNER_TEMP/storage-setup-attempted" ]]; then
+            task storage:unmount
+            unmount_status=$?
+          else
+            echo "Storage setup was not attempted; skipping unmount."
+            unmount_status=0
+          fi
           if (( down_status != 0 || unmount_status != 0 )); then
             exit 1
           fi

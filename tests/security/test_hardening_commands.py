@@ -50,8 +50,9 @@ raise SystemExit(99)
         self.env=dict(os.environ,PATH=str(self.bin)+os.pathsep+os.environ['PATH'],FAKE_LOG=str(self.log),FAKE_IMAGE=image)
 
     def command(self,mode,stdin=None):
+        command_env={key:value for key,value in self.env.items() if key!='BASH_ENV'}
         return subprocess.run(['bash',str(self.repo/'scripts/openhands/hardening.sh'),mode],
-                              env=self.env,stdin=stdin,text=True,capture_output=True,timeout=20)
+                              env=command_env,stdin=stdin,text=True,capture_output=True,timeout=20)
 
     def test_plan_does_not_create_record_or_recreate_services(self):
         p=self.command('plan');self.assertEqual(p.returncode,0,p.stderr)
