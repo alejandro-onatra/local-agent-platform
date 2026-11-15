@@ -4,7 +4,7 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 mode="${1:?Use plan, setup, check, accept or unmount}"
 case "$mode" in plan|setup|check|accept|unmount) ;; *) exit 2 ;; esac
 storage_python="$repo_root/.venv/bin/python3"
-[[ -x "$storage_python" ]] || { printf 'Run mise run env:python:setup first.\n' >&2; exit 1; }
+[[ -x "$storage_python" ]] || { printf 'Run task env:python:setup first.\n' >&2; exit 1; }
 # Only synthetic report fields are emitted. No raw mount/Docker output is displayed.
 report_dir="$repo_root/artifacts/security"
 [[ ! -L "$repo_root/artifacts" && ! -L "$report_dir" ]] || exit 1

@@ -4,10 +4,10 @@
 
 | Component | Responsibility |
 | --- | --- |
-| `mise.toml` | Task/Python/uv/Gitleaks versions, venv, environment setup/checks and hook installation. |
+| `mise.toml` | Pinned tool versions and project environment activation. |
 | `mise.lock` | Resolution and checksums of tools for the fixed platform. |
 | `pyproject.toml` / `uv.lock` | Metadata, Python dependencies and package resolution with hashes. |
-| `Taskfile.yml` | Deployment and operation of services, functional testing and code tests. |
+| `Taskfile.yml` | All project tasks: environment preparation/checks, repository validation, service operations and tests. |
 | `scripts/bootstrap/` | Install mise before being able to use it. |
 | `scripts/environment/` | Preparation/validation sequences and Python dependencies. |
 | `scripts/host/` | GPU, Docker/Toolkit and host checks. |
@@ -15,7 +15,7 @@
 | `scripts/llm/`, `scripts/openhands/`, `scripts/observability/` | Operation of the services and functional checks. |
 | `infra/` | Service configuration, APT versions, image digests and fixed dependencies. |
 
-mise prepares and validates the environment; Task operates the services. Both contain brief calls and the scripts contain the logic. Installing Python/PyYAML/Docker/Toolkit belongs to the environment. Starting Ollama/OpenHands, downloading weights, consulting logs and verifying an inference or telemetry belong to the operation of the platform. The code tests remain in Task; they do not check the installation of the environment.
+Mise pins and installs development tools and activates the project environment. Go Task runs every project task, including environment preparation/checks, repository checks, service operations and tests. Taskfiles contain short task definitions; categorized scripts contain the implementation. Host package installation remains an explicit task with its own privilege and service-impact checks.
 
 ## Bootstrap and Tools
 
@@ -27,33 +27,35 @@ bash scripts/bootstrap/install-mise.sh
 export PATH="$HOME/.local/bin:$PATH"
 mise trust mise.toml
 mise install --locked
-mise run env:python:setup
-mise tasks ls
-mise exec -- task --list
+eval "$(mise env -s bash)"
+task env:python:setup
+task --list
 ```
 
 The bootstrap uses `infra/host/mise-version.json` and its checksums before having PyYAML. mise pins Task 3.54.0, Python 3.14.4, uv 0.12.23 and Gitleaks 8.30.1. mise creates/activates `.venv`; `env:python:setup` runs `uv sync --locked` with the dependencies of `pyproject.toml` and the artifacts/hashes of `uv.lock`. The current dependency is PyYAML 6.0.3 for reading YAML configuration. It is not installed in the system Python and does not require sudo. The project requires Python 3.14.4 and the lock covers Linux x86_64. uv does not download interpreters or compile packages: mise supplies Python and uv installs wheels from the lock.
 
-`mise install --locked` installs the tools; the Docker/Toolkit installation is a separate explicit action. Shell startup files are not edited automatically. `mise run` activates the environment for its tasks; to run Task without activating mise in the shell, `mise exec -- task ...` is used.
+`mise install --locked` installs the tools; the Docker/Toolkit installation is a separate explicit Task action. Shell startup files are not edited automatically. Activate the pinned project environment in the current Bash session with `eval "$(mise env -s bash)"`, or use the equivalent shell integration configured for your terminal, then invoke project tasks directly with `task`.
 
-## Prepare and Validate the Environment with mise
+## Prepare and Validate the Environment with Go Task
+
+Run these commands after activating the project environment with Mise as shown above.
 
 ```bash
-mise run env:plan
-mise run env:check
+task env:plan
+task env:check
 # New host, after reviewing the plan:
-mise run env:setup
+task env:setup
 ```
 
 | Command | Scope |
 | --- | --- |
-| `mise run env:plan` | Python/PyYAML, structure and host installer preview. |
-| `mise run env:setup` | Python dependencies, structure, GPU and Docker/Toolkit installation. |
-| `mise run env:check` | Python/PyYAML, structure, GPU and Docker/GPU. |
-| `mise run env:python:setup` / `env:python:check` | Python dependencies or version/check version/venv. |
-| `mise run repo:check` | Script structure and syntax. |
-| `mise run gpu:check` | Host NVIDIA driver check. |
-| `mise run docker:plan` / `docker:install` / `docker:check` | Preview, installation or Docker/Toolkit check. |
+| `task env:plan` | Python/PyYAML, structure and host installer preview. |
+| `task env:setup` | Python dependencies, structure, GPU and Docker/Toolkit installation. |
+| `task env:check` | Python/PyYAML, structure, GPU and Docker/GPU. |
+| `task env:python:setup` / `env:python:check` | Python dependencies or version/check version/venv. |
+| `task repo:check` | Script structure and syntax. |
+| `task gpu:check` | Host NVIDIA driver check. |
+| `task docker:plan` / `docker:install` / `docker:check` | Preview, installation or Docker/Toolkit check. |
 
 Composite tasks call a `scripts/environment/` script, which executes the steps sequentially and stops at the first error. It does not use parallel dependencies to prepare the host. `env:setup` requires sudo and can restart Docker; the installer stops if it detects active containers. On this machine, the host has already been installed and validated: use the checks, do not repeat the installation.
 
@@ -62,14 +64,14 @@ GPU/Docker are checked in the normal host terminal session: this session cannot 
 ## Operate Services with Task
 
 ```bash
-mise exec -- task llm:status
-mise exec -- task openhands:status
-mise exec -- task observability:status
-mise exec -- task llm:check
-mise exec -- task observability:stream:check
+task llm:status
+task openhands:status
+task observability:status
+task llm:check
+task observability:stream:check
 ```
 
-`llm:setup`, `openhands:setup` and `observability:setup` are service deployments, not host package installers. Their structure preflight calls `mise run repo:check`; this task is not duplicated in Task. The aggregator `dev:check`, which mixed host and inference, has been removed: now run `mise run env:check` and then `mise exec -- task llm:check`.
+`llm:setup`, `openhands:setup` and `observability:setup` are service deployments, not host package installers. Their preflight reuses the centralized `repo:check` task. The aggregator `dev:check`, which mixed host and inference, has been removed: run `task env:check` and then `task llm:check`.
 
 ## Reproducibility and State
 
@@ -77,9 +79,9 @@ mise exec -- task observability:stream:check
 - Configuration is maintained in YAML; dashboards, bootstrap and generated artifacts retain JSON. Credentials outside of Git and CloudDrive.
 - The user validated October 4, 2026 the RTX 4060 Ti 16 GB, driver 580.178.04, Docker 29.8.2, Compose 5.6.0, Buildx 0.37.1 and GPU inside the container. Original reports: `gpu-20261004T205604Z-BXWpeu.txt` and `docker-gpu-20261004T205608Z-Zn1rK0.txt` in artifacts/diagnostics.
 - Ollama/OpenHands and the observability stack have already passed the documented host tests. The change of task owners does not reinstall or restart that stack.
-- The October 7, 2026 corrected the separation: environment in mise, operation in Task. The configuration and the privilege-less steps are validated separately from the full GPU/Docker check on the host.
+- On November 8, 2026, task execution moved entirely to Go Task. Mise remains responsible for pinned tool versions, installation and environment activation. The configuration and privilege-less steps are validated separately from the full GPU/Docker check on the host.
 
-References: [mise TOML tasks](https://mise.jdx.dev/tasks/toml-tasks.html), [go-task](https://taskfile.dev/docs/installation), [Docker/GPU](docker_gpu.md), [LLM local](local_llm.md) and [observability](observability.md).
+References: [Go Task installation](https://taskfile.dev/docs/installation), [Docker/GPU](docker_gpu.md), [LLM local](local_llm.md) and [observability](observability.md).
 
 
 ## Python Dependencies with uv
@@ -88,11 +90,11 @@ References: [mise TOML tasks](https://mise.jdx.dev/tasks/toml-tasks.html), [go-t
 
 ```bash
 # Prepare or restore the exact environment:
-mise run env:python:setup
+task env:python:setup
 # Check without installing or updating the lock:
-mise run env:python:check
+task env:python:check
 # After editing pyproject.toml dependencies, deliberately regenerate the lock:
-mise exec -- uv lock
+uv lock
 ```
 
 Updating a dependency requires reviewing the diff of `pyproject.toml`/`uv.lock`, synchronizing and checking the affected scripts. `--locked` fails if the metadata and the lock do not match; it does not silently select another version. Current tests use unittest from the standard library and do not require pytest. The Python runtime of the containers remains defined by their pinned images.
@@ -101,17 +103,17 @@ Validation of October 7: preparation/check with uv, environment preview, mise/Ta
 
 ## Git hooks
 
-Install the versioned hook for each checkout with `mise run repo:hooks:install`; verify it with `mise run repo:hooks:check`. The hook runs the code/security validation sequence from Task on every normal commit. See [Git commit validation](git_hooks.md) for the exact checks and local enforcement limits.
+Install the versioned hook for each checkout with `task repo:hooks:install`; verify it with `task repo:hooks:check`. The hook runs the code/security validation sequence from Task on every normal commit. See [Git commit validation](git_hooks.md) for the exact checks and local enforcement limits.
 
 
 ## Phase-A household host inventory
 
-`mise run env:lan:inventory` reads CPU/RAM/storage, visible KVM prerequisites and
+`task env:lan:inventory` reads CPU/RAM/storage, visible KVM prerequisites and
 local default-route addressing without installation, sudo or network changes.
 It stores addressing only in a local mode-0600 report under excluded artifacts.
 Host containers are the selected boundary; VM/KVM assessment is reported as
 `not_required`. Inventory success does not mean household SEC readiness. Code regressions use Task:
-`mise exec -- task repo:environment:test`. See [ADR 003](architecture/adr-003-household-isolation.md).
+`task repo:environment:test`. See [ADR 003](architecture/adr-003-household-isolation.md).
 
 Container service hardening and effective runtime inspection are operations in
 Task, not environment installers. See [container isolation](container_isolation.md).
@@ -121,31 +123,31 @@ The inventory does not configure firmware, Docker security or quotas.
 ## Synthetic bounded storage environment
 
 For the initial 2–3-person household, prepare two synthetic identities before
-any real-user migration. `mise run env:storage:plan` inspects ext4, installed
+any real-user migration. `task env:storage:plan` inspects ext4, installed
 filesystem tools, unused IDs and free capacity. `env:storage:setup` reserves and
 mounts four private 128 MiB images; `env:storage:check` verifies required mounts
 and ownership. Setup/check require host sudo. Existing host utilities are reused;
 uv dependencies and the tool lock are unchanged. Implementation stays under
 `scripts/storage/`.
 
-Live fill/cross-UID probes use `mise exec -- task storage:accept`; code tests use
+Live fill/cross-UID probes use `task storage:accept`; code tests use
 `security:storage:test`. Unmount operation uses `storage:unmount` and preserves
 images. See [procedure, diagram and evidence limits](storage_isolation.md).
 
 
 ## Local identity environment preparation
 
-`mise run env:identity:setup` prepares the root-private persistent identity
+`task env:identity:setup` prepares the root-private persistent identity
 storage/credential files outside Git/CloudDrive without starting services. Repeat
 setup validates and preserves existing secrets; incomplete or changed state fails
-closed. `mise run env:identity:check` validates source only. Task owns
+closed. `task env:identity:check` validates source only. Task owns
 `identity:plan`, `identity:up`, `identity:status`, `identity:check` and `identity:down`.
 See [persistent localhost identity bootstrap](identity_local.md) before applying.
 
 
 ## Offline PKI tooling
 
-`mise run env:pki:setup` installs locked Smallstep CLI 0.30.6 and checks the
+`task env:pki:setup` installs locked Smallstep CLI 0.30.6 and checks the
 existing reviewed OpenSSL 3.5.5 and host utilities. `env:pki:check` only validates
 tools/source. Task owns plan/offline-check/key-creation operations; no keys are
 created by an environment task. See [the owner-run ceremony](pki_ceremony.md).
@@ -161,7 +163,7 @@ tools/source without credentials. Task owns `gateway:tls:issue`, `gateway:up`,
 
 ## Personal household storage environment
 
-`mise run env:household:setup` reserves/mounts distinct bounded real-user images,
+`task env:household:setup` reserves/mounts distinct bounded real-user images,
 checks reserved UIDs, caches the pinned agent/proxy images and prepares reviewed
 control files. It does not create application users or start personal agents.
 Task `household:setup` prepares invitation-only enrollment, starts private

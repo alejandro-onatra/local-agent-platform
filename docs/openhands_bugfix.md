@@ -11,7 +11,7 @@ The original fixtures are in `exercises/bugfix/`. The preparation task copies tw
 From the host, with OpenHands running:
 
 ```bash
-mise exec -- task openhands:bugfix:prepare
+task openhands:bugfix:prepare
 ```
 
 The expected result includes three failed tests and two correct ones. The task returns success only if those three specific failures appear, without import errors or missed tests. It is a deliberately defective baseline. Do not deliver the repair to the agent before observing the baseline.
@@ -31,7 +31,7 @@ The interface may choose another initial folder; the first action must confirm t
 Upon completion:
 
 ```bash
-mise exec -- task openhands:bugfix:check
+task openhands:bugfix:check
 ```
 
 The acceptance compares byte by byte the tests in the workspace with the original ones in the repository, runs the five cases, and verifies additional fractional discount, zero, rounding, and Decimal type. All code of the exercise runs inside the container, not on the host. The checker does not correct the solution.

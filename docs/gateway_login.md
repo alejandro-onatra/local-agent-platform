@@ -22,10 +22,10 @@ distinguishes this delivery from the remaining household platform.
 From `/home/alejandro/CloudDrive/Engineering/agent-platform`:
 
 ```bash
-mise run env:gateway:setup &&
-mise exec -- task gateway:tls:issue &&
-mise exec -- task identity:up &&
-mise exec -- task gateway:up
+task env:gateway:setup &&
+task gateway:tls:issue &&
+task identity:up &&
+task gateway:up
 ```
 
 - Environment setup installs locked Caddy 2.11.7 and caches its digest-pinned
@@ -49,7 +49,7 @@ IPv6 listener or client trust is changed automatically. Only requests from the
 same detected IPv4 subnet are accepted. On multi-interface/VPN ambiguity the
 plan fails; review rather than guessing which address to expose.
 
-`mise exec -- task gateway:plan` prints the address and URL without asking for a
+`task gateway:plan` prints the address and URL without asking for a
 phrase or accessing Docker. `gateway:check` rechecks a running deployment.
 
 ## First device: public-root enrollment, then HTTPS login
@@ -149,7 +149,7 @@ The check/start path refuses a leaf with less than 48 hours remaining. Set a
 renewal reminder yourself until the separate step-ca/ACME and alerting acceptance
 is implemented; no reminder or background job is created by these tasks.
 
-`mise exec -- task gateway:down` removes only the fixed, label-verified Caddy
+`task gateway:down` removes only the fixed, label-verified Caddy
 container. It retains TLS files, Authentik and its database. Cleanup does not
 require the old IP or a still-valid certificate. After a network/source change,
 stop the old gateway and reissue before restarting. For certificate replacement,
@@ -209,7 +209,7 @@ in the certificate. Configure `default_sni login.home.arpa` to select the alread
 loaded certificate. This does not disable client chain/IP SAN verification or
 change HTTP routing, LAN restrictions or application authorization.
 
-For the exact reviewed pre-fix deployment, `mise exec -- task gateway:config:refresh`
+For the exact reviewed pre-fix deployment, `task gateway:config:refresh`
 validates the old source hashes/rendered files and existing TLS state, validates
 the proposed Caddy configuration, and atomically replaces only Caddyfile and its
 source manifest. It signs nothing and does not restart services. Unrecognized
@@ -240,8 +240,8 @@ For the exact reviewed deployed revision, update configuration without signing
 or replacing any certificate/private key:
 
 ```bash
-mise exec -- task gateway:config:refresh &&
-mise exec -- task gateway:up
+task gateway:config:refresh &&
+task gateway:up
 ```
 
 Refresh validates the complete old source/configuration and the proposed new

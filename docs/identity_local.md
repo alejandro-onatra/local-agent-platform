@@ -10,9 +10,9 @@ This candidate starts a persistent Authentik UI on the current computer only.
 Run in the host terminal from the repository:
 
 ```bash
-mise run env:identity:setup &&
-mise exec -- task identity:up &&
-mise exec -- task identity:check
+task env:identity:setup &&
+task identity:up &&
+task identity:check
 ```
 
 Only after these complete successfully, open **http://127.0.0.1:9000/** in a
@@ -45,13 +45,13 @@ accounts and publish no LAN listener at this stage.
 
 | Command | Purpose |
 | --- | --- |
-| `mise run env:identity:check` | Check native/local source, pinned versions and topology without Docker deployment |
-| `mise run env:identity:setup` | Prepare directories, private credential files and a protected Compose snapshot; requires sudo, starts no service |
-| `mise exec -- task identity:plan` | Show the local deployment boundary without reading private state |
-| `mise exec -- task identity:up` | Check protected state and existing container identity/restrictions, pull pinned images and start the three services |
-| `mise exec -- task identity:status` | Report selected service running/health states without application logs |
-| `mise exec -- task identity:check` | Require all three services healthy, effective restrictions intact and local HTTP readiness |
-| `mise exec -- task identity:down` | Remove only this Compose project's containers/networks while retaining all private files/data |
+| `task env:identity:check` | Check native/local source, pinned versions and topology without Docker deployment |
+| `task env:identity:setup` | Prepare directories, private credential files and a protected Compose snapshot; requires sudo, starts no service |
+| `task identity:plan` | Show the local deployment boundary without reading private state |
+| `task identity:up` | Check protected state and existing container identity/restrictions, pull pinned images and start the three services |
+| `task identity:status` | Report selected service running/health states without application logs |
+| `task identity:check` | Require all three services healthy, effective restrictions intact and local HTTP readiness |
+| `task identity:down` | Remove only this Compose project's containers/networks while retaining all private files/data |
 
 All operational/private-state tasks require interactive host sudo. Authentication
 happens before the reporting pipe, with explicit progress messages. Docker
@@ -146,7 +146,7 @@ References: [Authentik Docker Compose and initial setup](https://docs.goauthenti
 [household identity design and accepted native blueprint](identity_access.md).
 
 
-Preparation evidence: registered mise source checks and Task `identity:plan`
+Preparation evidence: registered Task source checks and `identity:plan`
 passed without service deployment. Gitleaks 8.30.1 scanned 226 candidate files,
 staged content and local refs with no findings and passed its canary; private
 report basename `secrets-7uw705rt.json`. The `pending` native fields printed by

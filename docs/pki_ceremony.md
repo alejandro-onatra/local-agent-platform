@@ -80,9 +80,9 @@ closing agent applications. Install/cache tools while online:
 
 ```bash
 cd /home/alejandro/CloudDrive/Engineering/agent-platform
-mise run env:pki:setup
-mise run env:pki:check
-mise exec -- task pki:plan
+task env:pki:setup
+task env:pki:check
+task pki:plan
 ```
 
 mise pins Smallstep CLI 0.30.6 with the tool lock. The environment also checks the
@@ -136,13 +136,13 @@ it does not stop them or change networking automatically.
 2. Substitute the exact current USB mount and run:
 
    ```bash
-   mise exec -- task pki:online:check USB=/run/media/YOUR_USER/YOUR_USB
+   task pki:online:check USB=/run/media/YOUR_USER/YOUR_USB
    ```
 
    If it passes, run:
 
    ```bash
-   mise exec -- task pki:root:create:online USB=/run/media/YOUR_USER/YOUR_USB
+   task pki:root:create:online USB=/run/media/YOUR_USER/YOUR_USB
    ```
 
    The latter task passes `--allow-online` explicitly. It checks stopped containers
@@ -186,8 +186,8 @@ Client trust and the restricted issuer/gateway are still pending.
    and hidden input remain in your foreground desktop-user process.
 
    ```bash
-   mise exec -- task pki:offline:check USB=/run/media/YOUR_USER/YOUR_USB
-   mise exec -- task pki:root:create USB=/run/media/YOUR_USER/YOUR_USB
+   task pki:offline:check USB=/run/media/YOUR_USER/YOUR_USB
+   task pki:root:create USB=/run/media/YOUR_USER/YOUR_USB
    ```
 
    Proceed to create only when the check passes. Enter/confirm the ROOT phrase,
@@ -232,7 +232,7 @@ install certificates from the synthetic tests.
 
 ## Validation and sources
 
-`mise exec -- task security:pki:test` covers online/wrong-media refusals,
+`task security:pki:test` covers online/wrong-media refusals,
 existing-file preservation, phrase errors, profile/version drift, native
 PKCS#8 encryption parameters, chain/key matching and wrong-password rejection.
 Tests also verify the explicit connected choice, its truthful report, retained

@@ -105,10 +105,10 @@ implementation in `scripts/instances/`.
 
 ```bash
 cd /home/alejandro/CloudDrive/Engineering/agent-platform
-mise exec -- task openhands:instances:plan
-mise exec -- task openhands:instances:up
-mise exec -- task openhands:instances:check
-mise exec -- task openhands:instances:accept
+task openhands:instances:plan
+task openhands:instances:up
+task openhands:instances:check
+task openhands:instances:accept
 ```
 
 These operations require sudo in the host terminal. The wrapper clears the
@@ -150,7 +150,7 @@ no key-print command or completed family login flow in this step.
 For a process-inspector failure, first run the read-only diagnostic:
 
 ```bash
-mise exec -- task openhands:instances:diagnose
+task openhands:instances:diagnose
 ```
 
 It reports fixed process check names and `running`/`not_running`/`missing` for
@@ -167,7 +167,7 @@ sequence, preserving existing state and keys.
 
 
 ```bash
-mise exec -- task openhands:instances:down
+task openhands:instances:down
 ```
 
 This validates the selected project/image/mount identities and removes only the
@@ -186,9 +186,9 @@ that operation correctly rejects unexpected existing data.
 ## Source checks and next milestone
 
 ```bash
-mise exec -- task openhands:instances:config
-mise exec -- task security:instances:test
-mise exec -- task repo:commit:check
+task openhands:instances:config
+task security:instances:test
+task repo:commit:check
 ```
 
 Source-only config validation is now part of normal commit validation. Regression
@@ -273,10 +273,10 @@ current declarations; the earlier source-format defect remains documented above.
 Recover using the guarded existing tasks:
 
 ```bash
-mise exec -- task openhands:instances:down &&
-mise exec -- task openhands:instances:up &&
-mise exec -- task openhands:instances:check &&
-mise exec -- task openhands:instances:accept
+task openhands:instances:down &&
+task openhands:instances:up &&
+task openhands:instances:check &&
+task openhands:instances:accept
 ```
 
 Down removes only verified pilot containers/networks and retains the state and
@@ -337,17 +337,17 @@ is not changed. Native source/image versions remain pinned.
 
 ```bash
 cd /home/alejandro/CloudDrive/Engineering/agent-platform
-mise run env:storage:check &&
-mise exec -- task openhands:instances:check &&
-mise exec -- task openhands:instances:network:check &&
-mise exec -- task openhands:instances:websocket:check &&
-mise exec -- task openhands:instances:recovery:check
+task env:storage:check &&
+task openhands:instances:check &&
+task openhands:instances:network:check &&
+task openhands:instances:websocket:check &&
+task openhands:instances:recovery:check
 ```
 
 These commands require host sudo. Run them only against the two synthetic pilot
 spaces, while nobody uses their UI or schedules automation. The recovery task
 restarts the pilot processes; the first two new checks do not restart them.
-If reboot unmounted the images, use `mise run env:storage:setup` to verify/remount
+If reboot unmounted the images, use `task env:storage:setup` to verify/remount
 completed storage, then recover the pilot using its guarded down/up/check tasks.
 Do not rerun the earlier empty-filesystem fill test on populated application state.
 
@@ -469,8 +469,8 @@ fresh bounded storage and family retention rules still need implementation.
 ### Regression and evidence rules
 
 ```bash
-mise exec -- task security:instances:test
-mise exec -- task repo:commit:check
+task security:instances:test
+task repo:commit:check
 ```
 
 Regression tests exercise protocol frames/close codes, refusal/error distinctions,
@@ -556,8 +556,8 @@ current files. This is owner-run evidence, not an assistant-run Docker exercise.
 | Recovery | Restart persistence, retained keys, synthetic API/file restore and peer denial passed; cleanup complete | `instances-WRcNr7xs.json` |
 
 Required pilot mounts are not automatically restored after host reboot. Before
-repeating this chain, use `mise run env:storage:setup` and
-`mise run env:storage:check`. The setup validates and remounts completed images;
+repeating this chain, use `task env:storage:setup` and
+`task env:storage:check`. The setup validates and remounts completed images;
 it does not reformat them. Do not clear a nonempty unmounted target to bypass its
 guard. The reported missing mount alone does not establish why it was unmounted.
 

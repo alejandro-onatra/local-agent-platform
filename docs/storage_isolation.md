@@ -32,7 +32,7 @@ free**. That is a point-in-time gate, not a reservation against other host write
 
 ```mermaid
 flowchart TB
-    Policy[Strict synthetic policy] --> Setup[mise environment preparation]
+    Policy[Strict synthetic policy] --> Setup[Go Task environment preparation; Mise pins tools]
     Setup --> Base[Root-managed private directory outside CloudDrive]
     Base --> AW[probe-a workspace: 128 MiB]
     Base --> AS[probe-a state: 128 MiB]
@@ -98,10 +98,10 @@ on the reviewed host. No package installation or new Python dependency is added.
 
 ```bash
 cd /home/alejandro/CloudDrive/Engineering/agent-platform
-mise run env:storage:plan
-mise run env:storage:setup
-mise run env:storage:check
-mise exec -- task storage:accept
+task env:storage:plan
+task env:storage:setup
+task env:storage:check
+task storage:accept
 ```
 
 - **Plan:** inspect tools, unused IDs, backing filesystem and free-space budget;
@@ -134,7 +134,7 @@ failure returns 1. `household_readiness` remains pending even after pilot accept
 ## Unmounting, reboot and future integration
 
 ```bash
-mise exec -- task storage:unmount
+task storage:unmount
 ```
 
 This validates active mounts, uses normal unmount, and preserves all images/data.
@@ -153,8 +153,8 @@ isolation, model fairness and broader host protection remain pending.
 ## Code tests and evidence limits
 
 ```bash
-mise exec -- task security:storage:test
-mise exec -- task repo:commit:check
+task security:storage:test
+task repo:commit:check
 ```
 
 The 31 storage tests cover strict policy, unsafe paths/mounts/IDs, capacity gates,
@@ -165,8 +165,8 @@ they do not prove live host-mounted isolation. The normal commit gate includes
 these tests without sudo, mounting filesystems or starting real agents.
 
 Implementation: `scripts/storage/storage.py`, `acceptance.py` and `run.sh`.
-Environment entry points stay in mise; code tests, live probes and unmount
-operations stay in Task. Related: [container controls](container_isolation.md),
+Environment checks, code tests, live probes and unmount operations are all
+Go Task commands; Mise pins and activates their tools. Related: [container controls](container_isolation.md),
 [SEC checks](security_checks.md), [household plan](plan.md).
 
 Primary references: [util-linux allocation behavior](https://github.com/util-linux/util-linux/blob/master/sys-utils/fallocate.1.adoc),
