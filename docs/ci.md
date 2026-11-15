@@ -13,3 +13,69 @@ CI uses a disposable GitHub-hosted runner. It does not connect to the household
 services or use household accounts, CA keys, passwords, persistent storage, or
 the host Ollama model. These checks do not certify real-device login or model
 inference.
+
+The CI bootstrap retries temporary mise download failures with bounded
+backoff. Mise tool downloads use eight retries for transient HTTP and network
+errors. Archive and binary checksums remain mandatory; a failed or mismatched
+download is not installed.
+
+`repo:commit:check` tests this behavior against a local HTTP fixture, including
+temporary server errors, permanent 404 responses, and checksum mismatches. Run
+that regression test alone with:
+
+```sh
+mise exec -- task repo:mise-bootstrap:test
+```
+
+If installing Mise fails, CI runs the fixture with the runner's system Python
+so the retry and checksum behavior remains testable without Mise installed.
+
+## Local and CI security scans
+
+The versioned pre-commit hook and the GitHub Actions workflow both run
+`repo:commit:check`. That shared task runs Gitleaks for secret detection and
+Trivy for dependency vulnerabilities and IaC formats recognized by Trivy.
+The current repository scan detected no Trivy-supported IaC configuration
+files (`Detected config files: 0`), so Trivy did not evaluate the Compose YAML.
+
+The full `repo:commit:check` also runs `security:config`, which validates
+selected declared controls in `infra/llm/compose.yaml`,
+`infra/openhands/compose.yaml`, `infra/observability/compose.yaml`, and
+`infra/openhands/hardening.yaml`. These source guards are targeted checks,
+not a general IaC scan or a certification of running services.
+
+Install the checksum-locked tools once, then run only the Trivy scan:
+
+```sh
+mise install --locked
+mise exec -- task security:trivy:check
+```
+
+Run the same full validation used by the pre-commit hook and CI with:
+
+```sh
+mise exec -- task repo:commit:check
+```
+
+The Trivy task fails on HIGH or CRITICAL findings. It scans repository files;
+this initial check does not scan built or running container images. Trivy
+refreshes its vulnerability database, so new advisories can change results
+even when the source is unchanged. Gitleaks remains responsible for staged
+content and local Git history; this Trivy scan does not replace it.
+The check uses a temporary empty Docker configuration to download the public
+vulnerability database without calling host credential helpers. It removes
+that temporary configuration afterward and leaves the user's Docker settings
+unchanged.
+
+## Go Task pilot without Mise
+
+The optional `Go Task pilot` workflow runs `repo:mise-bootstrap:test` without
+installing Mise. It installs the pinned Go Task version through the official
+setup action and verifies the Linux AMD64 archive with a SHA-256 checksum.
+The selected task uses the runner's system Python and a local HTTP fixture.
+
+This pilot tests Go Task as a command runner for one task. It does not test Go
+Task as a tool version manager or replace Mise for CI tasks that need the
+locked Python, Trivy, Gitleaks, age, Smallstep, or Caddy versions. A successful
+run is one data point; keep the existing validation workflow unchanged until
+we compare repeated runs and define pinned installations for the tools CI needs.

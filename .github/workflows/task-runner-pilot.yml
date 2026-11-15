@@ -1,0 +1,37 @@
+name: Go Task pilot
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/task-runner-pilot.yml"
+      - "Taskfile.yml"
+      - "scripts/bootstrap/install-mise.sh"
+      - "tests/environment/test_mise_bootstrap.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap-test:
+    name: Run bootstrap regression test without Mise
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    env:
+      PYTHONOPTIMIZE: "0"
+    steps:
+      - name: Check out repository without persisted credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Install checksum-verified Go Task
+        uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: 3.54.0
+          checksum: 680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb
+          max-retries: 6
+
+      - name: Run the existing bootstrap test task without Mise
+        run: task repo:mise-bootstrap:test

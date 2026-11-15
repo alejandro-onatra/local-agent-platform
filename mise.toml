@@ -9,6 +9,8 @@ python = "3.14.4"
 uv = "0.12.23"
 # Secret detector; bundled rules are pinned by version and binary checksum.
 gitleaks = "8.30.1"
+# Dependency vulnerability and infrastructure misconfiguration scanner.
+"aqua:aquasecurity/trivy" = "0.76.2"
 # Native public-key backup encryption; no private recovery key is kept in Git.
 age = "1.3.2"
 # Stable offline PKI tooling; native CLI name is step.

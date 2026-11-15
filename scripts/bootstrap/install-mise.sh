@@ -2,7 +2,7 @@
 set -euo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 python3 - "$repo_root/infra/host/mise-version.json" <<'PYCODE'
-import hashlib, io, json, os, platform, sys, tarfile, urllib.request
+import hashlib, http.client, io, json, os, platform, sys, tarfile, time, urllib.error, urllib.request
 from pathlib import Path
 if platform.system() != 'Linux' or platform.machine() != 'x86_64':
     raise SystemExit('This mise lock targets Linux x86_64.')
@@ -15,7 +15,22 @@ if dest.exists():
         print(f"mise {lock['version']} already installed at {dest}")
         raise SystemExit(0)
     raise SystemExit(f'{dest} already exists with a different binary; review before replacing it.')
-raw=urllib.request.urlopen(lock['url'],timeout=120).read()
+attempts = 6
+for attempt in range(attempts):
+    try:
+        with urllib.request.urlopen(lock['url'], timeout=120) as response:
+            raw = response.read()
+        break
+    except urllib.error.HTTPError as error:
+        retryable = error.code in {408, 429} or 500 <= error.code <= 599
+        if not retryable or attempt == attempts - 1:
+            raise SystemExit('Pinned mise download failed; no file installed.') from error
+    except (urllib.error.URLError, TimeoutError, OSError, http.client.HTTPException) as error:
+        if attempt == attempts - 1:
+            raise SystemExit('Pinned mise download failed after retries; no file installed.') from error
+    delay = min(2 ** attempt, 30)
+    print(f'Temporary download failure; retrying in {delay}s ({attempt + 2}/{attempts}).', file=sys.stderr)
+    time.sleep(delay)
 if hashlib.sha256(raw).hexdigest()!=lock['sha256']:
     raise SystemExit('Download checksum mismatch; nothing installed.')
 with tarfile.open(fileobj=io.BytesIO(raw),mode='r:gz') as archive:
