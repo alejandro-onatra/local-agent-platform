@@ -6,22 +6,22 @@ The host GPU passed the check: RTX 4060 Ti, 16380 MiB, driver 580.178.04. Docker
 
 Work has `no_new_privs` enabled, which prevents elevating privileges with sudo, and cannot control systemd. Therefore, the installation must be executed in a normal host terminal. There is no need to start Work as root or change the driver.
 
-## Entry Point with mise
+## Entry Point with Go Task
 
 ```bash
-mise run env:plan
-mise run env:setup  # only when host installation/configuration is needed
-mise run env:check  # routine check of the installed environment
+task env:plan
+task env:setup  # only when host installation/configuration is needed
+task env:check  # routine check of the installed environment
 ```
 
-See [bootstrap of mise and tasks](environment.md). The scripts remain the implementation. Running them directly requires activating the prepared Python/PyYAML environment; for a new checkout follow environment.md first.
+See [environment setup and Task commands](environment.md). The scripts remain the implementation. Running them directly requires activating the prepared Python/PyYAML environment; for a new checkout follow environment.md first.
 
 ## Review and Install
 
 ```bash
 cd /home/alejandro/CloudDrive/Engineering/agent-platform
-mise run docker:plan
-mise run docker:install
+task docker:plan
+task docker:install
 ```
 
 The script runs as Alejandro and asks for the password via sudo where appropriate. Do not paste the password in the chat. If APT proposes an unexpected operation, interrupt and review the result.
@@ -51,7 +51,7 @@ Transitive dependencies, base packages, and the kernel are not frozen. The scrip
 ## Recheck
 
 ```bash
-mise run docker:check
+task docker:check
 ```
 
 A satisfactory GPU query inside Docker verifies access to the device and the driver. CUDA loading and inference with a model will be later tests.

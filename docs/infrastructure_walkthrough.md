@@ -29,15 +29,15 @@ flowchart LR
 
 The direct profile bypasses LiteLLM. It does not produce its consumption metrics. The effective path is chosen in the OpenHands conversation settings; adding containers to Compose does not by itself change all conversations.
 
-**2. mise, Task, and scripts: three responsibilities**
+**2. Mise, Go Task, and scripts: three responsibilities**
 
-mise fixes the environment tools. Currently, it fixes Task, Python, and uv, and activates `.venv`; it does not manage the Docker daemon itself or the kernel driver. The mise bootstrap verifies hashes and its version is in `infra/host/mise-version.json`. `mise.lock` preserves the tool artifact and checksums; Python points to the target Linux x86_64.
+Mise pins and installs the development tools, and activates `.venv`; it does not manage the Docker daemon itself or the kernel driver. Go Task runs every project task. The Mise bootstrap verifies hashes and its version is in `infra/host/mise-version.json`. `mise.lock` preserves tool artifacts and checksums; Python targets Linux x86_64.
 
 Source: [mise.toml](../mise.toml). Literal fragment of the current file.
 
 ```toml
-# mise owns environment versions, preparation and validation.
-# Taskfile.yml owns service operations and code tests; scripts/ owns implementation.
+# mise pins and activates development tools; Taskfile.yml owns project tasks.
+# scripts/ contains substantial implementation.
 # Host packages and image digests are pinned in infra/host/versions.yaml.
 
 [tools]
@@ -55,7 +55,7 @@ Source: [Taskfile.yml](../Taskfile.yml). Literal fragment of the current file.
   llm:setup:
     desc: Start local Ollama, download model and test inference on GPU
     cmds:
-      - mise run repo:check
+      - task: repo:check
       - task: llm:plan
       - task: llm:up
       - task: llm:pull
@@ -471,9 +471,9 @@ Evidence: [GPU](diagnostics/gpu-2026-10-04.md), [observability acceptance](diagn
 To validate the cache expansion, when the agent is inactive:
 
 ```bash
-mise exec -- task observability:up
-mise exec -- task observability:cache:check
-mise exec -- task observability:check
+task observability:up
+task observability:cache:check
+task observability:check
 ```
 
 `up` restarts current LiteLLM services and counters, preserving volumes and conversations. Reinstalling Docker, GPU, or the model is not necessary. These commands still require your terminal via sudo; this guide does not claim that they have already been executed for the cache expansion.
@@ -520,14 +520,15 @@ The workflow code remains separate from the weights and inference server. The ad
 Before editing, I will show files, purpose, and scope. Then I will show real diff or specific fragments, validations, and what remains to be applied. Infrastructure decisions will continue in `infra/`, operations in Task/scripts, and documentation in `docs/`. Keys or conversation content will never be included in a diff. The rule is saved in the `AGENTS.md` of the repository.
 
 
-### Task Separation — October 7, 2026
+### Go Task Migration — November 8, 2026
 
-The preparation/validation of the environment uses `mise run env:plan`, `mise run env:setup`, `mise run env:check`, and individual GPU/Docker/Python/repository checks. mise declares brief calls; `scripts/environment/` preserves the sequence and `scripts/host/` implements the host actions. Task preserves deployments, status, logs, inference, and observability tests. A preflight of the repository within a deployment invokes `mise run repo:check`, with a single public definition of that validation.
+All project tasks now run through Go Task, including environment preparation/validation, repository checks, host checks, service operations and code tests. Mise remains the tool-version and environment manager; it no longer defines or dispatches project tasks. `Taskfile.yml` keeps short task definitions, while `scripts/environment/` and `scripts/host/` preserve the implementation and safety checks.
 
-```toml
-[tasks."env:check"]
-description = "Validate Python/uv/lock, repository structure, GPU driver and Docker/GPU in the host terminal."
-run = "bash scripts/environment/check.sh"
+```yaml
+env:check:
+  desc: Validate Python/uv/lock, repository structure, GPU driver and Docker/GPU in the host terminal.
+  cmds:
+    - bash scripts/environment/check.sh
 ```
 
 

@@ -190,7 +190,7 @@ Detailed design: [LAN access and private-key custody](lan_access.md).
 
 **Phase A — Boundaries and key custody — in progress**
 
-Read-only host inventory and a reproducible mise command now exist. The owner
+Read-only host inventory and a reproducible Go Task command now exist. The owner
 selected host containers, so KVM/tool availability no longer gates this path.
 Router/client inventory and offline custody remain pending. No VM, identity
 service, CA or LAN exposure has been created. See [ADR 003](architecture/adr-003-household-isolation.md).
@@ -284,7 +284,8 @@ Origin policy and family login remain open. See the
 - Test two identities from another LAN device: allowed own-space access, denied
   cross-user/unauthenticated access, mandatory MFA, network restrictions and
   removal of old CA trust in a controlled recovery exercise.
-- Keep installation/environment checks in mise and operations/acceptance in Task,
+- Use Go Task for all project tasks; use Mise to pin/install tools and activate
+  the environment. Keep operations/acceptance implementation in categorized scripts,
   implemented in categorized scripts. Version public configuration only.
 
 **Closure criterion:** all [15 security controls](security.md) have host/client
@@ -524,11 +525,11 @@ The work folder contains the project instructions and this plan; there is no imp
 - `infra/`: declarative configuration and infrastructure versions.
 - `docs/`: detailed documentation and reviewed diagnostics.
 
-The first GPU/Docker environment is validated on the host. The migration of tasks mise to go-task passed the plan and syntax validation; its full GPU check will be executed on the host. See [environment](environment.md).
+The first GPU/Docker environment is validated on the host. The migration to Go Task now places all project task definitions in `Taskfile.yml`; Mise retains pinned tools and environment activation. The task list and repository structure/shell checks pass in the migration worktree. Python/security suite and remote CI validation remain pending. See [environment](environment.md).
 
 ## Observability progress — October 5, 2026
 
-The proposal is concretized with existing integrations, without a proprietary conversation adapter: LiteLLM → OTLP → Collector; filelog for selected Docker logs; native OpenHands tracing as an optional and synthetic step. Compose with digests, filters, Grafana sources, an overview, six specialized dashboards, and tasks in `scripts/observability/`. mise retains environment management and go-task coordinates.
+The proposal is concretized with existing integrations, without a proprietary conversation adapter: LiteLLM → OTLP → Collector; filelog for selected Docker logs; native OpenHands tracing as an optional and synthetic step. Compose with digests, filters, Grafana sources, an overview, six specialized dashboards, and tasks in `scripts/observability/`. Mise pins/activates tools and Go Task coordinates every project task.
 
 Configurations are validated with pinned binaries and a Collector test that attempts to filter sensitive content. Docker execution of the stack, the real path of the new profile, and span correlation remain pending verification on the host. Quality panels, policies/MCP, and business explicitly state what is still not instrumented; the phase 2 is not declared closed.
 
@@ -549,7 +550,7 @@ Configuration migration, October 6: Collector/manifests sources in YAML; Python/
 Path finding: the host diagnosis confirmed `direct Ollama` in the affected conversation. Repair via API and streaming test prepared with validation tests. The API repair was successfully applied on the host: conversation/default via LiteLLM and streaming active. The SSE test verified exactly 23 input tokens and 8 output tokens; afterward Grafana showed input 16,646, output 2,243 and three additional calls, including the test. The path failure is closed. Detailed conversation correlation remains pending; the next step in the plan is the first synthetic workflow with decisions and explicit approvals.
 
 
-October 7, 2026: fixed the separation of responsibilities of the environment. mise declares installation and validation of the environment, Task declares operation of services/test code and categorized scripts contain the implementation. This reorganization does not reinstall Docker nor restart services.
+October 7, 2026: the then-current split used Mise for environment task declarations and Task for service operations/tests. On November 8, 2026, all project tasks moved to Go Task; Mise now pins/installs tools and activates the environment. The migration does not reinstall Docker nor restart services.
 
 
 Python dependencies centralized in pyproject.toml/uv.lock with uv pinned by mise. The separation of environment/operation and document names in lowercase are preserved.
@@ -605,7 +606,7 @@ October 18 identity preparation: a native Authentik candidate blueprint now defi
 password plus mandatory WebAuthn/TOTP MFA, separate per-application proxy providers
 and group bindings for the two synthetic pilots. No users, memberships, secrets,
 certificates or listeners were provisioned. Source validation belongs to
-`mise run env:identity:check`; code regressions belong to
+`task env:identity:check`; code regressions belong to
 `task security:identity:test`. [Identity configuration and deployment sequence](identity_access.md)
 records mixed-client compatibility and the native-validation/CA/gateway gates.
 Identity deployment, browser MFA and household readiness remain pending.
@@ -615,7 +616,7 @@ October 18 native identity validation preparation: Authentik 2026.8.4 and Postgr
 18.6-alpine are pinned by digest. A unique, no-ports, internal-network Compose
 check uses temporary credentials and bounded tmpfs storage, native migration/import,
 ORM readback and repeat import. Task owns the operational native check;
-mise validates its environment source. [Procedure and scope](identity_access.md#disposable-native-validation-candidate).
+Task validates its environment source. [Procedure and scope](identity_access.md#disposable-native-validation-candidate).
 Owner execution is pending because Docker requires interactive sudo. Browser MFA,
 CA/gateway deployment and household readiness remain pending.
 
@@ -632,8 +633,8 @@ synthetic accounts. Household readiness and LAN publication remain pending.
 
 October 18 persistent identity UI preparation: source now defines a separate
 PostgreSQL/server/worker project on `127.0.0.1:9000` with root-private persistent
-state and file-delivered credentials outside Git/CloudDrive. Environment setup
-belongs to mise; lifecycle operations belong to Task. No accounts, household
+state and file-delivered credentials outside Git/CloudDrive. Mise pins and installs
+tools and activates the environment; Go Task runs setup and lifecycle operations. No accounts, household
 blueprint import, LAN routing or CA trust changes are automatic. Source tests and
 Compose parsing passed; actual owner deployment/native admin setup and browser
 MFA remain pending. [Local UI procedure](identity_local.md).
@@ -652,7 +653,7 @@ LAN publication. [Recorded evidence and recovery runbook](identity_local.md#owne
 October 20 backup preparation: owner browser evidence confirms forced TOTP
 enrollment for a synthetic user and rejection of an incorrect code on subsequent
 login. Prepared age-encrypted database/files/key snapshots and a networkless
-PostgreSQL restore check, with environment tooling in mise and operations in Task.
+PostgreSQL restore check, with tool pins in Mise and all project task execution in Go Task.
 Owner key custody, actual snapshot/SQL restore and full isolated Authentik
 startup/decryption/browser recovery remain pending. No HTTPS, gateway or LAN
 publication is implied. [Backup execution and scope](identity_backup.md).

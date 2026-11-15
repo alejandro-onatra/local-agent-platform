@@ -1,11 +1,10 @@
 # Maintained configuration; keep versions, digests and numeric types explicit.
-resolved_at: '2026-10-29'
-version: 1.34.0
-image: ghcr.io/openhands/agent-canvas@sha256:638c5e3ce76df74344bb18bd85f44af395337ade8e71f04532099fb380febadf
-source_revision: 6c120073f5a1e1c838ba6fdd9a075c79ff997b98
-agent_server: 1.58.1
-automation: 1.26.0
-compressed_image_bytes: 1408033220
+resolved_at: '2026-11-06'
+version: 1.37.0
+image: ghcr.io/openhands/agent-canvas@sha256:8d3f977f070606c5d975c3417eb9f623a395b6043605aedd37776d8d33465559
+source_revision: 6dad5568d64d942cc910bf7124e8d16f90b1d07d
+agent_server: 1.60.1
+automation: 1.30.1
 ui_url: http://127.0.0.1:8000/canvas
 llm_model: openai/qwen3:8b
 llm_base_url: http://ollama:11434/v1

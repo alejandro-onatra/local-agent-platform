@@ -43,7 +43,7 @@ separate; verify both rather than assuming either is missing from the wizard.
 ## Diagnose connection before changing profiles
 
 ```bash
-mise exec -- task household:models:check
+task household:models:check
 ```
 
 This checks verified household containers, native `/api/settings` and `/server_info` at

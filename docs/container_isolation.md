@@ -121,8 +121,8 @@ Run from the host terminal where sudo can authenticate. First inspect the curren
 container and prepare the candidate:
 
 ```bash
-mise exec -- task security:container:check
-mise exec -- task openhands:security:plan
+task security:container:check
+task openhands:security:plan
 ```
 
 The first check may fail `runtime.readonly_root` on the current writable-root
@@ -135,8 +135,8 @@ Stop active agent work before the explicit apply operation, which recreates
 OpenHands and its UI proxy. It does not recreate Ollama or delete persistent data:
 
 ```bash
-mise exec -- task openhands:security:apply
-mise exec -- task security:container:check
+task openhands:security:apply
+task security:container:check
 ```
 
 The mode-0600 activation record `artifacts/openhands/hardening.yaml` activates
@@ -151,7 +151,7 @@ rollback success is not assumed. Review container status locally. To explicitly
 return to the previous image-user/writable-root baseline:
 
 ```bash
-mise exec -- task openhands:security:rollback
+task openhands:security:rollback
 ```
 
 Rollback changes the security profile and recreates services; it does not undo
@@ -189,13 +189,13 @@ separate `docker_access_unavailable`, `agent_not_found`, `agent_not_running`,
 is not executed or approved; reports include only validated state, exit code and
 OOM flag. Raw Docker errors, logs and environment remain excluded.
 
-`mise exec -- task openhands:status` includes stopped containers. The current
+`task openhands:status` includes stopped containers. The current
 Compose profile has `restart: "no"`; services do not automatically resume after
 a host restart. This is a possible explanation, not a diagnosis of any specific
 failure. Check state/exit/OOM before deciding to restart a crashed service.
 
-For a deliberately stopped existing stack, use `mise exec -- task llm:up`, then
-`mise exec -- task openhands:up`, then repeat the security check and security plan.
+For a deliberately stopped existing stack, use `task llm:up`, then
+`task openhands:up`, then repeat the security check and security plan.
 These are existing service operations; they retain model/state volumes and the
 workspace. No reinstall or volume deletion is required. A crash/OOM or missing
 container needs diagnosis first; do not repeatedly restart a failing service.
@@ -282,7 +282,7 @@ Ollama. The persisted session key stays inside the container; response bodies ar
 never read or printed. Startup retries are bounded. Hardening apply uses this
 stronger check before declaring success.
 
-Run `mise exec -- task openhands:backend:check` in the host terminal. It reports
+Run `task openhands:backend:check` in the host terminal. It reports
 backend/proxy status and fixed error indicators from the last 1,000 log lines,
 without displaying logs, credentials or conversation text. Indicators can include
 read-only filesystem, permissions or full storage; they are clues, not a root-cause

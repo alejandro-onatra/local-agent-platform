@@ -10,9 +10,9 @@ import sys
 try:
     import yaml
 except ImportError:
-    raise SystemExit('Missing PyYAML: run mise run env:python:setup.') from None
+    raise SystemExit('Missing PyYAML: run task env:python:setup.') from None
 expected = Path(sys.argv[1])/'.venv'
 if sys.version_info[:3] != (3, 14, 4) or yaml.__version__ != '6.0.3' or Path(sys.prefix).resolve() != expected.resolve():
-    raise SystemExit('Use mise install --locked and mise run env:python:setup.')
+    raise SystemExit('Use mise install --locked and task env:python:setup.')
 print('Project Python 3.14.4, uv lock synchronization and PyYAML 6.0.3 verified.')
 PYCODE

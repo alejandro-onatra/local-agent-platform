@@ -7,9 +7,11 @@ dependencies. It does not replace the running OpenHands/Ollama stack.
 ## Run with Task
 
 ```bash
-mise exec -- task workflow:demo
-mise exec -- task workflow:demo:approved
-mise exec -- task workflow:test
+task workflow:demo
+task workflow:demo:approved
+task workflow:demo:subject
+task workflow:demo:subject:approved
+task workflow:test
 ```
 
 `workflow:demo` leaves the access case waiting for approval. The explicitly named
@@ -17,11 +19,9 @@ mise exec -- task workflow:test
 process and executes the in-memory record. It has no real account, filesystem,
 network or shell tool effects. Each invocation creates fresh state.
 
-To select the second offline model substitute directly:
-
-```bash
-mise exec -- bash scripts/workflows/demo.sh --provider subject --approve
-```
+The `workflow:demo:subject` variants select the second offline model substitute.
+The `workflow:demo:subject:approved` task also grants the synthetic in-memory
+approval explicitly; neither variant can affect external systems.
 
 Both providers implement the same `ModelProvider` contract and generate different
 summaries. Neither is an LLM; these runs consume no inference tokens.

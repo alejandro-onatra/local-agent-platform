@@ -24,7 +24,7 @@ temporary server errors, permanent 404 responses, and checksum mismatches. Run
 that regression test alone with:
 
 ```sh
-mise exec -- task repo:mise-bootstrap:test
+task repo:mise-bootstrap:test
 ```
 
 If installing Mise fails, CI runs the fixture with the runner's system Python
@@ -47,14 +47,16 @@ not a general IaC scan or a certification of running services.
 Install the checksum-locked tools once, then run only the Trivy scan:
 
 ```sh
+mise trust mise.toml
 mise install --locked
-mise exec -- task security:trivy:check
+eval "$(mise env -s bash)"
+task security:trivy:check
 ```
 
 Run the same full validation used by the pre-commit hook and CI with:
 
 ```sh
-mise exec -- task repo:commit:check
+task repo:commit:check
 ```
 
 The Trivy task fails on HIGH or CRITICAL findings. It scans repository files;
@@ -74,8 +76,7 @@ installing Mise. It installs the pinned Go Task version through the official
 setup action and verifies the Linux AMD64 archive with a SHA-256 checksum.
 The selected task uses the runner's system Python and a local HTTP fixture.
 
-This pilot tests Go Task as a command runner for one task. It does not test Go
-Task as a tool version manager or replace Mise for CI tasks that need the
-locked Python, Trivy, Gitleaks, age, Smallstep, or Caddy versions. A successful
-run is one data point; keep the existing validation workflow unchanged until
-we compare repeated runs and define pinned installations for the tools CI needs.
+This pilot tests Go Task as a command runner without Mise. The required
+Repository validation workflow also uses Go Task for every project task after
+Mise installs the locked tools. Mise remains responsible for tool versions
+and environment activation; the pilot does not test Go Task as a tool manager.
