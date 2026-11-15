@@ -135,6 +135,21 @@ tasks:
     cmds:
       - bash scripts/environment/check-ci.sh
 
+  platform:status:
+    desc: Show read-only container state for every platform component
+    env:
+      PLATFORM_STATUS_SCOPE: '{{.SCOPE | default "all"}}'
+    cmds:
+      - uv run --locked python scripts/platform/cli.py status --scope "$PLATFORM_STATUS_SCOPE"
+
+  platform:status:json:
+    desc: Emit read-only platform state as stable JSON for automation
+    silent: true
+    env:
+      PLATFORM_STATUS_SCOPE: '{{.SCOPE | default "all"}}'
+    cmds:
+      - uv run --locked python scripts/platform/cli.py status --scope "$PLATFORM_STATUS_SCOPE" --json
+
   llm:plan:
     desc: Show pinned Ollama/model configuration and validate Compose
     cmds:

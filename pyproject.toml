@@ -12,6 +12,7 @@ requires-python = "==3.14.4"
 dependencies = [
   # Safely read YAML configuration; this package does not run inference.
   "PyYAML==6.0.3",
+  "rich==14.2.0",
 ]
 
 [tool.uv]
