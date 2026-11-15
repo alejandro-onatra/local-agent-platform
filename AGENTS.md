@@ -12,3 +12,4 @@
 - Keep useful descriptions/comments in TOML and substantial logic in categorized scripts/ files.
 - Use lowercase document filenames under docs/ and update links/script references when renaming. Keep conventional README.md, LICENSE, and AGENTS.md filenames at the root.
 - Describe the project as a local agent platform; do not frame it as a pedagogical laboratory.
+- Use `feat(contexto): <English description>` as the commit subject and include a descriptive English body explaining what changed and why. Before each commit, show the exact file list and full message, then wait for explicit approval.
