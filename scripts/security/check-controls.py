@@ -200,8 +200,17 @@ def source_checks(repo):
     checks['compose.resources'] = guard(all(bounded_fields(s) for s in all_services) and
                                        all(bounded_fields(s, required=True) for s in full_services) and
                                        positive(agent.get('pids_limit')))
-    checks['compose.digests'] = guard(all(isinstance(s['image'], str) and
-        re.fullmatch(r'[^\s]+@sha256:[0-9a-f]{64}', s['image']) for s in full_services))
+    locked_openhands_image = load_yaml(
+        repo / 'infra/openhands/versions.yaml'
+    ).get('image')
+    checks['compose.digests'] = guard(all(
+        isinstance(s.get('image'), str) and (
+            re.fullmatch(r'[^\s]+@sha256:[0-9a-f]{64}', s['image']) or
+            (s is agent and
+             s['image'] == '${OH_IMAGE:?Run task openhands:up}' and
+             isinstance(locked_openhands_image, str) and
+             re.fullmatch(r'[^\s]+@sha256:[0-9a-f]{64}', locked_openhands_image))
+        ) for s in full_services))
     secret_name = re.compile(r'PASSWORD|TOKEN|SECRET|PRIVATE_KEY|MASTER_KEY', re.I)
     secret_delivery = True
     for service in all_services:

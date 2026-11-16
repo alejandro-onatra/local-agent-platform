@@ -2,15 +2,16 @@
 
 ## Version selection
 
-The local OpenHands deployment is pinned to Agent Canvas 1.34.0, Agent
-Server/SDK 1.58.1 and Automation 1.26.0 in
-`infra/openhands/versions.yaml`. The Linux amd64 image is locked by digest and
-source revision. On November 6, 2026, the owner reported a successful local
-upgrade: candidate identity/native cache-usage checks, a private backup, UI,
-authenticated backend/Canvas proxy and Ollama model checks passed. A real agent
-execution and post-upgrade runtime restriction checks remain pending. This
-upgrade did not update the separate household instances; see
-[upgrade evidence](openhands_upgrade.md).
+The source lock is prepared for Agent Canvas 1.37.0, Agent Server/SDK 1.60.1
+and Automation 1.30.1 in `infra/openhands/versions.yaml`. The Linux amd64 image
+is locked by digest and source revision. On November 6, 2026, the owner reported
+a successful local 1.34.0 upgrade: candidate identity/native cache-usage
+checks, a private backup, UI, authenticated backend/Canvas proxy and Ollama
+model checks passed. A real agent execution and post-upgrade runtime restriction
+checks remain pending. The latest owner-provided Docker inventory showed the
+OpenHands containers stopped on the older 1.26.0 image; the 1.37.0 source pin
+has not been deployed. This did not update the separate household instances;
+see [upgrade evidence](openhands_upgrade.md).
 
 Node and the OpenHands Python runtime are inside the image. Host Python 3.14.4,
 pinned by Mise, supplies the project scripts and checks. Mise also pins Go Task;

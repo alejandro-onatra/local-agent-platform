@@ -11,6 +11,7 @@ import yaml
 print(yaml.safe_load(open(sys.argv[1]))['image'])
 PYCODE
 }
+export OH_IMAGE="$(oh_image)"
 oh_compose_args=(-f "$llm_compose_file" -f "$oh_root/infra/openhands/compose.yaml")
 oh_hardening_record="$oh_root/artifacts/openhands/hardening.yaml"
 if [[ -e "$oh_hardening_record" || -L "$oh_hardening_record" ]]; then
@@ -22,7 +23,7 @@ fi
 oh_compose() {
     # Preserve public Compose identity/mount inputs, never application credentials.
     if [[ "${llm_docker[0]}" == sudo ]]; then
-        sudo --preserve-env=OH_HOST_GID,OH_WORKSPACE,OH_ISOLATED_UID,OH_ISOLATED_GID,OH_ISOLATED_USER docker --context default compose "${oh_compose_args[@]}" "$@"
+        sudo --preserve-env=OH_HOST_GID,OH_WORKSPACE,OH_ISOLATED_UID,OH_ISOLATED_GID,OH_ISOLATED_USER,OH_IMAGE docker --context default compose "${oh_compose_args[@]}" "$@"
     else
         "${llm_docker[@]}" compose "${oh_compose_args[@]}" "$@"
     fi

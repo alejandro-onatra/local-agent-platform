@@ -18,7 +18,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 STATE = 'agent-platform-local_openhands-state'
 PROJECT = 'agent-platform-local'
-OH_ENV = 'OH_HOST_GID,OH_WORKSPACE,OH_ISOLATED_UID,OH_ISOLATED_GID,OH_ISOLATED_USER'
+OH_ENV = 'OH_HOST_GID,OH_WORKSPACE,OH_ISOLATED_UID,OH_ISOLATED_GID,OH_ISOLATED_USER,OH_IMAGE'
 INSPECT = '''{"running":{{json .State.Running}},"image":{{json .Image}},"labels":{{json .Config.Labels}},"mounts":{{json .Mounts}}}'''
 
 

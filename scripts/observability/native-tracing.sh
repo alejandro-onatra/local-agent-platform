@@ -13,7 +13,7 @@ if [[ "$mode" == on ]]; then
     printf 'Enabling native tracing for synthetic exercises: raw tool inputs/results may enter Collector memory before filtering.\n'
 fi
 if [[ "${llm_docker[0]}" == sudo ]]; then
-    sudo --preserve-env=OH_HOST_GID,OH_WORKSPACE docker --context default compose "${files[@]}" up -d --no-deps openhands
+    sudo --preserve-env=OH_HOST_GID,OH_WORKSPACE,OH_ISOLATED_UID,OH_ISOLATED_GID,OH_ISOLATED_USER,OH_IMAGE docker --context default compose "${files[@]}" up -d --no-deps openhands
 else
     "${llm_docker[@]}" compose "${files[@]}" up -d --no-deps openhands
 fi
