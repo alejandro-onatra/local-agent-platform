@@ -3,7 +3,7 @@ services:
   ollama:
     networks: [default, agent-link]
   openhands:
-    image: ghcr.io/openhands/agent-canvas@sha256:8d3f977f070606c5d975c3417eb9f623a395b6043605aedd37776d8d33465559
+    image: ${OH_IMAGE:?Run task openhands:up}
     platform: linux/amd64
     restart: "no"
     networks: [agent-link]

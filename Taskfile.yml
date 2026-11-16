@@ -214,6 +214,24 @@ tasks:
     cmds:
       - bash scripts/openhands/upgrade.sh apply
 
+  openhands:versions:plan:
+    desc: Resolve an official OpenHands release and print the complete pinned-version diff
+    requires:
+      vars: [VERSION]
+    env:
+      OPENHANDS_TARGET_VERSION: "{{.VERSION}}"
+    cmds:
+      - uv run --locked python scripts/openhands/update-versions.py plan
+
+  openhands:versions:apply:
+    desc: Apply the reviewed OpenHands version lock and compatibility fingerprint; no services are changed
+    requires:
+      vars: [VERSION]
+    env:
+      OPENHANDS_TARGET_VERSION: "{{.VERSION}}"
+    cmds:
+      - uv run --locked python scripts/openhands/update-versions.py apply
+
   openhands:up:
     desc: Start OpenHands and check UI, authenticated backend and internal LLM connection
     cmds:

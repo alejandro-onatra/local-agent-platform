@@ -1,5 +1,23 @@
 # OpenHands upgrade operations
 
+## Updating the pinned release
+
+Resolve and review the complete official release tuple before changing source:
+
+```bash
+task openhands:versions:plan VERSION=1.37.0
+task openhands:versions:apply VERSION=1.37.0
+```
+
+The version updater resolves the official Canvas, Agent Server/SDK and
+Automation versions, source revisions, multi-platform image digest, amd64
+compressed layer size and usage-normalizer fingerprint. `plan` prints the
+source diff; `apply` changes only `infra/openhands/versions.yaml` and the
+compatibility fingerprint in `scripts/openhands/start-agent-server.py`. It
+does not start or recreate services. Use the separate backed-up
+`openhands:upgrade:plan` and `openhands:upgrade:apply` tasks to deploy the local
+instance. Household instances are separate.
+
 Date: November 6, 2026
 Status: owner reported applying Canvas 1.34.0 / SDK 1.58.1 locally. Candidate,
 backup, UI, authenticated backend/Canvas proxy and Ollama model checks passed.
@@ -15,7 +33,8 @@ only the local OpenHands/proxy services, then passed UI, authenticated
 Agent Server/Canvas proxy and container-to-Ollama/model-digest checks. The backup
 remains outside the repository.
 
-The current lock is Canvas 1.34.0, Agent Server/SDK 1.58.1 and Automation 1.26.0.
+At the time of this operation, the lock was Canvas 1.34.0, Agent Server/SDK
+1.58.1 and Automation 1.26.0.
 This output does not establish a successful real agent task, post-upgrade runtime
 restrictions, household instance upgrades or household readiness. Refresh
 observability log mounts after recreation as directed by the upgrade task.

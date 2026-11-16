@@ -26,7 +26,8 @@ class ControlsTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix='sec-control-test-')
         self.addCleanup(self.temp.cleanup)
         self.repo = Path(self.temp.name)
-        for name in (*SEC.SOURCES, 'config/security/controls.yaml', 'scripts/security/check-controls.py'):
+        for name in (*SEC.SOURCES, 'infra/openhands/versions.yaml',
+                     'config/security/controls.yaml', 'scripts/security/check-controls.py'):
             target = self.repo / name
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / name, target)
@@ -147,6 +148,12 @@ class ControlsTests(unittest.TestCase):
 
     def test_mutable_image_blocks(self):
         self.agent(lambda s: s.update(image='example.invalid/agent:latest'))
+        self.failed('compose.digests')
+
+    def test_dynamic_agent_image_requires_digest_locked_version(self):
+        self.assertEqual(SEC.source_checks(self.repo)['compose.digests']['status'], 'passed')
+        self.mutate('infra/openhands/versions.yaml',
+                    lambda d: d.update(image='ghcr.io/openhands/agent-canvas:latest'))
         self.failed('compose.digests')
 
     def test_literal_credentials_fail_without_echo(self):

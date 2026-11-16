@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 source "$(dirname -- "${BASH_SOURCE[0]}")/common.sh"
-docker --context default compose "${oh_compose_args[@]}" config --format json | python3 "$oh_root/scripts/openhands/validate-config.py"
+llm_init_docker
+oh_compose config --format json | python3 "$oh_root/scripts/openhands/validate-config.py"
 python3 - "$oh_root/infra/openhands/versions.yaml" <<'PYCODE'
 import sys,yaml
 lock=yaml.safe_load(open(sys.argv[1]))

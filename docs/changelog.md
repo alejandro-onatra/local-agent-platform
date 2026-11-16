@@ -1,5 +1,11 @@
 # Change Log of the Local Agent Platform
 
+**November 16, 2026 — add a reviewed OpenHands release updater**
+
+- Add Go Task plan/apply commands that resolve the official Canvas, Agent Server/SDK and Automation release tuple, image digest and usage-normalizer fingerprint.
+- Make the local Compose image read from the version lock and preserve that image input across sudo-based plan, upgrade and tracing operations.
+- Keep version apply limited to source configuration. The 1.37.0 pin is prepared, but the owner-provided inventory showed stopped containers on 1.26.0; deployment and real-agent acceptance remain pending.
+
 This log records implementation decisions and scoped validation evidence. Entries are not a commit log: several changes accumulated after the October 7 Git baseline before being prepared together for publication. Deployment and acceptance statements apply only to their stated checks and dates.
 
 **November 6, 2026 — owner-reported local OpenHands 1.34.0 upgrade**
